@@ -44,6 +44,10 @@
 			}, 2000)
 			</g:if>
 		});
+
+		// new ZoomControl("#content-wrapper", 0.25, 0.25, 1.5, function(zoom){
+		// 	SignalPath.setZoom(zoom)
+		// })
 	});
 	$(document).unload(function () {
 		SignalPath.unload();
@@ -58,20 +62,18 @@
 			<g:hiddenField name="id" value="${rsp.id}" />
 
 			<div id="toolbar" class="btn-group toolbar text-left">
-				<!-- <div class="btn-group"> -->
-					<g:if test="${rsp.state=="running"}">
-						<button id="stopButton" class="btn btn-default confirm" data-action="${createLink(action:'stop')}" data-confirm="<g:message code="runningSignalPath.stop.confirm" args="[rsp.name]"></g:message>">
-							<i class="fa fa-pause"></i>
-							${message(code: 'runningSignalPath.stop.label')}
-						</button>        	
-					</g:if>
-					<g:elseif test="${rsp.state=="stopped"}">
-						<button id="startButton" class="btn btn-default" data-action="${createLink(action:'start')}">
-							<i class="fa fa-play"></i>
-							${message(code: 'runningSignalPath.start.label')}
-						</button> 
-					</g:elseif>
-				<!-- </div> -->
+				<g:if test="${rsp.state=="running"}">
+					<button id="stopButton" class="btn btn-default confirm" data-action="${createLink(action:'stop')}" data-confirm="<g:message code="runningSignalPath.stop.confirm" args="[rsp.name]"></g:message>">
+						<i class="fa fa-pause"></i>
+						${message(code: 'runningSignalPath.stop.label')}
+					</button>        	
+				</g:if>
+				<g:elseif test="${rsp.state=="stopped"}">
+					<button id="startButton" class="btn btn-default" data-action="${createLink(action:'start')}">
+						<i class="fa fa-play"></i>
+						${message(code: 'runningSignalPath.start.label')}
+					</button> 
+				</g:elseif>
 			</div>
 		</form>
 		<!-- <div class="full"> -->

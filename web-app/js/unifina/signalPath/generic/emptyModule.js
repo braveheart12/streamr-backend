@@ -21,7 +21,12 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 
 	prot.dragOptions = {
 		drag: function(e, ui) {
+			var factor = (1 / SignalPath.getZoom()) - 1
+            ui.position.top += Math.round((ui.position.top - ui.originalPosition.top) * factor);
+            ui.position.left += Math.round((ui.position.left- ui.originalPosition.left) * factor);
 			var cpos = canvas.offset()
+			cpos.left = cpos.left
+			cpos.right = cpos.right
 			var x = ui.offset.left + canvas.scrollLeft()
 			var y = ui.offset.top + canvas.scrollTop()
 			
@@ -29,7 +34,8 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 				return false
 			}
 		}
-	}
+		                   
+    }
 	
 	pub.getDragOptions = function() {
 		return prot.dragOptions;
@@ -185,7 +191,7 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 		
 		// Must add to canvas before setting draggable
 		canvas.append(prot.div);
-		prot.div.addClass("draggable")
+		prot.div.addClass("draggable");
 		prot.div.draggable(prot.dragOptions);
 		
 		prot.div.on("click dragstart", function(event) {
@@ -218,6 +224,10 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 		})
 
 		$(SignalPath).trigger('moduleAdded', [ prot.jsonData, prot.div ])
+
+		$(SignalPath).on("zoom", function(){
+			prot.div.draggable(prot.dragOptions);
+		})
 
 		return prot.div;
 	}
@@ -319,7 +329,7 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 	
 	function initResizable(options, element) {
 		var defaultOptions = {
-			helper: "chart-resize-helper"
+			// helper: "chart-resize-helper"
 		}
 		options = $.extend({},defaultOptions,options || {});
 		element = element || prot.div

@@ -24,7 +24,59 @@ SignalPath.ChartModule = function(data,canvas,prot) {
 			stop: function(event,ui) {
 				if (prot.chart)
 					prot.chart.resize(ui.size.width, ui.size.height);
-			}
+			},
+		 	resize: function(event, ui) {
+			    var $element = ui.element;
+			    // Gets the axis that the user is dragging.
+			    var axis = $element.data('ui-resizable').axis;
+
+			    // Get the dimensions of the element's bounding box. We can't use 
+			    // leftOffset + $element.width() because it doesn't factor in the 
+			    // current zoom. Morever, we can't just multiply $element.width() 
+			    // by the current zoom to get the zoomed width because it still 
+			    // gives the wrong value. So we have to be sneaky and use resizable's 
+			    // resizer overlays to get the right and bottom values.
+			    var leftOffset = $element.offset().left;
+			    var topOffset = $element.offset().top;
+			    var rightOffset = $element.children('.ui-resizable-e').offset().left;
+			    var bottomOffset = $element.children('.ui-resizable-s').offset().top;
+
+			    // We are using the mouse location to calculate the width (during 
+			    // a horizontal resize) and the height (during a vertical resize) 
+			    // of the element. This is because we need the resize box to keep
+			    // up with the mouse when the user is not at 100% zoom.
+			    var mouseX = event.pageX;
+			    var mouseY = event.pageY;
+
+			    // Must remove the zoom factor before setting width and height.
+			    var mouseCalculatedWidth = (mouseX - leftOffset) / SignalPath.getZoom();
+			    var mouseCalculatedHeight = (mouseY - topOffset) / SignalPath.getZoom();
+			    var offsetWidth = (rightOffset - leftOffset) / SignalPath.getZoom();
+			    var offsetHeight = (bottomOffset - topOffset) / SignalPath.getZoom();
+
+			    // In order to maintain aspect ratio, we manually calculate it.
+			    var aspectRatio = offsetHeight / offsetWidth;
+
+			    // Resizing using the east handler, set the width of the element.
+			    // If this element maintains its aspect ratio, also set the height.
+			    if (axis == "e") {
+			       $element.width(mouseCalculatedWidth);
+
+			       if (maintainAspectRatio) {
+			          $element.height(mouseCalculatedWidth * aspectRatio);
+			       }
+			    }
+
+			    // Resizing using the south handler, set the height of the element.
+			    // If this element maintains its aspect ratio, also set the width.
+			    if (axis == "s") {
+			       $element.height(mouseCalculatedHeight);
+
+			       if (maintainAspectRatio) {
+			          $element.width(mouseCalculatedHeight / aspectRatio);
+			       }
+			    }
+	   		}
 		});
 	}
 	prot.createDiv = createDiv;	
@@ -124,6 +176,12 @@ SignalPath.ChartModule = function(data,canvas,prot) {
 	pub.updateFrom = function(data) {
 		destroyChart();
 		superUpdateFrom(data);
+	}
+
+	var superClose = pub.close;
+	pub.close = function() {
+		superClose()
+		// $(SignalPath).off("started", func)
 	}
 	
 	/**

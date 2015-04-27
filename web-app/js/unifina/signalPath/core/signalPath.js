@@ -93,6 +93,7 @@ var SignalPath = (function () {
 	    	pub.disconnect()
 	    })
 		pub.setZoom(opts.zoom)
+
 		pub.jsPlumb = jsPlumb
 	};
 	pub.unload = function() {
@@ -641,12 +642,20 @@ var SignalPath = (function () {
 	pub.getZoom = getZoom
 
 	function setZoom(zoom, animate) {
+		var timeout = 0;
 		if (animate===undefined)
 			animate = true
 		
-		if (animate)
-			canvas.animate({ zoom: zoom }, 300);
-		else (canvas.css("zoom", zoom))
+		if (animate) {
+			timeout = 300;
+			canvas.animate({ zoom: zoom }, timeout, undefined, function(){
+				$(SignalPath).trigger("zoom")
+			});
+		}
+		else {
+			canvas.css("zoom", zoom);
+			$(SignalPath).trigger("zoom")
+		}		
 	}
 	pub.setZoom = setZoom
 

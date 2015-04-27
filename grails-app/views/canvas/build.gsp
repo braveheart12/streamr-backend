@@ -17,6 +17,7 @@
 		<r:require module="hotkeys"/>
 		<r:require module="touchpunch"/>
 		<r:require module="detect-timezone"/>
+		<r:require module="zoom-control"/>
 
 		<r:script>
 
@@ -205,6 +206,10 @@ $(document).ready(function() {
     		
     		window.location = url_root + "/" + data.id
 		});
+	})
+
+	new ZoomControl("#content-wrapper", 0.25, 0.25, 1.5, function(zoom){
+		SignalPath.setZoom(zoom)
 	})
 })
 
