@@ -52,7 +52,9 @@ function SearchControl(streamUrl, modulesUrl, $elem) {
 		templates: {
 			header: '<span class="tt-dataset-header">Modules</span>',
 			suggestion: function(item) {
-				return "<p draggable='true' data-id='"+item.id+"'><span class='tt-suggestion-name'>"+item.name+"</span></p>"
+				return "<div class='custom-tt-suggestion' draggable='true' data-id='"+item.id+"'>"+
+							"<span class='tt-suggestion-name'>"+item.name+"</span>"+
+						"</div>"
 			}
 		}
 	}, {
@@ -62,11 +64,27 @@ function SearchControl(streamUrl, modulesUrl, $elem) {
 		templates: {
 			header: '<span class="tt-dataset-header">Streams</span>',
 			suggestion: function(item) {
-				if (item.description)
-					return"<p draggable='true' data-id='"+item.id+"'><span class='tt-suggestion-name'>"+item.name+"</span><br><span class='tt-suggestion-description'>"+item.description+"</span></p>" 
-				else return "<p draggable='true' data-id='"+item.id+"'><span class='tt-suggestion-name'>"+item.name+"</span></p>"
+				return "<div class='custom-tt-suggestion' draggable='true' ondragstart='drag(event)' data-id='"+item.id+"'>"+
+							"<div class='tt-suggestion-name'>"+item.name+"</div>"+
+								(item.description ? "<div class='tt-suggestion-description'>"+item.description+"</div>" : "")+
+						"</div>"
 			}
 		}
+	})
+
+	function drag(e){
+		e.dataTransfer.setData("id", $(e.target).data("id"));
+	}
+
+	$("#canvas").on("drop", function(drop){
+		SignalPath.addModule(drop.o.data('id'), {
+			layout: {
+				position: {
+					top: drop.e.offsetY + 'px',
+					left: drop.e.offsetX + 'px'
+				}
+			}
+		})
 	})
 
 	$elem.on('typeahead:selected', function(e, mod) {
@@ -78,4 +96,14 @@ function SearchControl(streamUrl, modulesUrl, $elem) {
 			SignalPath.addModule(mod.id, {})
 		}
 	})
+
+	// $elem.on('typeahead:open', function(e, mod) {
+	// 	$elem.typeahead('val', '')
+
+	// 	if (mod.module) { // is stream, specifies module
+	// 		SignalPath.addModule(mod.module, { params: [{ name: 'stream', value: mod.id }] })
+	// 	} else { // is module
+	// 		SignalPath.addModule(mod.id, {})
+	// 	}
+	// })
 }

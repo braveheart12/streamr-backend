@@ -3,7 +3,7 @@
 	border: 1px solid #cccccc;
 }
 
-.tt-suggestion p {
+.tt-suggestion .custom-tt-suggestion {
 	padding-left: 3px;
 	color: #333333;
 	margin: 0px;
@@ -11,8 +11,16 @@
 	line-height: 83%;
 }
 
-.tt-dropdown-menu p:hover {
+.tt-dropdown-menu .tt-suggestion:hover {
 	cursor: pointer;
+}
+
+.tt-dropdown-menu .tt-suggestion {
+	padding: 0px;
+}
+
+.tt-dropdown-menu .tt-suggestion .custom-tt-suggestion {
+	padding: 5px 18px;
 }
 
 .tt-cursor {
