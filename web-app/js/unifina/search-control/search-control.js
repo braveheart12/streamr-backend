@@ -52,7 +52,7 @@ function SearchControl(streamUrl, modulesUrl, $elem) {
 		templates: {
 			header: '<span class="tt-dataset-header">Modules</span>',
 			suggestion: function(item) {
-				return "<p><span class='tt-suggestion-name'>"+item.name+"</span></p>"
+				return "<p draggable='true' data-id='"+item.id+"'><span class='tt-suggestion-name'>"+item.name+"</span></p>"
 			}
 		}
 	}, {
@@ -63,8 +63,8 @@ function SearchControl(streamUrl, modulesUrl, $elem) {
 			header: '<span class="tt-dataset-header">Streams</span>',
 			suggestion: function(item) {
 				if (item.description)
-					return"<p><span class='tt-suggestion-name'>"+item.name+"</span><br><span class='tt-suggestion-description'>"+item.description+"</span></p>" 
-				else return "<p><span class='tt-suggestion-name'>"+item.name+"</span></p>"
+					return"<p draggable='true' data-id='"+item.id+"'><span class='tt-suggestion-name'>"+item.name+"</span><br><span class='tt-suggestion-description'>"+item.description+"</span></p>" 
+				else return "<p draggable='true' data-id='"+item.id+"'><span class='tt-suggestion-name'>"+item.name+"</span></p>"
 			}
 		}
 	})
