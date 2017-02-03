@@ -74,6 +74,7 @@ var SignalPath = (function () {
 
 	var isBeingReloaded = false
 	var debugLoopInterval = null
+    var zoomLevel = 1
 	
     // TODO: remove if not needed anymore!
     pub.replacedIds = {};
@@ -91,9 +92,11 @@ var SignalPath = (function () {
 		
 	    connection = new StreamrClient(options.connectionOptions)
 
-		pub.setZoom(opts.zoom)
 		pub.jsPlumb = jsPlumb
 
+        // TODO: doesn't work: fix this
+        //pub.setZoom(opts.zoom)
+        
 		$(pub).on('new', unsubscribe)
 		$(pub).on('started', subscribe)
 		$(pub).on('stopped', function() {
@@ -107,6 +110,16 @@ var SignalPath = (function () {
 			if (isRunning())
 				subscribe()
 		})
+        $(window).on("wheel", function(e) {
+            if (e.currentTarget !== this) {
+                return
+            }
+            var deltaY = e.originalEvent.deltaY
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault()
+                pub.setZoom(zoomLevel - Math.floor(deltaY / 10) * 0.05)
+            }
+        })
 	};
 	pub.unload = function() {
 		jsPlumb.reset();
@@ -730,12 +743,23 @@ var SignalPath = (function () {
 	pub.getZoom = getZoom
 
 	function setZoom(zoom, animate) {
+        zoomLevel = zoom
 		if (animate===undefined)
 			animate = true
 		
-		if (animate)
-			parentElement.animate({ zoom: zoom }, 300);
-		else (parentElement.css("zoom", zoom))
+		if (!animate) {
+            parentElement.addClass("no-animation")
+        }
+        parentElement.css({
+            "transform": "scale(" + zoom + ")",
+            "width": 1/zoom * 100 + "%",
+            "height": 1/zoom * 100 + "%"
+        });
+        if (!animate) {
+            parentElement.removeClass("no-animation")
+        }
+        jsPlumb.setZoom(zoom)
+        Draggabilly.setZoom(zoom)
 	}
 	pub.setZoom = setZoom
 

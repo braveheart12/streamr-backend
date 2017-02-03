@@ -14869,6 +14869,8 @@ body.canvas-editor-page #main-wrapper #content-wrapper .breadcrumb li:first-chil
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+  -webkit-transform-origin: 0 0;
+  transform-origin: 0 0;
 }
 .streamr-canvas .component {
   position: absolute;
@@ -15674,6 +15676,18 @@ body.embedded #content-wrapper > :not(.embeddable) {
 }
 #main-menu-inner .menu-content:last-child {
   margin-bottom: 100px;
+}
+#content-wrapper .zoom-buttons {
+  position: fixed;
+  right: 0;
+  top: 0;
+  padding-top: 53px;
+  padding-right: 15px;
+  z-index: 50;
+}
+#content-wrapper .zoom-buttons .zoom-in,
+#content-wrapper .zoom-buttons .zoom-out {
+  border-radius: 0px;
 }
 body.canvas-editor-page {
   overflow: hidden;
