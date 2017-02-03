@@ -1,9 +1,9 @@
 package com.unifina.controller.signalpath
 
+import com.unifina.domain.signalpath.Canvas
 import grails.converters.JSON
 import grails.plugin.springsecurity.annotation.Secured
 import grails.util.GrailsUtil
-
 import org.apache.log4j.Logger
 
 import com.unifina.domain.signalpath.Module
@@ -20,12 +20,18 @@ class ModuleController {
 	def moduleService
 	def grailsApplication
 	def springSecurityService
-	def unifinaSecurityService
+	def permissionService
+	
+	static defaultAction = "list"
 	
 	private static final Logger log = Logger.getLogger(ModuleController)
 	
+	def list() {
+		
+	}
+	
 	def jsonSearchModule() {
-		Set<ModulePackage> allowedPackages = springSecurityService.currentUser?.modulePackages ?: new HashSet<>()
+		Set<ModulePackage> allowedPackages = permissionService.getAll(ModulePackage, springSecurityService.currentUser) ?: new HashSet<>()
 		List<Module> mods = []
 		
 		if (!allowedPackages.isEmpty()) {
@@ -56,7 +62,7 @@ class ModuleController {
 	} 
 	
 	def jsonGetModules() {
-		Set<ModulePackage> allowedPackages = springSecurityService.currentUser?.modulePackages ?: new HashSet<>()
+		Set<ModulePackage> allowedPackages = permissionService.getAll(ModulePackage, springSecurityService.currentUser) ?: new HashSet<>()
 		List<Module> mods = []
 		
 		if (!allowedPackages.isEmpty()) {
@@ -77,37 +83,50 @@ class ModuleController {
 	def jsonGetModuleTree() {
 		def categories = ModuleCategory.findAllByParentIsNullAndHideIsNull([sort:"sortOrder"])
 
-		Set<ModulePackage> allowedPackages = springSecurityService.currentUser?.modulePackages ?: new HashSet<>()
-		allowedPackages.addAll(ModulePackage.findAllByUser(springSecurityService.currentUser))
+		Set<ModulePackage> allowedPackages = permissionService.getAll(ModulePackage, springSecurityService.currentUser) ?: new HashSet<>()
 		
 		Set<Long> allowedPackageIds = allowedPackages.collect {it.id} as Set
 		
 		def result = []	
-		categories.findAll{allowedPackageIds.contains(it.modulePackage.id)}.each {category->
-			def item = moduleTreeRecurse(category,allowedPackageIds)
+		categories.findAll {
+			allowedPackageIds.contains(it.modulePackage.id)
+		}.each {category->
+			def item = moduleTreeRecurse(category,allowedPackageIds,params.boolean('modulesFirst') ?: false)
 			result.add(item)
 		}
 		render result as JSON
 	}
 
-	private Map moduleTreeRecurse(ModuleCategory category, Set<Long> allowedPackageIds) {
+	private Map moduleTreeRecurse(ModuleCategory category, Set<Long> allowedPackageIds, boolean modulesFirst=false) {
 		def item = [:]
 		item.data = category.name
 		item.metadata = [canAdd:false, id:category.id]
 		item.children = []
-
+		
+		List categoryChildren = []
+		List moduleChildren = []
+		
 		category.subcategories.findAll{allowedPackageIds.contains(it.modulePackage.id)}.each {subcat->
-			def subItem = moduleTreeRecurse(subcat,allowedPackageIds)
-			item.children.add(subItem)
+			def subItem = moduleTreeRecurse(subcat,allowedPackageIds, modulesFirst)
+			categoryChildren.add(subItem)
 		}
-
+		
 		category.modules.each {Module module->
 			if (allowedPackageIds.contains(module.modulePackage.id) && (module.hide==null || !module.hide)) {
 				def moduleItem = [:]
 				moduleItem.data = module.name
 				moduleItem.metadata = [canAdd:true, id:module.id]
-				item.children.add(moduleItem)
+				moduleChildren.add(moduleItem)
 			}
+		}
+		
+		if (modulesFirst) {
+			item.children.addAll(moduleChildren)
+			item.children.addAll(categoryChildren)
+		}
+		else {
+			item.children.addAll(categoryChildren)
+			item.children.addAll(moduleChildren)
 		}
 
 		return item
@@ -117,14 +136,15 @@ class ModuleController {
 		Globals globals = GlobalsFactory.createInstance([:], grailsApplication)
 		
 		try {
-			Module domainObject = Module.get(params.id)
-			if (!unifinaSecurityService.canAccess(domainObject)) {
-				throw new Exception("Access denied for user $springSecurityService.currentUser.username to requested module")
+			def user = springSecurityService.currentUser
+			Module domainObject = Module.get(params.long("id"))
+			if (!permissionService.canRead(user, domainObject.modulePackage)) {
+				throw new Exception("Access denied for user $user.username to requested module")
 			}
 			
 			def conf = (params.configuration ? JSON.parse(params.configuration) : [:])
 
-			AbstractSignalPathModule m = moduleService.getModuleInstance(domainObject,conf,null,globals)
+			AbstractSignalPathModule m = moduleService.getModuleInstance(domainObject, conf, null, globals)
 			m.connectionsReady()
 			
 			Map iMap = m.configuration
@@ -160,38 +180,31 @@ class ModuleController {
 			globals.destroy()
 		}
 	}
-	
-	def jsonGetModuleHelp() {
-		Module module = Module.get(params.id)
-		if (!unifinaSecurityService.canAccess(module)) {
-			throw new Exception("User $springSecurityService.currentUser does not have access to module $module.name")
-		}
-		else {
-			response.setContentType("application/json")
-			render module.jsonHelp ?: "{}"
-		}
-	}
-	
+
 	def jsonSetModuleHelp() {
-		// Needs to be owner
-		Module module = Module.get(params.id)
-		if (module.modulePackage.user!=springSecurityService.currentUser) {
-			render ([success:false, error: "Access denied, only owner can edit module help"])
+		Module module = Module.get(params.long("id"))
+		if (!permissionService.canWrite(springSecurityService.currentUser, module.modulePackage)) {
+			response.status = 403
+			render ([success:false, error: "Access denied, only owner can edit module help"] as JSON)
+			return
 		}
-		else {
-			module.jsonHelp = params.jsonHelp
-			module.save(failOnError:true)
-			render ([success:true] as JSON)
-		}
+
+		module.jsonHelp = params.jsonHelp
+		module.save(failOnError:true, flush:true)
+		render ([success:true] as JSON)
 	}
 	
 	def editHelp() {
-		// Needs to be owner
 		Module module = Module.get(params.long("id"))
-		if (module.modulePackage.user!=springSecurityService.currentUser) {
+		if (!permissionService.canWrite(springSecurityService.currentUser, module.modulePackage)) {
 			throw new Exception("User $springSecurityService.currentUser can not edit help of module $module.name")
 		}
 		[module:module]
+	}
+	
+	def canEdit() {
+		Module module = Module.get(params.long("id"))
+		render([success: permissionService.canWrite(springSecurityService.currentUser, module.modulePackage)] as JSON)
 	}
 	
 }

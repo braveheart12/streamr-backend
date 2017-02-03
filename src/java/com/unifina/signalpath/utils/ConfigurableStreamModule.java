@@ -1,5 +1,6 @@
 package com.unifina.signalpath.utils;
 
+import com.unifina.signalpath.*;
 import grails.converters.JSON;
 
 import java.util.Map;
@@ -9,12 +10,6 @@ import org.codehaus.groovy.grails.web.json.JSONObject;
 
 import com.unifina.data.IStreamRequirement;
 import com.unifina.domain.data.Stream;
-import com.unifina.signalpath.AbstractSignalPathModule;
-import com.unifina.signalpath.ListOutput;
-import com.unifina.signalpath.MapOutput;
-import com.unifina.signalpath.StreamParameter;
-import com.unifina.signalpath.StringOutput;
-import com.unifina.signalpath.TimeSeriesOutput;
 
 /**
  * This module creates inputs and outputs on configuration time
@@ -31,12 +26,13 @@ import com.unifina.signalpath.TimeSeriesOutput;
 public class ConfigurableStreamModule extends AbstractSignalPathModule implements IStreamRequirement {
 
 	protected StreamParameter streamParameter = new StreamParameter(this,"stream");
-	protected JSONObject streamConfig = null;
+	transient protected JSONObject streamConfig = null;
 	
 	@Override
 	public void init() {
 		addInput(streamParameter);
 		streamParameter.setCheckModuleId(true);
+		streamParameter.setUpdateOnChange(true);
 	}
 
 	@Override
@@ -54,35 +50,37 @@ public class ConfigurableStreamModule extends AbstractSignalPathModule implement
 		super.onConfiguration(config);
 		
 		Stream stream = streamParameter.value;
-		if (stream.getStreamConfig()==null)
+		if (stream.getConfig() == null) {
 			throw new IllegalStateException("Stream "+stream.getName()+" is not properly configured!");
-		streamConfig = (JSONObject) JSON.parse(stream.getStreamConfig());
+		}
+		streamConfig = (JSONObject)JSON.parse(stream.getConfig());
 
 		JSONArray fields = streamConfig.getJSONArray("fields");
 		
 		for (Object o : fields) {
-			JSONObject j = (JSONObject) o;
+			JSONObject j = (JSONObject)o;
 			String type = j.getString("type");
 			String name = j.getString("name");
-			
+
+			Output output = null;
+
 			if (type.equalsIgnoreCase("number")) {
-				TimeSeriesOutput output = new TimeSeriesOutput(this,name);
-				output.noRepeat = false;
+				output = new TimeSeriesOutput(this, name);
+			} else if (type.equalsIgnoreCase("string")) {
+				output = new StringOutput(this, name);
+			} else if (type.equalsIgnoreCase("boolean")) {
+				output = new BooleanOutput(this, name);
+			} else if (type.equalsIgnoreCase("map")) {
+				output = new MapOutput(this, name);
+			} else if (type.equalsIgnoreCase("list")) {
+				output = new ListOutput(this, name);
+			}
+
+			if (output != null) {
+				if (output instanceof PrimitiveOutput) {
+					((PrimitiveOutput) output).noRepeat = false;
+				}
 				addOutput(output);
-			}
-			else if (type.equalsIgnoreCase("string")) {
-				addOutput(new StringOutput(this,name));
-			}
-			else if (type.equalsIgnoreCase("boolean")) {
-				TimeSeriesOutput output = new TimeSeriesOutput(this,name);
-				output.noRepeat = false;
-				addOutput(output);
-			}
-			else if (type.equalsIgnoreCase("map")) {
-				addOutput(new MapOutput(this, name));
-			}
-			else if (type.equalsIgnoreCase("list")) {
-				addOutput(new ListOutput(this, name));
 			}
 		}
 		

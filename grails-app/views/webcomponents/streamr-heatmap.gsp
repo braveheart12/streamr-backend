@@ -7,54 +7,40 @@
 	<r:layoutResources disposition="defer"/>
 </g:if>
 
-<polymer-element name="streamr-heatmap" extends="streamr-widget" attributes="lifeTime fadeInTime fadeOutTime min max radius center zoom minZoom maxZoom">
+<polymer-element name="streamr-heatmap" extends="streamr-widget" attributes="lifeTime fadeInTime fadeOutTime min max radius centerLat centerLng zoom minZoom maxZoom">
 	<!-- Using shadow element doesn't work with CSS -->
 	<template>
-		<link rel="stylesheet" href="${r.resource(uri:'/js/leaflet-0.7.3/leaflet-0.7.3.css')}">
+		<link rel="stylesheet" href="${r.resource(dir:'/js/leaflet', file:'leaflet.css', plugin:'unifina-core')}">
 		<streamr-client id="client"></streamr-client>
 		<div id="container"></div>
 	</template>
 	
 	<script>
 		Polymer('streamr-heatmap', {
-			publish: {
-				// hint that center is an array
-				center: []
-			},
-			ready: function() {
+			ready: function() {			
 				var _this = this
-				this.bindEvents(_this.$.container)
+				this.bindEvents(_this.$["streamr-widget-container"])
 
-				this.$.container.setAttribute("style", "min-height:400px")
+				this.$["streamr-widget-container"].setAttribute("style", "min-height:400px")
 
 				this.getModuleJson(function(json) {
-					var resendOptions = _this.getResendOptions(json)
+					var options = _this.getModuleOptionsWithOverrides(json)
+					_this.map = new StreamrHeatMap(_this.$["streamr-widget-container"], options)
 
-					_this.map = new StreamrHeatMap(_this.$.container, {
-						lifeTime: this.lifeTime,
-						fadeInTime: this.fadeInTime,
-						fadeOutTime: this.fadeOutTime,
-						min: this.min,
-						max: this.max,
-						radius: this.radius,
-						center: (this.center!=null && this.center.length===2 ? this.center : undefined),
-						zoom: this.zoom,
-						minZoom: this.minZoom,
-						maxZoom: this.maxZoom
+					_this.subscribe(function(message) {
+						_this.map.handleMessage(message)
 					})
-
-					_this.subscribe(
-						function(message) {
-					    	_this.map.handleMessage(message)
-					    },
-					    resendOptions
-					)
-
 				})
 
 			},
-			centerChanged: function(oldValue, newValue) {
-				this.map.setCenter(newValue)
+			getMap: function() {
+				return this.map
+			},
+			centerLatChanged: function(oldValue, newValue) {
+				this.map.setCenter(newValue, this.map.map.getCenter().lng)
+			},
+			centerLngChanged: function(oldValue, newValue) {
+				this.map.setCenter(this.map.map.getCenter().lat, newValue)
 			},
 			<g:if test="${params.lightDOM}">
 				parseDeclaration: function(elementElement) {

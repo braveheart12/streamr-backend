@@ -1,61 +1,58 @@
 package com.unifina.signalpath.utils;
 
-import java.text.SimpleDateFormat;
+import com.unifina.push.PushChannel;
+import com.unifina.signalpath.*;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.unifina.push.PushChannel;
-import com.unifina.signalpath.Input;
-import com.unifina.signalpath.ModuleOption;
-import com.unifina.signalpath.ModuleOptions;
-import com.unifina.signalpath.ModuleWithUI;
-
 
 public class EventTable extends ModuleWithUI {
-	
-	private PushChannel rc;
-	private SimpleDateFormat df;
-	
-	int inputCount = 1;
-	int maxRows = 0;
+
+	int eventTableInputCount = 1;
+	int maxRows = 20;
 	
 	public EventTable() {
 		super();
-		canClearState = false;
+
+		// More sensible defaults, in line with default maxRows
+		resendAll = false;
+		resendLast = 20;
 	}
 	
 	@Override
 	public void initialize() {
 		super.initialize();
 
-		if (globals.getUiChannel()!=null && !globals.getSignalPathContext().containsKey("csv")) {
-			rc = globals.getUiChannel();
+		PushChannel rc = null;
+
+		if (getGlobals().getUiChannel()!=null) {
+			rc = getGlobals().getUiChannel();
 		}
 		
 		if (rc!=null) {
 			Map<String,Object> hdrMsg = new HashMap<String,Object>();
 			hdrMsg.put("hdr", getHeaderDefinition());
-			globals.getUiChannel().push(hdrMsg, uiChannelId);
+			getGlobals().getUiChannel().push(hdrMsg, uiChannelId);
 		}
-		
-		df = globals.dateTimeFormat;
 	}
 
 	@Override
 	public void sendOutput() {
-		if (rc!=null) {
-			HashMap<String,Object> msg = new HashMap<String,Object>();
+		PushChannel rc = getGlobals().getUiChannel();
+		if (rc != null) {
+			HashMap<String, Object> msg = new HashMap<String, Object>();
 			ArrayList<Object> nr = new ArrayList<>(2);
 			msg.put("nr", nr);
-			nr.add(df.format(globals.time));
-			
+			nr.add(getGlobals().dateTimeFormat.format(getGlobals().time));
+
 			for (Input i : getInputs()) {
 				if (i.hasValue())
 					nr.add(i.getValue().toString());
 				else nr.add(null);
 			}
-			
+
 			rc.push(msg, uiChannelId);
 		}
 	}
@@ -109,7 +106,7 @@ public class EventTable extends ModuleWithUI {
 
 		// Module options
 		ModuleOptions options = ModuleOptions.get(config);
-		options.add(new ModuleOption("inputs", inputCount, "int"));
+		options.add(new ModuleOption("inputs", eventTableInputCount, "int"));
 		options.add(new ModuleOption("maxRows", maxRows, "int"));
 		
 		config.put("tableConfig", getHeaderDefinition());
@@ -124,19 +121,37 @@ public class EventTable extends ModuleWithUI {
 		ModuleOptions options = ModuleOptions.get(config);
 		
 		if (options.getOption("inputs")!=null)
-			inputCount = options.getOption("inputs").getInt();
+			eventTableInputCount = options.getOption("inputs").getInt();
 		
 		if (options.getOption("maxRows")!=null)
 			maxRows = options.getOption("maxRows").getInt();
 		
-		for (int i=1;i<=inputCount;i++) {
+		for (int i = 1; i<= eventTableInputCount; i++) {
 			createAndAddInput("input"+i);
 		}
 	}
 	
 	@Override
+	protected void handleRequest(RuntimeRequest request, RuntimeResponse response) {
+		if (request.getType().equals("initRequest")) {
+			// We need to support unauthenticated initRequests for public views, so no authentication check
+			
+			Map<String,Object> hdrMsg = new HashMap<String,Object>();
+			hdrMsg.put("hdr", getHeaderDefinition());
+			response.put("initRequest", hdrMsg);
+			response.setSuccess(true);
+		}
+		else super.handleRequest(request, response);
+	}
+	
+	@Override
 	public void init() {
 
+	}
+	
+	@Override
+	public String getWebcomponentName() {
+		return "streamr-table";
 	}
 	
 }

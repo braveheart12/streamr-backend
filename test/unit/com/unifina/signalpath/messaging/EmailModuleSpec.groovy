@@ -1,10 +1,8 @@
 package com.unifina.signalpath.messaging
 
+import com.unifina.utils.testutils.ModuleTestHelper
 import grails.test.mixin.*
 import grails.test.mixin.support.GrailsUnitTestMixin
-
-import org.codehaus.groovy.grails.commons.GrailsApplication
-
 import spock.lang.Specification
 
 import com.unifina.datasource.RealtimeDataSource
@@ -34,20 +32,56 @@ public class EmailModuleSpec extends Specification {
 		
 		grailsApplication.config.unifina.email.sender = "sender"
 		
-		
-		globals = new Globals([:], grailsApplication, new SecUser(timezone:"Europe/Helsinki", username: "username"))
-		globals.time = new Date()
-				
 		module = new EmailModule()
+	}
+	
+	private void initContext(Map context = [:], SecUser user = new SecUser(timezone:"Europe/Helsinki", username: "username")) {
+		globals = new Globals(context, grailsApplication, user)
+		globals.time = new Date()
+		globals.uiChannel = Mock(PushChannel)
+
 		module.globals = globals
 		module.init()
-		module.inputCount = 2	
+		module.emailInputCount = 2
 		module.configure(module.getConfiguration())
-		
+
+		module.parentSignalPath = new SignalPath()
+		module.parentSignalPath.globals = globals
 	}
 
-	void "module should send an email for a realtime datasource"(){
+	void "emailModule sends the correct email"() {
+		initContext()
+		globals.realtime = true
 		globals.dataSource = new RealtimeDataSource()
+		when:
+		Map inputValues = [
+			subject: ["Subject"],
+			message: ["Message"],
+			value1: [1],
+			value2: ["abcd"],
+		]
+		Map outputValues = [:]
+
+		then:
+		new ModuleTestHelper.Builder(module, inputValues, outputValues)
+			.overrideGlobals {
+				globals.time = new Date(0)
+				globals
+			}
+			.afterEachTestCase {
+				assert ms.mailSent
+				assert ms.from == grailsApplication.config.unifina.email.sender
+				assert ms.to == globals.user.username
+				assert ms.subject == "Subject"
+				assert ms.body == "\nMessage:\nMessage\n\nEvent Timestamp:\n1970-01-01 02:00:00.000\n\nInput Values:\nvalue1: 1\nvalue2: abcd\n\n"
+				ms.clear()
+			}
+			.test()
+	}
+
+	void "module should send an email for a realtime datasource"() {
+		initContext()
+		globals.realtime = true
 		
 		when: "feedback sent from the feedback page"
 			module.sub.receive("Test subject")
@@ -78,9 +112,9 @@ value2: test value
 """
 	}
 	
-	void "module should send a notification for a non-realtime datasource"(){
-		module.parentSignalPath = new SignalPath()
-		globals.uiChannel = Mock(PushChannel)
+	void "module should send a notification for a non-realtime datasource"() {
+		initContext()
+		globals.realtime = false
 		
 		when:
 			module.sub.receive("Test subject")
@@ -105,8 +139,7 @@ value2: test value
 """), module.parentSignalPath.uiChannelId)
 	}
 	
-	void "If trying to send emails too often send notification to warn about it"(){
-		globals.dataSource = new RealtimeDataSource()
+	void "If trying to send emails too often send notification to warn about it"() {
 		module = new EmailModule(){
 			long myTime
 			
@@ -118,12 +151,8 @@ value2: test value
 				myTime = time
 			}
 		}
-		module.parentSignalPath = new SignalPath()
-		globals.uiChannel = Mock(PushChannel)
-		module.globals = globals
-		module.init()
-		module.inputCount = 2	
-		module.configure(module.getConfiguration())
+		initContext()
+		globals.realtime = true
 	
 		when: "sent two emails very often"
 			module.setTime(0)
@@ -150,6 +179,10 @@ value2: test value
 			0 * globals.uiChannel.push(new NotificationMessage("Tried to send emails too often"), module.parentSignalPath.uiChannelId)
 	}
 
+	void "EmailModule can be instantiated without a user"() {
+		expect:
+			initContext([:], null)
+	}
 
 }
 

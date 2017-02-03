@@ -1,6 +1,8 @@
 /**
  * Events emitted on spObject:
  * updated - when eg. the stream is changed, updated is triggered with the new data
+ * started - when the canvas is started. The running module json is passed as argument.
+ * stopped - when the canvas is stopped.
  */
 SignalPath.EmptyModule = function(data, canvas, prot) {
 	prot = prot || {};
@@ -19,6 +21,8 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 	var pub = {}
 	var $prot = $(prot)
 
+	prot.warnings = []
+
 	prot.dragOptions = {
 		drag: function(e, ui) {
 			var factor = (1 / SignalPath.getZoom()) - 1
@@ -30,9 +34,10 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 			var x = ui.offset.left + canvas.scrollLeft()
 			var y = ui.offset.top + canvas.scrollTop()
 			
-			if (x < cpos.left-100 || y < cpos.top-50) {
+			if (x < cpos.left - 100 || y < cpos.top - 50) {
 				return false
 			}
+			$(prot).add(pub).trigger("drag")
 		}
 		                   
     }
@@ -52,12 +57,12 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 		
 		// Read position and width/height if saved
 		if (prot.jsonData.layout) {
-			loadPosition(SignalPath.getWorkspace());
+			loadPosition();
 		} 
 		// Else add to default position in viewport
 		else {
-			prot.div.css('top',canvas.scrollTop() + 10);
-			prot.div.css('left',canvas.scrollLeft() + 10);
+			prot.div.css('top',canvas.scrollTop() + 20);
+			prot.div.css('left',canvas.scrollLeft() + 70);
 		}
 		
 		// Module header
@@ -65,7 +70,8 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 		prot.div.append(prot.header);
 		
 		// Create title
-		prot.title = $("<span class='modulename'>"+prot.jsonData.name+"</span>");
+		var moduleName = prot.jsonData.displayName || prot.jsonData.name
+		prot.title = $("<span class='modulename'>" + moduleName + "</span>");
 		prot.header.append(prot.title);
 	
 		// Close button
@@ -82,9 +88,9 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 		var tooltipOptions = {
 			animation: false,
 			trigger: 'manual',
-			container: '#'+SignalPath.options.canvas,
+			container: SignalPath.getParentElement(),
 			viewport: {
-				selector: '#'+SignalPath.options.canvas,
+				selector: SignalPath.getParentElement(),
 				padding: 0
 			},
 			html: true,
@@ -92,29 +98,32 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 			template: '<div class="tooltip" role="tooltip"><div class="tooltip-arrow"></div><div class="tooltip-inner modulehelp-tooltip"></div></div>'
 		}
 		
-		var delay=500, tooltipDelayTimer		
+		var delay=500, tooltipDelayTimer
 		helpLink.mouseenter(function() {
 			tooltipDelayTimer = setTimeout(function() {
-	 			var htext = prot.getHelp(false)
-				tooltipOptions.title = htext
-				// show tooltip after help text is loaded
-				helpLink.tooltip(tooltipOptions)
+	 			prot.getHelp(false, function(htext) {
+	 				tooltipOptions.title = htext
+					// show tooltip after help text is loaded
+					helpLink.tooltip(tooltipOptions)
 
-				helpLink.on('shown.bs.tooltip', function(event, param) {
-					$tt = $(".tooltip")
-					if ($tt.length) {
-						var top = $tt.offset().top
-						console.log("Tooltip shown at "+top)
-						// Workaround for CORE-216: tooltip is shown under main navbar
-						if (top < 40 && $tt.hasClass("top")) {
-							console.log("Destroying and replacing tooltip")
-							helpLink.tooltip("destroy")
-							helpLink.tooltip($.extend({}, tooltipOptions, {placement: 'bottom'}))
-							helpLink.tooltip("show")
+					helpLink.on('shown.bs.tooltip', function(event, param) {
+						$tt = $(".tooltip")
+						if ($tt.length) {
+							var top = $tt.offset().top
+							// Workaround for CORE-216: tooltip is shown under main navbar
+							if (top < 75 && $tt.hasClass("top")) {
+								helpLink.tooltip("destroy")
+								helpLink.tooltip($.extend({}, tooltipOptions, {placement: 'bottom'}))
+								helpLink.tooltip("show")
+							}
+							MathJax.Hub.Queue(["Typeset",MathJax.Hub,$tt[0]]);
+							MathJax.Hub.Queue(function(){
+								$tt.find(".math-tex").addClass("math-jax-ready")
+							})
 						}
-					}
-				})
-				helpLink.tooltip('show')
+					})
+					helpLink.tooltip('show')
+	 			})
 			}, delay)
 		}).mouseleave(function() {
 			clearTimeout(tooltipDelayTimer)
@@ -122,11 +131,22 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 		})
 
 		helpLink.click(function() {
-			bootbox.dialog({
-				message: '<div class="modulehelp">'+ prot.getHelp(true)+'</div>',
-				onEscape: function() { return true },
-				animate: false,
-				title: prot.jsonData.name
+			prot.getHelp(true, function(helptext) {
+				var bb = bootbox.dialog({
+					message: '<div class="modulehelp">'+helptext+'</div>',
+					onEscape: function() { return true },
+					animate: false,
+					title: prot.jsonData.name,
+					show: false,
+					className: "module-help-dialog"
+				})
+				bb.on("shown.bs.modal", function(){
+					MathJax.Hub.Queue(["Typeset",MathJax.Hub,bb.find(".modal-body")[0]]);
+					MathJax.Hub.Queue(function(){
+						bb.find(".modal-body .math-tex").addClass("math-jax-ready")
+					})
+				})
+				bb.modal("show")
 			})
 		})
 
@@ -203,7 +223,7 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 			prot.addFocus(true);
 			event.stopPropagation();
 		});
-		
+
 		prot.div.hover(function() {
 			if (!prot.div.hasClass("focus")) {
 				prot.addFocus(false);
@@ -216,12 +236,6 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 		
 		// A module is focused by default when it is created
 		prot.addFocus(true);
-		
-		// Move modules on workspace change
-		$(SignalPath).on("workspaceChanged", function(event, workspace, oldWorkspace) {
-			writePosition(oldWorkspace)
-			loadPosition(workspace, true)
-		})
 
 		$(SignalPath).trigger('moduleAdded', [ prot.jsonData, prot.div ])
 
@@ -233,99 +247,83 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 	}
 	prot.createDiv = createDiv;
 	
-	function writePosition(workspace) {
+	function writePosition() {
 		prot.jsonData.layout = jQuery.extend(prot.jsonData.layout || {}, {
 			position: {
 				top: prot.div.css('top'),
 				left: prot.div.css('left')
 			}
 		});
-		
-		// Currently only save workspace position for dashboard modules
-		if (prot.div.hasClass("dashboard")) {
-			if (!prot.jsonData.layout.workspaces)
-				prot.jsonData.layout.workspaces = {};
-			
-			if (workspace === "dashboard" && prot.div.css('top') == prot.jsonData.layout.workspaces.normal.top)
-				console.log("Here we are!");
-			
-			prot.jsonData.layout.workspaces[workspace] = {
-				position: {
-					top: prot.div.css('top'),
-					left: prot.div.css('left')
-				}
-			}
-		}
 	}
 	prot.writePosition = writePosition;
 	
-	function loadPosition(workspace, animate) {
+	function loadPosition() {
 		var item = prot.jsonData.layout;
-		
-		// Width and height do not change in different workspaces
+
 		if (item.width)
 			prot.div.css('width',item.width);
 		if (item.height)
 			prot.div.css('height',item.height);
-		
-		// If workspace supplied then try to read position from there
-		if (workspace && item.workspaces && item.workspaces[workspace])
-			item = item.workspaces[workspace];
-		
-		// don't animate on transition to normal workspace, as jsPlumb won't keep up
-		// TODO: maybe fix that some day
-		if (animate && workspace=="dashboard") {
-			prot.div.animate({
-			    top: item.position.top,
-			    left: item.position.left
-			  }, 200);
-		}
-		else {
-			prot.div.css('top',item.position.top);
-			prot.div.css('left',item.position.left);
-		}
+
+		prot.div.css('top',item.position.top);
+		prot.div.css('left',item.position.left);
 	}
 	prot.loadPosition = loadPosition;
 	
 	function setLayoutData(layout) {
 		prot.jsonData.layout = layout;
-		prot.loadPosition(SignalPath.getWorkspace(),false);
+		prot.loadPosition()
 	}
 	pub.setLayoutData = setLayoutData;
 	
 	function getLayoutData() {
-		prot.writePosition(SignalPath.getWorkspace());
+		prot.writePosition();
 		return prot.jsonData.layout;
 	}
 	pub.getLayoutData = getLayoutData;
 	
-	function getHelp(extended) {
-		var result = null;
-    	$.ajax({
-		    type: 'GET',
-		    url: prot.signalPath.options.getModuleHelpUrl,
-		    dataType: 'json',
-		    success: function(data) {
-		    	if (!data.helpText) {
-		    		result = "No help is available for this module.";
-		    	}
-		    	else result = prot.renderHelp(data,extended);
-			},
-		    error: function() {
-		    	result = "An error occurred while loading module help.";
-		    },
-		    data: {id:prot.jsonData.id},
-		    async: false
-		});
-    	return result;
+	function getHelp(extended, cb) {
+		if (prot.cachedHelpResponse)
+			cb(prot.renderHelp(prot.cachedHelpResponse, extended))
+		else {
+	    	$.ajax({
+			    type: 'GET',
+			    url: Streamr.createLink({uri: 'api/v1/modules/'+prot.jsonData.id+'/help'}),
+			    dataType: 'json',
+			    success: function(data) {
+			    	prot.cachedHelpResponse = data;
+			    	cb(prot.renderHelp(prot.cachedHelpResponse, extended))
+				},
+			    error: function() {
+					console.error("An error occurred while loading help for module "+prot.jsonData.id)
+			    	cb("Sorry, help is not available for this module.");
+			    }
+			});
+		}
 	}
 	prot.getHelp = getHelp;
 	
-	function renderHelp(data) {
-		var result = "<p>"+data.helpText+"</p>";
+	function renderHelp(data, extended) {
+		var result = "<p>"+(data && data.helpText ? data.helpText : "No help is available for this module.")+"</p>";
+		
+		var embedCode = prot.getEmbedCode()
+		if (extended && embedCode) {
+			result += "<div class='note note-info'>"
+			result += "<p>To embed this visualization, enable public read access in the sharing settings, and paste the following tag to your website:</p>";
+			result += "<code>"+embedCode+"</code>"
+			result += "</div>"
+		}
+		
 		return result;
 	}
 	prot.renderHelp = renderHelp;
+	
+	prot.getEmbedCode = function() {
+		if (pub.getURL() && prot.jsonData.uiChannel && prot.jsonData.uiChannel.webcomponent) {
+			return "&lt;"+prot.jsonData.uiChannel.webcomponent+" url='"+pub.getURL()+"' /&gt;"
+		}
+		else return undefined;
+	}
 	
 	function initResizable(options, element) {
 		var defaultOptions = {
@@ -342,20 +340,20 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 		prot.div.removeClass("focus");
 		prot.div.removeClass("hoverFocus");
 		prot.div.removeClass("holdFocus");
-		prot.div.find(".showOnFocus").fadeTo(100,0);
 	}
 	prot.removeFocus = removeFocus;
 	
 	function addFocus(hold) {
 		prot.div.addClass("focus");
-		
-		if (hold) prot.div.addClass("holdFocus");
-		else prot.div.addClass("hoverFocus");
-		
-		prot.div.find(".showOnFocus").fadeTo(100,1);
+		if (hold) {
+			prot.div.addClass("holdFocus")
+		} else {
+			prot.div.addClass("hoverFocus")
+		}
 	}
 	prot.addFocus = addFocus;
 	
+
 	function createModuleButton(additionalClasses) {
 		var button = $("<div class='modulebutton'><a class='btn btn-default btn-xs showOnFocus' href='#' style='padding: 0px'><i class='fa fa-fw "+(additionalClasses ? additionalClasses : "")+"'></span></div>");
 		return button;
@@ -364,61 +362,68 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 	
 	function getContextMenu() {
 		return [
-		        {title: "Clone module", cmd: "clone"}
+		        {title: "Clone module", cmd: "clone"},
+				{title: "Rename module", cmd: "renameModule"}
 		]
 	}
 	prot.getContextMenu = getContextMenu;
 	
 	function handleContextMenuSelection(target,selection) {
-		if (selection=="clone") {
+		if (selection == "clone" ) {
 			prot.clone();
+		} else if (selection == "renameModule") {
+			prot.rename()
 		}
 	}
 	prot.handleContextMenuSelection = handleContextMenuSelection;
 	
 	/**
 	 * Functions for rendering and parsing options
+	 *
+	 * For {possibleValues:[ {text: "Description", value: "X"}, ... ]} create a drop-down box
+	 * For {type: "boolean"}, create drop-down with true/false
+	 * For the rest, a free-text field
 	 */
 	function createOption(key, option) {
-		var title
-		var value
 		var div = $("<div class='option'></div>");
-		if (option.type=="int" || option.type=="double" || option.type=="string") {
-			title = $("<span class='optionTitle'>"+key+"</span>");
-			value = $("<span class='optionValue'></span>");
+		var title = $("<span class='optionTitle'>" + key + "</span>").appendTo(div);
+		var value = $("<span class='optionValue'></span>").appendTo(div);
 
-			div.append(title);
-			div.append(value);
-
+		if (option.possibleValues) {
+			var $select = $("<select>");
+			_.each(option.possibleValues, function(opt) {
+				var $option = $("<option>");
+				$option.attr("value", opt.value);
+				$option.append(opt.text);
+				if (option.value == opt.value) {
+					$option.attr("selected", "selected");
+				}
+				$select.append($option);
+			});
+			value.append($select);
+		} else if (option.type == "int" || option.type == "double" || option.type == "string") {
 			var input = $("<input type='text'>");
-			input.attr("value",option.value);
+			input.attr("value", option.value);
 			value.append(input);
-		}
-		else if (option.type=="boolean") {
-			title = $("<span class='optionTitle'>"+key+"</span>");
-			value = $("<span class='optionValue'></span>");
-			
-			div.append(title);
-			div.append(value);
-			
-			value.append("<select><option value='true' "+(option.value ? "selected='selected'" : "")+">true</option><option value='false' "+(!option.value ? "selected='selected'" : "")+">false</option></select>");
+		} else if (option.type == "boolean") {
+			value.append("<select><option value='true' " + (option.value ? "selected='selected'" : "") + ">true</option><option value='false' " + (!option.value ? "selected='selected'" : "") + ">false</option></select>");
 		}
 		return div;
 	}
 	prot.createOption = createOption;
-	
+
 	function updateOption(option, div) {
-		if (option.type=="int") {
-			option.value = parseInt($(div).find("input").val());
-		}
-		else if (option.type=="double") {
-			option.value = parseFloat($(div).find("input").val());
-		}
-		else if (option.type=="string") {
-			option.value = $(div).find("input").val();
-		}
-		else if (option.type=="boolean") {
-			option.value = ($(div).find("select").val()=="true");
+		var isDropdown = (option.type == "boolean" || option.possibleValues != undefined)
+		var inputText = isDropdown ? $(div).find("select").val() : $(div).find("input").val()
+
+		if (option.type == "int") {
+			option.value = parseInt(inputText);
+		} else if (option.type == "double") {
+			option.value = parseFloat(inputText);
+		} else if (option.type == "string") {
+			option.value = inputText;
+		} else if (option.type == "boolean") {
+			option.value = (inputText == "true");
 		}
 	}
 	prot.updateOption = updateOption;
@@ -451,6 +456,7 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 	pub.getDiv = getDiv;
 	
 	function close() {
+		$(SignalPath).trigger('moduleBeforeClose', [ prot.jsonData, prot.div ])
 		prot.div.remove();
 		pub.onClose();
 	}
@@ -458,12 +464,16 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 	
 	pub.redraw = function() {}
 	
-	pub.clean = function() {}
+	pub.clean = function() {
+		pub.clearWarnings()
+	}
 	
-	pub.onClose = function() {};
+	pub.onClose = function() {
+		$(prot).add(pub).trigger("closed")
+	}
 	
 	function toJSON() {
-		writePosition(SignalPath.getWorkspace());
+		writePosition();
 		if (prot.resizable) {
 			prot.jsonData.layout.width = prot.div.css('width');
 			prot.jsonData.layout.height = prot.div.css('height');	
@@ -479,25 +489,19 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 				alert(msg);
 			}
 		})(content));
+		prot.warnings.push(warning)
 		prot.div.append(warning);
 	}
 	pub.addWarning = addWarning
-	
-	function receiveResponse(payload) {}
-	pub.receiveResponse = receiveResponse;
 
-	function getUIChannelOptions() {
-		// Check if module options contain channel options
-		if (prot.jsonData.options && prot.jsonData.options.uiResendAll && prot.jsonData.options.uiResendAll.value) {
-			return { resend_all: true }
-		}
-		else if (prot.jsonData.options && prot.jsonData.options.uiResendLast) {
-			return { resend_last: prot.jsonData.options.uiResendLast.value }
-		}
-		else return { resend_all: true }
+	function clearWarnings() {
+		prot.warnings.forEach(function(warning) {
+			warning.remove()
+		})
+		prot.warnings = []
 	}
-	pub.getUIChannelOptions = getUIChannelOptions
-	
+	pub.clearWarnings = clearWarnings
+
 	function updateFrom(data) {
 		// Overwrite jsonData
 		prot.jsonData = data;
@@ -524,27 +528,81 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 	}
 	pub.updateFrom = updateFrom;
 	
-	function clone() {
-		var cloneData = jQuery.extend(true, {}, prot.toJSON());
+	function clone(callback) {
+		var cloneData = jQuery.extend(true, {}, pub.toJSON());
 		prot.prepareCloneData(cloneData);
-		return SignalPath.createModuleFromJSON(cloneData);
+
+		// Null hash value causes NumberFormatException in backend.
+		delete cloneData["hash"]
+
+		// Need new uiChannel
+		delete cloneData["uiChannel"]
+
+
+		// Re-fetch module data from server to ensure that uiChannels are regenerated
+		var promise = $.ajax({
+			type: 'POST',
+			url: Streamr.createLink('module', 'jsonGetModule'),
+			data: {
+				id: cloneData.id,
+				configuration: JSON.stringify(cloneData)
+			},
+			dataType: 'json',
+		})
+
+		promise.done(function(data) {
+			var module = SignalPath.createModuleFromJSON(data)
+			if (module && callback) {
+				callback(module)
+			}
+		})
+
+		promise.fail(function(jqXHR, textStatus, errorThrown) {
+			Streamr.showError("Error", errorThrown)
+		})
 	}
 	prot.clone = clone;
+
+	prot.rename = function(callback) {
+		var defaultValue = prot.title.text();
+
+		bootbox.prompt({
+			title: "Display name for " + prot.jsonData.name,
+			value: defaultValue,
+			className: 'rename-endpoint-dialog',
+			callback: function(displayName) {
+				if (displayName != null) {
+					if (displayName != "" && displayName != prot.jsonData.name) {
+						prot.jsonData.displayName = displayName;
+					} else {
+						delete prot.jsonData.displayName;
+						displayName = prot.jsonData.name;
+					}
+					prot.title.text(displayName)
+				}
+			}
+		});
+		pub.redraw()
+	}
 	
 	function prepareCloneData(cloneData) {
 		// Set hash to null so that a new id will be assigned
 		cloneData.hash = null;
 		cloneData.layout.position.left = parseInt(cloneData.layout.position.left, 10) + 30 + 'px'
 		cloneData.layout.position.top = parseInt(cloneData.layout.position.top, 10) + 30 + 'px'
-		if (cloneData.layout.workspaces && cloneData.layout.workspaces[SignalPath.getWorkspace()]) {
-			cloneData.layout.workspaces[SignalPath.getWorkspace()].position.left = cloneData.layout.position.left
-			cloneData.layout.workspaces[SignalPath.getWorkspace()].position.top = cloneData.layout.position.top
-		}
 	}
 	prot.prepareCloneData = prepareCloneData;
-	
-	prot.onDrag = function() {}
-	
+
+	pub.handleError = function(error) {}
+
+	pub.getURL = function() {
+		return SignalPath.getURL() ? SignalPath.getURL() + '/modules/' + pub.getHash() : undefined
+	}
+
+	pub.getRuntimeRequestURL = function() {
+		return pub.getURL() ? pub.getURL() + '/request' : undefined
+	}
+
 	// Everything added to the public interface can be accessed from the
 	// protected interface too
 	$.extend(prot,pub);
@@ -595,16 +653,4 @@ $(SignalPath).on("loaded",function() {
 	 $(".component").each(function(i,c) {
 		 $(c).data("spObject").removeFocus();
 	 });
-});
-
-$(SignalPath).on("workspaceChanged", function(event, name) {
-	if (name=="dashboard") {
-		// Hide components that do not have the dashboard class
-		$(".component:not(.dashboard)").hide();
-		$(".component.dashboard").addClass("dashboardEnabled");
-	}
-	else {
-		$(".component").show();
-		$(".component.dashboard").removeClass("dashboardEnabled");
-	}
 });

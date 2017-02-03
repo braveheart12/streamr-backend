@@ -2,13 +2,17 @@
     <head>
         <meta name="layout" content="main" />
         <title><g:message code="dashboard.create.label" /></title>
-        <!-- <title>Create a New Dashboard</title> -->
-        
+
+        <r:script>
+			$(function() {
+				$("input:first").focus()
+			})
+		</r:script>
     </head>
     <body>    
 		<ui:flashMessage/>
 		<ui:panel title="${message(code:"dashboard.create.label")}">
-			<g:form action="create">
+			<g:form action="save">
 				<ui:labeled label="${message(code: "dashboard.name.label")}">
 					<input name="name" type="text" class="form-control input-lg" required>
 					<g:hasErrors bean="${dashboard}" field="name">

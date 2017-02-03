@@ -34,8 +34,11 @@ public class UiTagLib {
 				\$(document).ready(function() {
 					\$("#${id}").datepicker({
 						weekStart: 1,
-						format: 'yyyy-mm-dd',
-						autoclose: true
+						format: '${message(code:"default.datePicker.format")}',
+						autoclose: true,
+						startDate: ${attrs.startDate ? 'new Date('+attrs.startDate.getTime()+')' : 'undefined'},
+						endDate: ${attrs.endDate ? 'new Date('+attrs.endDate.getTime()+')' : 'undefined'},
+						todayBtn: ${attrs.todayBtn && attrs.todayBtn == 'true' ? 'true' : 'false'}
 					});
 					\$("#${id}").on('change', function() {
 						\$(this).datepicker('update')
@@ -95,6 +98,30 @@ public class UiTagLib {
 		out << body()
 		out << "</div>" // end panel body
 		out << "</div>" // end panel
+	}
+	
+	/**
+	 * Renders a Bootstrap panel and generates an id for it automatically. The id is used with the bootstrap scrollspy.
+	 * @attr title REQUIRED Title of the panel
+	 * @attr class Classes added to the panel
+	 */
+	def scrollSpyPanel = {attrs, body->
+		out << "<div id='${ attrs.title.replaceAll('[^A-Za-z0-9]', '').toLowerCase()  + '-panel'}' class='panel ${attrs.class ?: ''}'>"
+		out << "<div class='panel-heading'>"
+		out << "<span class='panel-title'>${attrs.title}</span>"
+		out << "</div>"
+		out << "<div class='panel-body'>"
+		out << body()
+		out << "</div>" // end panel body
+		out << "</div>" // end panel
+	}
+	
+	/**
+	 * Renders a first-level category to a list with scrollspy. Generates the id automatically
+	 * @attr title REQUIRED title of the category
+	 */
+	def scrollspyCategory = {attrs, body ->
+		out << "<h3 id='${ attrs.title.replaceAll('[^A-Za-z0-9]', '').toLowerCase() + '-category'}'>${ attrs.title }</h3>"
 	}
 	
 	/**
@@ -202,25 +229,168 @@ public class UiTagLib {
 	/**
 	 * Renders a table with clickable rows
 	 */
-	def clickableTable = {attrs, body->
-		out << "<table class='table-clickable table table-striped table-bordered table-hover table-condensed table-responsive'>"
+	def table = {attrs, body->
+		attrs.class = (attrs['class'] ?: "table table-striped table-hover table-condensed table-bordered") + " clickable-table"
+
+		out << "<div "
+		outputAttributes(attrs, out)
+		out << ">"
 		out << body()
-		out << "</table>"
+		out << "</div>"
+	}
+
+	def thead = {attrs, body->
+		attrs.class = ((attrs.class ?: "") + ' thead').trim()
+
+		out << "<div "
+		outputAttributes(attrs, out)
+		out << ">"
+		out << body()
+		out << "</div>"
+	}
+	
+	def th = {attrs, body->
+		attrs.class = ((attrs.class ?: "") + ' th').trim()
+
+		out << "<span "
+		outputAttributes(attrs, out)
+		out << ">"
+		out << body()
+		out << "</span>"
+	}
+	
+	def tbody = {attrs, body->
+		attrs.class = ((attrs.class ?: "") + ' tbody').trim()
+
+		out << "<div "
+		outputAttributes(attrs, out)
+		out << ">"
+		out << body()
+		out << "</div>"
+	}
+	
+	def td = {attrs, body->
+		attrs.class = ((attrs.class ?: "") + ' td').trim()
+			
+		out << "<span "
+		outputAttributes(attrs, out)
+		out << ">"
+		out << body()
+		out << "</span>"
+	}
+		
+		
+	/**
+	 * Renders a table row that can act as a link.
+	 *
+	 * @attr link Url that the row links to. If none is given, the row is not rendered as a link.
+	 */
+	def tr = {attrs, body->
+		attrs.class = ((attrs.class ?: "") + ' tr').trim()
+
+		def link = attrs.remove('link')
+		if (link) {
+			out << "<a href='${link}' "
+			outputAttributes(attrs, out)
+			out << ">"
+			out << body()
+			out << "</a>"
+		}
+		else {
+			out << "<div "
+			outputAttributes(attrs, out)
+			out << ">"
+			out << body()
+			out << "</div>"
+		}
 	}
 	
 	/**
-	 * Renders a clickable table row
+	 * Renders a bootstrap style sidebar which can be used e.g. with scrollspy. Consists of sidebarElements
 	 *
-	 * @attr link REQUIRED url that the row links to
-	 * @attr id id of the domain object
+	 */
+	def sidebarNav = {attrs, body ->
+		out << "<nav class='streamr-sidebar'>"
+		out << "<ul class='nav'>"
+		out << body()
+		out << "</ul>"
+		out << "</nav>"
+	}
+	
+	/**
+	 * An element to the sidebarNav
+	 *
 	 * @attr title the title of the domain object
 	 */
-	def clickableRow = {attrs, body->
-		out << "<tr ${attrs.title ? "title='${attrs.title}'" : ""} data-link='${attrs.link}' ${attrs.id ? "data-id='${attrs.id}'" : ""}>"
-		out << body()
-		out << "</tr>"
+	def sidebarElement = {attrs, body ->
+		out << "<li>"
+		if(body) {
+			out << "<a href='#${ attrs.title.replaceAll('[^A-Za-z0-9]', '').toLowerCase() + '-category'}'>${ attrs.title }</a>"
+			out << "<ul class='nav'>"
+			out << body()
+			out << "</ul>"
+		} else {
+			out << "<a href='#${ attrs.title.replaceAll('[^A-Za-z0-9]', '').toLowerCase() + '-panel'}'>${ attrs.title }</a>"
+		}
+		out << "</li>"
 	}
 
+	/**
+	 * Renders a button that opens a sharePopup (sharing-dialog.js)
+	 * Remember to add <r:require module="sharing-dialog"/> to <HEAD>!
+	 * @body is button label, just like HTML buttons
+	 * @attr url to the resource to be shared; read from data-url HTML attribute if url and getUrl omitted
+	 * @attr getUrl javascript command that returns the url to the resource
+	 * @attr name of the resource shown in the sharePopup dialog; generated if name and getName omitted
+	 * @attr getName javascript command that returns the name to the resource
+	 */
+	def shareButton = {attrs, body->
+		def type = attrs.remove("type") ?: "button"
+		def extraClass = attrs.remove("class") ?: ""
+		def extraOnClick = attrs.remove("onclick") ?: ""
+		def name = attrs.remove("name")
+		def nameGetter = attrs.remove("getName")
+		def resourceName = name ? '"'+name+'"' : nameGetter ?: "" // generated in sharePopup if omitted
+		def url = attrs.remove("url")
+		def urlGetter = attrs.remove("getUrl")
+		def resourceUrl = url ? '"'+url+'"' : (urlGetter ?: '$(this).data("url")')
+
+		def open, close
+		if (type == "button") {
+			open = "<button class='btn share-button $extraClass' "
+			close = " </button>"
+		} else if (type == "link") {
+			open = "<a href='#' class='share-button $extraClass' "
+			close = " </a>"
+		} else if (type == "span") {
+			open = "<span class='share-button $extraClass' "
+			close = " </span>"
+		} else {
+			throw new IllegalArgumentException("Unknown 'type' for shareButton: $type")
+		}
+
+		out << open << "onclick='event.preventDefault();$extraOnClick;sharePopup($resourceUrl, $resourceName)' "
+		outputAttributes(attrs, out)
+		out << "><i class='fa fa-user'></i> " << body() << close
+
+		// http://stackoverflow.com/questions/33461034/call-grails-2-rrequire-module-from-a-taglib
+		// should be safe, ResourceTagLib.declareModuleRequiredByPage won't add it second time
+		out << r.require([modules: "sharing-dialog"])
+	}
+
+	/**
+	 * Dump out attributes in HTML compliant fashion.
+	 */
+	@CompileStatic
+	void outputAttributes(Map attrs, Writer writer) {
+		attrs.remove('tagName') // Just in case one is left
+		attrs.each { k, v ->
+			if (v != null) {
+				writer << "$k=\"${InvokerHelper.invokeMethod(v.toString(), "encodeAsHTML", null)}\" "
+			}
+		}
+	}
+	
 }
 
 

@@ -1,6 +1,8 @@
 import java.security.Policy
 import java.security.Security
 
+import org.codehaus.groovy.grails.plugins.GrailsPlugin
+
 import com.unifina.security.MyPolicy
 import com.unifina.security.MySecurityManager
 import com.unifina.security.PackageAccessHelper
@@ -111,9 +113,9 @@ class UnifinaCoreGrailsPlugin {
     }
 
     def doWithSpring = {
-        // TODO Implement runtime spring config (optional)
-    }
 
+    }
+	
     def doWithDynamicMethods = { ctx ->
         // TODO Implement registering dynamic methods to classes (optional)
     }

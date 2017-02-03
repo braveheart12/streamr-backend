@@ -11,14 +11,16 @@ class UrlMappings {
 		}
 
 		"/"(controller:"canvas")
-		"500"(view:'/error')
 		
-		"/login/$action?"(controller: "login")
-		"/logout/$action?"(controller: "logout")
+		// 403 would be handled by Spring Security Core by default, but due to
+		// https://jira.grails.org/browse/GPSPRINGSECURITYCORE-253 it needs to be specified explicitly
+		"403"(controller: "login", action: "denied")
+		"500"(view:'/error')
 	
-		"/webcomponents/index.html"(view:"/webcomponents/index.gsp")
-		"/webcomponents/streamr-client.html"(view:"/webcomponents/streamr-client.gsp")
-		"/webcomponents/streamr-label.html"(view:"/webcomponents/streamr-label.gsp")
-		"/webcomponents/streamr-chart.html"(view:"/webcomponents/streamr-chart.gsp")
+		"/webcomponents/$view"(controller: "webcomponents", action: "index")
+		
+		// API url mappings
+		"/api/stream/create"(controller: "stream", action: "apiCreate")
+		"/api/stream/lookup"(controller: "stream", action: "apiLookup")
 	}
 }

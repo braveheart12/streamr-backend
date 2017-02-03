@@ -1,64 +1,46 @@
 package com.unifina.signalpath
 
-import org.springframework.security.core.Authentication
-import org.springframework.security.core.context.SecurityContext
-import org.springframework.security.core.context.SecurityContextHolder
-import org.springframework.security.core.userdetails.UserDetails
+import com.unifina.domain.signalpath.Canvas
 
-import com.unifina.domain.signalpath.SavedSignalPath;
+class SignalPathParameter extends StringParameter {
 
-
-class SignalPathParameter extends Parameter<SavedSignalPath> {
-	
-	public SignalPathParameter(AbstractSignalPathModule owner, String name) {
-		super(owner, name, null, "Canvas");
+	SignalPathParameter(AbstractSignalPathModule owner, String name) {
+		super(owner, name, null)
+		setCanConnect(false)
 	}
-	
-	def getCriteria() {
-		def springSecurityService = owner.globals?.grailsApplication?.mainContext?.getBean("springSecurityService")
-		def user = springSecurityService?.currentUser
-		
-		if (user) {
-			return {
-				eq("hasExports",true)
-				eq("user",user)
-			}
-		}
-		else return null
-	}
-	
-	public Map<String,Object> getConfiguration() {
-		Map<String,Object> config = super.getConfiguration()
-		
-		if (value!=null) {
-			config.put("value", getValue().getId());
-			config.put("defaultValue", getValue().getId());
-		}
 
-		Collection signalPaths
-		def crit = getCriteria()
-		if (crit!=null) {
-			def proj = {
-				projections {
-					property 'id', 'id'
-					property 'name', 'name'
-				}
-			}
-			signalPaths = SavedSignalPath.createCriteria().list(proj << crit)
-		}
-		else signalPaths = []
-
-		config.put("possibleValues",signalPaths.collect {[value:it[0], name:it[1]]})
-		return config
+	Canvas getCanvas() {
+		return Canvas.get(getValue())
 	}
 
 	@Override
-	SavedSignalPath parseValue(String s) {
-		try {
-			return SavedSignalPath.get(Long.parseLong(s));
-		} catch (NumberFormatException e) {
-			return null
+	Map<String,Object> getConfiguration() {
+		Map<String,Object> config = super.getConfiguration()
+		
+		if (getValue() != null) {
+			config.put("value", getValue())
+			config.put("defaultValue", getValue())
 		}
+
+		def permissionService = owner.globals.grailsApplication.mainContext.getBean("permissionService")
+		def user = owner.globals.getUser()
+		Collection signalPaths = permissionService.get(Canvas, user) {
+			projections {
+				property 'id', 'id'
+				property 'name', 'name'
+			}
+			eq("hasExports", true)
+			eq("adhoc", false)
+			order("lastUpdated", "desc")
+		}
+
+		List possibleValues = signalPaths.collect {[value:it[0], name:it[1]]}
+		
+		if (getValue() == null)
+			possibleValues.add(0, [value:null, name: "Select >>"])
+			
+		config.put("possibleValues", possibleValues)
+
+		return config
 	}
-	
 }

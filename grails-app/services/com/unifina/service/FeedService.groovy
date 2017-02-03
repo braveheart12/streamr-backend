@@ -1,11 +1,12 @@
 package com.unifina.service
 
-import com.unifina.data.IFeed
+import com.unifina.domain.security.SecUser
+import groovy.transform.CompileStatic
+
 import com.unifina.domain.data.Feed
 import com.unifina.domain.data.Stream
-import com.unifina.feed.FeedFactory
+import com.unifina.feed.AbstractFeed
 import com.unifina.feed.FeedNotFoundException
-import com.unifina.feed.MessageHub
 import com.unifina.feed.StreamNotFoundException
 import com.unifina.signalpath.AbstractSignalPathModule
 import com.unifina.utils.Globals
@@ -13,30 +14,28 @@ import com.unifina.utils.Globals
 class FeedService {
 
 	def grailsApplication
+	def permissionService
 	
+	@CompileStatic
 	String getFeedClass(Feed domain, boolean historical) {
 		return historical ? domain.backtestFeed : domain.realtimeFeed
 	}
 	
-    IFeed instantiateFeed(Feed domain, boolean historical, Globals globals) {
+	@CompileStatic
+    AbstractFeed instantiateFeed(Feed domain, boolean historical, Globals globals) {
 		String className = getFeedClass(domain,historical)
-		IFeed feed = this.getClass().getClassLoader().loadClass(className).newInstance(globals,domain)
+		AbstractFeed feed = (AbstractFeed) this.getClass().getClassLoader().loadClass(className).newInstance(globals,domain)
 		feed.setTimeZone(TimeZone.getTimeZone(domain.timezone))
 		return feed
     }
-	
-	Stream getStream(Long id) {
+
+	@CompileStatic
+	Stream getStream(String id) {
 		Stream result = Stream.get(id)
-		if (!result)
+		if (!result) {
 			throw new StreamNotFoundException(id)
-		else return result
-	}
-	
-	Stream getStream(String name) {
-		Stream result = Stream.findByName(name)
-		if (!result)
-			throw new StreamNotFoundException(name)
-		else return result
+		}
+		return result
 	}
 	
 	Stream getStreamByFeedAndLocalId(Feed feed, String localId) {
@@ -60,6 +59,7 @@ class FeedService {
 		else return result
 	}
 	
+	
 	Feed getFeedByModule(AbstractSignalPathModule m) {
 		Feed result = Feed.createCriteria().get() {
 			module {
@@ -75,4 +75,5 @@ class FeedService {
 	List<Stream> getStreams(Feed feed) {
 		return Stream.findAllByFeed(feed)
 	}
+
 }

@@ -2,7 +2,12 @@
     <head>
         <meta name="layout" content="main" />
         <title><g:message code="stream.create.label" /></title>
-        
+
+		<r:script>
+			$(function() {
+				$("input:first").focus()
+			})
+		</r:script>
     </head>
     <body>
     	<ui:breadcrumb>
@@ -21,12 +26,11 @@
 			<g:form action="create">
 		
 				<g:render template="form"/>
-				
+
 				<button class="btn btn-primary" name="next">
 					${message(code:"next.button.label")}
 					<i class="fa fa-angle-right"></i>
 				</button>
-			
 			</g:form>
 		</ui:panel>
 		

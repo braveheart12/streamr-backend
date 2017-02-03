@@ -22,14 +22,12 @@ public class Input<T> extends Endpoint<T> {
 	
 	boolean drivingInput = true;
 	public boolean canToggleDrivingInput = true;
-	
-//	boolean clearState = true;
 
 	protected boolean proxying = false;
 	ArrayList<Input<T>> proxiedInputs = new ArrayList<>();
 	
 	public Input(AbstractSignalPathModule owner, String name, String typeName) {
-		super(owner,name, typeName);
+		super(owner, name, typeName);
 	}
 
 	// The signature could be receive(T value), but then IntegerParameter would be in trouble due to Java generics
@@ -54,16 +52,15 @@ public class Input<T> extends Endpoint<T> {
 				p.receive(value);
 		}
 	}
-	
-	/**
-	 * Returns an array of typenames that this Input accepts.
-	 * By default returns an array with one element: the one returned by getTypeName()
-	 * @return
-	 */
-	protected String[] getAcceptedTypes() {
-		return new String[] {getTypeName()};
+
+	// TODO: horrible hack for DNI project
+	public void setReadyHack() {
+		ready = true;
+		wasReady = true;
+		owner.markReady(this);
 	}
-	
+
+	@Override
 	public T getValue() {
 		return value;
 	}
@@ -80,6 +77,10 @@ public class Input<T> extends Endpoint<T> {
 		config.put("canToggleDrivingInput", canToggleDrivingInput);
 		config.put("acceptedTypes", getAcceptedTypes());
 		config.put("requiresConnection", requiresConnection);
+
+		if (isConnected()) {
+			config.put("sourceId", getSource().getId());
+		}
 		
 		return config;
 	}
@@ -103,11 +104,19 @@ public class Input<T> extends Endpoint<T> {
 		proxying = true;
 		proxiedInputs.add(input);
 		
-		if (this.hasValue())
+		if (hasValue()) {
 			input.receive(getValue());
-		
-		input.owner.checkDirtyAndReadyCounters();
-		
+		}
+
+		AbstractSignalPathModule owner = input.getOwner();
+		if (owner != null) {
+			if (input.isReady()) {
+				owner.markReady(input);
+			} else {
+				owner.cancelReady(input);
+			}
+		}
+
 		// TODO: might be necessary to mark owner as originatingmodule and mark it dirty, fix it when generalizing from subclasses
 	}
 
@@ -125,9 +134,18 @@ public class Input<T> extends Endpoint<T> {
 
 	public void setSource(Output<T> source) {
 		this.source = source;
+		if (!isReady()) {
+			owner.cancelReady(this);
+		}
 	}
-	
-	protected void doClear() {
+
+	public void disconnect() {
+		this.source = null;
+		owner.cancelReady(this);
+	}
+
+	@Override
+	public void clear() {
 		value = null;
 		ready = false;
 	}
@@ -146,7 +164,7 @@ public class Input<T> extends Endpoint<T> {
 	}
 
 	public boolean isReady() {
-		return ready;
+		return ready || (!isConnected() && !requiresConnection);
 	}
 
 	public boolean wasReady() {
@@ -183,8 +201,4 @@ public class Input<T> extends Endpoint<T> {
 		}
 	}
 
-//	public boolean isClearState() {
-//		return clearState;
-//	}
-	
 }

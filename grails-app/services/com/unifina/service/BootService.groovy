@@ -1,6 +1,9 @@
 package com.unifina.service
 
-import org.springframework.web.context.support.WebApplicationContextUtils
+import grails.util.Environment
+
+import org.apache.log4j.Logger
+import org.codehaus.groovy.grails.commons.GrailsApplication
 
 import com.unifina.domain.config.HostConfig
 import com.unifina.domain.security.SecRole
@@ -11,14 +14,19 @@ import com.unifina.utils.NetworkInterfaceUtils
 /**
  * The onInit and onDestroy methods should be triggered from conf/BootStrap.groovy of the app.
  * This works around the fact that BootStrap.groovy of a plugin can't be executed.
- * @author admin
- *
+ * @author Henri
  */
 class BootService {
 	
 	def grailsApplication
-	def feedService
+	def taskService
 	def servletContext
+	
+	private static final Logger log = Logger.getLogger(BootService.class)
+	
+	boolean isFullEnvironment() {
+		return Environment.getCurrent()!=Environment.TEST || System.getProperty("grails.test.phase") == "functional"
+	}
 	
 	def onInit() {
 		/**
@@ -48,48 +56,49 @@ class BootService {
 		def adminRole = SecRole.findByAuthority('ROLE_ADMIN') ?: new SecRole(authority: 'ROLE_ADMIN').save(failOnError: true)
 		def liveRole = SecRole.findByAuthority('ROLE_LIVE') ?: new SecRole(authority: 'ROLE_LIVE').save(failOnError: true)
 		
-		def webAppContext = WebApplicationContextUtils.getWebApplicationContext(servletContext)
-		def sessionFactory = webAppContext.getBean("sessionFactory")
-		
 		/**
 		 * Create a map for signalPathRunners
 		 */
-		servletContext["signalPathRunners"] = [:]
+		if (servletContext)
+			servletContext["signalPathRunners"] = [:]
 		
 		/**
-		 * Read some host-specific config from the database
+		 * Start a number of taskWorkers, specified by system property or config
 		 */
-		
-		def ip = NetworkInterfaceUtils.getIPAddress()
-		println "My network interface is: $ip"
-		
-		// Start a number of taskWorkers, specified by system property or config
-		def taskWorkers = []
-		servletContext["taskWorkers"] = taskWorkers
-		
-		HostConfig taskWorkerConfig = HostConfig.findByHostAndParameter(ip.toString(),"task.workers")
-		
-		int workerCount
-		if (System.getProperty("task.workers")!=null)
-			workerCount = Integer.parseInt(System.getProperty("task.workers"))
-		else if (taskWorkerConfig!=null)
-			workerCount = Integer.parseInt(taskWorkerConfig.value)
-		else workerCount = config.unifina.task.workers ?: 0
-		
-		for (int i=1;i<=workerCount;i++) {
-			TaskWorker worker = new TaskWorker(grailsApplication,i)
-			worker.start()
-			taskWorkers.add(worker)
+		if (isFullEnvironment()) {
+			def ip = NetworkInterfaceUtils.getIPAddress()
+			log.info("My network interface is: $ip")
+
+			HostConfig taskWorkerConfig = HostConfig.findByHostAndParameter(ip.toString(),"task.workers")
+			
+			int workerCount
+			if (System.getProperty("task.workers")!=null)
+				workerCount = Integer.parseInt(System.getProperty("task.workers"))
+			else if (taskWorkerConfig!=null)
+				workerCount = Integer.parseInt(taskWorkerConfig.value)
+			else workerCount = config.unifina.task.workers ?: 0
+			
+			for (int i=0; i<workerCount; i++) {
+				taskService.startTaskWorker()
+			}
+			log.info("onInit: started $workerCount task workers")
+			
+			// Start a listener for Task-related events
+			servletContext["taskMessageListener"] = new TaskMessageListener(grailsApplication, taskService.getTaskWorkers())
+			log.info("onInit: started TaskMessageListener")
 		}
-		
-		// Start a listener for Task-related events
-		servletContext["taskMessageListener"] = new TaskMessageListener(grailsApplication, taskWorkers)
+		else {
+			log.info("onInit: Task workers and listeners not started due to reduced environment: "+Environment.getCurrent()+", grails.test.phase: "+System.getProperty("grails.test.phase"))
+		}
 	}
 	
 	def onDestroy() {
-		servletContext["signalPathRunners"]?.values().each {it.abort()}
-		servletContext["taskWorkers"]?.each {it.quit()}
-		servletContext["taskMessageListener"]?.quit()
-		servletContext["realtimeDataSource"]?.stopFeed()
+		taskService?.stopAllTaskWorkers()
+
+		if (servletContext) {
+			servletContext["signalPathRunners"]?.values().each {it.abort()}
+			servletContext["taskMessageListener"]?.quit()
+			servletContext["realtimeDataSource"]?.stopFeed()
+		}
 	}
 }

@@ -1,4 +1,6 @@
 package com.unifina.controller.security
+
+import com.unifina.security.StreamrApi
 import grails.converters.JSON
 import grails.plugin.springsecurity.SpringSecurityUtils
 import grails.plugin.springsecurity.annotation.Secured
@@ -72,6 +74,9 @@ class LoginController {
 				authenticationTrustResolver.isRememberMe(SCH.context?.authentication)) {
 			// have cookie but the page is guarded with IS_AUTHENTICATED_FULLY
 			redirect action: 'full', params: params
+		}
+		else if (!springSecurityService.isLoggedIn()) {
+			redirect action: 'auth'
 		}
 	}
 

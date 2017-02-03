@@ -1,14 +1,9 @@
 SignalPath.TableModule = function(data,canvas,prot) {
 	prot = prot || {};
-	var pub = SignalPath.GenericModule(data,canvas,prot)
+	var pub = SignalPath.UIChannelModule(data,canvas,prot)
 
 	var area = null;
-
-	var tableContainer;
-	var table;
-	var tableHeader;
-	var tableBody;
-	var rowCount = 0;
+	var headers = [];
 	
 	/**
 	 * Initialization
@@ -16,71 +11,66 @@ SignalPath.TableModule = function(data,canvas,prot) {
 	var superCreateDiv = prot.createDiv;
 	function createDiv() {
 		superCreateDiv();
-		
-		if (prot.jsonData.tableConfig && prot.jsonData.tableConfig.headers) {
-			initTable(prot.jsonData.tableConfig.headers)
-		}
-		
-		if (prot.jsonData.options && prot.jsonData.options.maxRows)
-			rowCount = prot.jsonData.options.maxRows.value
+		initTable()
 	}
 	prot.createDiv = createDiv;
-	
-	function initTable(headers) {
-		if (tableContainer)
-			tableContainer.remove()
-			
-		tableContainer = $("<div class='table-module-container'></div>");
-		prot.body.append(tableContainer);
+
+	function initTable(){
+		var tableOptions = {}
+		if (prot.jsonData.options) {
+			Object.keys(prot.jsonData.options).forEach(function(key) {
+				tableOptions[key] = prot.jsonData.options[key].value
+			})
+		}
 		
-		table = $("<table class='event-table-module-content table table-condensed table-striped'></table>");
-		tableContainer.append(table);
+		prot.table = new StreamrTable(prot.body, tableOptions)
+		if (prot.jsonData.options && prot.jsonData.options.maxRows)
+			options = prot.jsonData.options
+
+		if (prot.jsonData.tableConfig && prot.jsonData.tableConfig.headers)
+			headers = prot.jsonData.tableConfig.headers
 		
-		tableHeader = $("<thead></thead>");
-		table.append(tableHeader);
-		
-		for (var i=0;i<headers.length;i++)
-			tableHeader.append("<th>"+headers[i]+"</th>");
-		
-		tableBody = $("<tbody></tbody>");
-		table.append(tableBody);
+		prot.table.initTable(headers)
 	}
-	
-	pub.receiveResponse = function(d) {
-		// New row message
-		if (d.nr) {
-			// Remove last row if table full
-			if (rowCount>0) {
-				var rows = $(tableBody).children();
-				if (rows.length==rowCount)
-					$(rows[rows.length-1]).remove();
-			}
-			
-			var newRow = $("<tr"+(d.id!=null ? " id='"+d.id+"'" : "")+"></tr>");
-			for (var i=0;i<d.nr.length;i++)
-				newRow.append("<td>"+(d.nr[i]!=null ? d.nr[i] : "")+"</td>");
-			
-			tableBody.prepend(newRow);
+
+	function sendInitRequest() {
+		if (SignalPath.isRunning()) {
+			SignalPath.runtimeRequest(pub.getRuntimeRequestURL(), {type:'initRequest'}, function(response, err) {
+				if (err)
+					console.error("Failed initRequest for TableModule: %o", err)
+				else
+					prot.table.receiveResponse(response.initRequest)
+			})
 		}
-		// Edit cell message: d.id=row id, d.e=cell index, d.c=cell content 
-		else if (d.e!=null) {
-			var cell = $('#'+d.id+" td:eq("+d.e+")");
-			cell.html(d.c);
-		}
-		else if (d.hdr) {
-			initTable(d.hdr.headers)
-		}
+	}
+
+	prot.receiveResponse = function(d) {
+		prot.table.receiveResponse(d)
 	}
 	
 	var superClean = pub.clean;
 	pub.clean = function() {
 		superClean();
-		
-		// Clean rows
-		if (tableBody) {
-			tableBody.empty()
+		prot.table.clean()
+	}
+
+	var superClose = pub.close;
+	pub.close = function() {
+		$(SignalPath).off("started", startFunction)
+		$(SignalPath).off("loaded", sendInitRequest)
+		superClose()
+	}
+
+	function startFunction (e, canvas){
+		if (!canvas || !canvas.adhoc) {
+			sendInitRequest()
 		}
 	}
+
+	$(SignalPath).on("started", startFunction)
+	$(SignalPath).on("loaded", sendInitRequest)
 	
 	return pub;
 }
+
+

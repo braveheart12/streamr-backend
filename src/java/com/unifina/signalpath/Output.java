@@ -1,6 +1,7 @@
 package com.unifina.signalpath;
 
 import java.util.ArrayList;
+import java.util.List;
 
 
 public class Output<T> extends Endpoint<T> {
@@ -10,14 +11,16 @@ public class Output<T> extends Endpoint<T> {
 	private Input<T>[] cachedTargets = new Input[0];
 	
 	// Used to flag the Propagators that contain this Output that a value has been sent
-	private ArrayList<Propagator> propagators = new ArrayList<>();
+	private transient ArrayList<Propagator> propagators;
 	// For super fast looping use an array instead of a List Iterator
-	private Propagator[] cachedPropagators = new Propagator[0];
+	private transient Propagator[] cachedPropagators;
 	
 	protected T previousValue = null;
 	
 	private boolean connected = false;
 	private int i;
+
+	private List<Output<T>> proxiedOutputs = new ArrayList<>();
 	
 	public Output(AbstractSignalPathModule owner,String name,String typeName) {
 		super(owner,name,typeName);
@@ -28,36 +31,55 @@ public class Output<T> extends Endpoint<T> {
 	}
 	
 	public void send(T value) {
-		// TODO: null check can be removed?
-		if (value==null)
+		if (value == null) {
 			throw new NullPointerException("Sending a null value is not allowed!");
+		}
 
 		previousValue = value;
 		
 		if (connected) {
-			for (i=0;i<cachedPropagators.length;i++)
+
+			if (cachedPropagators == null) {
+				updateCachedPropagators();
+			}
+
+			for (i=0; i < cachedPropagators.length; i++) {
 				cachedPropagators[i].sendPending = true;
-			
-			for (i=0;i<cachedTargets.length;i++)
+			}
+
+			for (i=0; i < cachedTargets.length; i++) {
 				cachedTargets[i].receive(value);
+			}
+		}
+
+		for (Output<T> proxy : proxiedOutputs) {
+			proxy.send(value);
 		}
 	}
-	
-	public void doClear() {
+
+	@Override
+	public void clear() {
 		previousValue = null;
 	}
-	
+
+	private void updateCachedPropagators() {
+		cachedPropagators = (propagators == null ? new Propagator[0] : propagators.toArray(new Propagator[propagators.size()]));
+	}
+
 	public void addPropagator(Propagator p) {
+		if (propagators == null) { // after de-serialization
+			propagators = new ArrayList<>();
+		}
 		if (!propagators.contains(p)) {
 			propagators.add(p);
-			cachedPropagators = propagators.toArray(new Propagator[propagators.size()]);
+			updateCachedPropagators();
 		}
 	}
 	
 	public void removePropagator(Propagator p) {
-		if (propagators.contains(p)) {
+		if (propagators != null && propagators.contains(p)) {
 			propagators.remove(p);
-			cachedPropagators = propagators.toArray(new Propagator[propagators.size()]);
+			updateCachedPropagators();
 		}
 	}
 	
@@ -68,6 +90,19 @@ public class Output<T> extends Endpoint<T> {
 		cachedTargets = targets.toArray(new Input[targets.size()]);
 	}
 
+	public void disconnect() {
+		for (Input input : targets) {
+			input.disconnect();
+		}
+		targets.clear();
+		connected = false;
+		cachedTargets = targets.toArray(new Input[targets.size()]);
+	}
+
+	public void addProxiedOutput(Output<T> output) {
+		proxiedOutputs.add(output);
+	}
+
 	@Override
 	public String toString() {
 		return "(out) "+super.toString()+": "+previousValue;
@@ -76,7 +111,8 @@ public class Output<T> extends Endpoint<T> {
 	public boolean isConnected() {
 		return connected;
 	}
-	
+
+	@Override
 	public T getValue() {
 		return previousValue;
 	}

@@ -1,19 +1,17 @@
 package com.unifina.service
 
+import com.unifina.utils.HibernateHelper
 import grails.converters.JSON
 import groovy.transform.CompileStatic
 
 import java.nio.channels.Channel
 import java.nio.channels.Channels
 import java.nio.channels.FileChannel
-import java.nio.charset.CharsetEncoder;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.text.SimpleDateFormat
 
-import org.apache.commons.lang.time.DateUtils
 import org.apache.log4j.Logger
 import org.codehaus.groovy.grails.commons.GrailsApplication
 
@@ -25,10 +23,7 @@ import com.unifina.feed.AbstractFeedPreprocessor
 import com.unifina.feed.file.AbstractFeedFileDiscoveryUtil
 import com.unifina.feed.file.FileStorageAdapter
 import com.unifina.feed.file.RemoteFeedFile
-import com.unifina.feed.kafka.KafkaFeedFileName
-import com.unifina.feed.kafka.KafkaFeedFileWriter
 import com.unifina.task.FeedFilePreprocessTask
-import com.unifina.utils.TimeOfDayUtil
 
 class FeedFileService {
 
@@ -98,7 +93,7 @@ class FeedFileService {
 		return feedFile
 	}
 	
-	public void createFeedFile(Stream stream, Date beginDate, Date endDate, File file, boolean overwriteExisting) {
+	public FeedFile createFeedFile(Stream stream, Date beginDate, Date endDate, File file, boolean overwriteExisting) {
 		// Check that the FeedFile does not exist
 		FeedFile feedFile = getFeedFile(stream.feed, beginDate, endDate, file.getName())
 		
@@ -109,7 +104,7 @@ class FeedFileService {
 		}
 		else if (feedFile) {
 			log.warn("FeedFile already exists: $feedFile.name, not overwriting.")
-			return
+			return null
 		}
 		
 		// Send file to file storage service if its size is greater than zero
@@ -149,7 +144,10 @@ class FeedFileService {
 					
 				stream.save(flush:true, failOnError:true)
 			}
+			
+			return feedFile
 		}
+		else return null
 	}
 	
 	public void setPreprocessed(FeedFile feedFile) {
@@ -265,9 +263,16 @@ class FeedFileService {
 			feedFile = FeedFile.findByStreamAndDayBetween(stream, beginDate, endDate, [sort:'day', max:1, offset:piece])
 		
 		// Null signals the end of data
-		if (feedFile==null)
+		if (feedFile==null) {
+			log.debug("getStream: no more FeedFiles for stream $stream.id, feed $stream.feed.id, beginDate: $beginDate, endDate: $endDate, piece: $piece")
 			return null
-		
+		}
+		else log.debug("getStream: starting FeedFile "+feedFile.id+" for stream "+stream.id)
+
+		// Unproxy the feedFile.stream so it can be accessed from other threads with no bound session
+		if (feedFile.stream)
+			feedFile.stream = HibernateHelper.deproxy(feedFile.stream, Stream.class)
+
 		// Instantiate preprocessor and get the preprocessed file name
 		AbstractFeedPreprocessor preprocessor = getPreprocessor(feed)
 		
@@ -342,6 +347,13 @@ class FeedFileService {
 		getFileStorageAdapter().store(f, canonicalName)
 	}
 	
+	public void deleteFile(FeedFile feedFile) {
+		feedFile = FeedFile.get(feedFile.id)
+		String canonicalName = getCanonicalName(feedFile.feed, feedFile.day, feedFile.name)
+		log.debug("Deleting $canonicalName")
+		getFileStorageAdapter().delete(canonicalName)
+	}
+	
 	public void saveOrUpdateStreams(List<Stream> foundStreams,
 			FeedFile feedFile) {
 			
@@ -356,7 +368,7 @@ class FeedFileService {
 		feedFile = FeedFile.get(feedFile.id)
 		
 		// Update the existing streams
-		List<Stream> existing = Stream.findAllByFeedAndLocalIdInList(feedFile.feed, foundStreams.collect {it.localId})
+		List<Stream> existing = Stream.findAllByFeedAndIdInList(feedFile.feed, foundStreams.collect {it.id})
 		List existingIds = existing.collect {it.id}
 		Stream.executeUpdate("update Stream s set s.firstHistoricalDay = :day where s.id in (:existingIds) and (s.firstHistoricalDay is null OR s.firstHistoricalDay > :day)", [day:feedFile.day, existingIds:existingIds])
 		Stream.executeUpdate("update Stream s set s.lastHistoricalDay = :day where s.id in (:existingIds) and (s.lastHistoricalDay is null OR s.lastHistoricalDay < :day)", [day:feedFile.day, existingIds:existingIds])
@@ -365,9 +377,9 @@ class FeedFileService {
 		
 		// Save the non-existing streams
 		Set existingSet = new HashSet()
-		existing.each {existingSet.add(it.localId)}
+		existing.each {existingSet.add(it.id)}
 		foundStreams.each {Stream s->
-			if (!existingSet.contains(s.localId)) {
+			if (!existingSet.contains(s.id)) {
 				log.info("New Stream found from FeedFile $feedFile: $s")
 				s.firstHistoricalDay = feedFile.day
 				s.lastHistoricalDay = feedFile.day
@@ -375,6 +387,14 @@ class FeedFileService {
 			}
 		}
 		log.info("Total "+(System.currentTimeMillis()-time)+" ms")
+	}
+
+	public FeedFile getFirstFeedFile(Stream stream) {
+		return FeedFile.findByStream(stream, [sort:'beginDate', limit:1])
+	}
+
+	public FeedFile getLastFeedFile(Stream stream) {
+		return FeedFile.findByStream(stream, [sort:'endDate', order:"desc", limit:1])
 	}
 	
 	/**

@@ -3,7 +3,7 @@
  */
 
 function Toolbar($elem) {
-	$elem.find('.btn[data-action]').click(function(e) {
+	$elem.find('.btn[data-action],a[data-action]').click(function(e) {
 		var btn = $(this)
 		var $form = ($elem.is("form") ? $elem : $elem.parent("form"))
 		
@@ -11,7 +11,6 @@ function Toolbar($elem) {
 			$form.attr('action', btn.data('action'))
 
 		if (btn.hasClass('confirm')) {
-		
 			bootbox.confirm({
 				message: btn.data('confirm') ? btn.data('confirm') : "Are you sure?",
 				callback: function(result) {
@@ -23,10 +22,12 @@ function Toolbar($elem) {
 				},
 				className: "bootbox-sm"
 			});
-			
-			// Prevent default action
-			return false 
+		} else if ($form) {
+			$form.submit()
 		}
-		return true
+
+		// Prevent default action
+		e.preventDefault()
+		return false
 	})
 }

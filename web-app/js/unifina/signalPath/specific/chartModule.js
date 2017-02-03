@@ -1,6 +1,6 @@
 SignalPath.ChartModule = function(data,canvas,prot) {
 	prot = prot || {};
-	var pub = SignalPath.GenericModule(data,canvas,prot)
+	var pub = SignalPath.UIChannelModule(data,canvas,prot)
 
 	prot.enableIONameChange = false;	
 		
@@ -24,59 +24,7 @@ SignalPath.ChartModule = function(data,canvas,prot) {
 			stop: function(event,ui) {
 				if (prot.chart)
 					prot.chart.resize(ui.size.width, ui.size.height);
-			},
-		 	resize: function(event, ui) {
-			    var $element = ui.element;
-			    // Gets the axis that the user is dragging.
-			    var axis = $element.data('ui-resizable').axis;
-
-			    // Get the dimensions of the element's bounding box. We can't use 
-			    // leftOffset + $element.width() because it doesn't factor in the 
-			    // current zoom. Morever, we can't just multiply $element.width() 
-			    // by the current zoom to get the zoomed width because it still 
-			    // gives the wrong value. So we have to be sneaky and use resizable's 
-			    // resizer overlays to get the right and bottom values.
-			    var leftOffset = $element.offset().left;
-			    var topOffset = $element.offset().top;
-			    var rightOffset = $element.children('.ui-resizable-e').offset().left;
-			    var bottomOffset = $element.children('.ui-resizable-s').offset().top;
-
-			    // We are using the mouse location to calculate the width (during 
-			    // a horizontal resize) and the height (during a vertical resize) 
-			    // of the element. This is because we need the resize box to keep
-			    // up with the mouse when the user is not at 100% zoom.
-			    var mouseX = event.pageX;
-			    var mouseY = event.pageY;
-
-			    // Must remove the zoom factor before setting width and height.
-			    var mouseCalculatedWidth = (mouseX - leftOffset) / SignalPath.getZoom();
-			    var mouseCalculatedHeight = (mouseY - topOffset) / SignalPath.getZoom();
-			    var offsetWidth = (rightOffset - leftOffset) / SignalPath.getZoom();
-			    var offsetHeight = (bottomOffset - topOffset) / SignalPath.getZoom();
-
-			    // In order to maintain aspect ratio, we manually calculate it.
-			    var aspectRatio = offsetHeight / offsetWidth;
-
-			    // Resizing using the east handler, set the width of the element.
-			    // If this element maintains its aspect ratio, also set the height.
-			    if (axis == "e") {
-			       $element.width(mouseCalculatedWidth);
-
-			       if (maintainAspectRatio) {
-			          $element.height(mouseCalculatedWidth * aspectRatio);
-			       }
-			    }
-
-			    // Resizing using the south handler, set the height of the element.
-			    // If this element maintains its aspect ratio, also set the width.
-			    if (axis == "s") {
-			       $element.height(mouseCalculatedHeight);
-
-			       if (maintainAspectRatio) {
-			          $element.width(mouseCalculatedHeight / aspectRatio);
-			       }
-			    }
-	   		}
+			}
 		});
 	}
 	prot.createDiv = createDiv;	
@@ -125,11 +73,8 @@ SignalPath.ChartModule = function(data,canvas,prot) {
 
 	function initChart() {
 		prot.body.find(".ioTable").css("width","0px");
-		prot.chart = new StreamrChart(prot.body, SignalPath.defaultChartOptions)
+		prot.chart = new StreamrChart(prot.body, prot.jsonData.options)
 		prot.chart.resize(prot.div.outerWidth(), prot.div.outerHeight())
-		$(prot.chart).on('destroyed', function() {
-			prot.body.find("div.csvDownload").remove()
-		})
 	}
 	
 	function destroyChart() {
@@ -138,57 +83,11 @@ SignalPath.ChartModule = function(data,canvas,prot) {
 		}
 	}
 	
-	pub.receiveResponse = function(d) {
+	prot.receiveResponse = function(d) {
 		prot.chart.handleMessage(d)
-		// Show csv download link
-		if (d.type==="csv") {
-			var div = $("<span class='csvDownload'></span>");
-			var link = $("<a href='"+d.link+"'></a>");
-			link.append("<img src='../images/download.png'/>&nbsp;"+d.filename);
-			div.append(link);
-			prot.body.append(div);
-			div.effect("highlight",{},2000);
-			
-			link.click(function(event) {
-				event.preventDefault();
-				$.getJSON(Streamr.createLink("canvas", "existsCsv"), {filename:d.filename}, (function(div) {
-					return function(resp) {
-						if (resp.success) {
-							$(div).remove();
-							var elemIF = document.createElement("iframe"); 
-							elemIF.src = "downloadCsv?filename="+resp.filename; 
-							elemIF.style.display = "none"; 
-							document.body.appendChild(elemIF);
-						}
-						else alert("The file is already gone from the server. Please re-run your canvas!")
-					}})(div));
-			});
-		}
-	}
-	
-	var superClean = pub.clean;
-	pub.clean = function() {
-		superClean()
-		destroyChart()
-	}
-	
-	var superUpdateFrom = pub.updateFrom;
-	pub.updateFrom = function(data) {
-		destroyChart();
-		superUpdateFrom(data);
 	}
 
-	var superClose = pub.close;
-	pub.close = function() {
-		superClose()
-		// $(SignalPath).off("started", func)
-	}
-	
-	/**
-	 * On start, bind connected inputs to series indices. We need
-	 * to know which input results in which series.
-	 */
-	$(SignalPath).on("started", function(e, runData) {
+	var startFunction = function(e, canvas) {
 		// Reset all series indices
 		pub.getInputs().forEach(function(input) {
 			input.seriesIndex = null
@@ -199,17 +98,12 @@ SignalPath.ChartModule = function(data,canvas,prot) {
 		for (var i=0; i<connectedInputs.length; i++) {
 			connectedInputs[i].seriesIndex = i
 		}
-		if (!runData || !runData.adhoc) {
-			SignalPath.sendRequest(prot.hash, {type:'initRequest'}, function(response) {
-				prot.chart.handleMessage(response.initRequest)
-			})
+		if (!canvas || !canvas.adhoc) {
+			sendInitRequest()
 		}
-	})
-	
-	/**
-	 * On SignalPath stopped, check that all series are shown properly in relation to chart yaxis range
-	 */
-	$(SignalPath).on("stopped", function() {
+	}
+
+	var stopFunction = function() {
 		if (prot.chart && prot.chart.getSeriesMetaData().length > 1) {
 			var seriesMeta = prot.chart.getSeriesMetaData()
 			// Find connected inputs
@@ -235,7 +129,51 @@ SignalPath.ChartModule = function(data,canvas,prot) {
 				}
 			}
 		}
-	})
+	}
+
+	function sendInitRequest() {
+		if (SignalPath.isRunning()) {
+			SignalPath.runtimeRequest(pub.getRuntimeRequestURL(), {type: 'initRequest'}, function (response, err) {
+				if (err)
+					console.error("Failed initRequest for ChartModule: %o", err)
+				else
+					prot.chart.handleMessage(response.initRequest)
+			})
+		}
+	}
+
+	var superClose = pub.close;
+	pub.close = function() {
+		$(SignalPath).off("started", startFunction)
+		$(SignalPath).off("stopped", stopFunction)
+		$(SignalPath).off("loaded", sendInitRequest)
+		superClose()
+	}
+	
+	var superClean = pub.clean;
+	pub.clean = function() {
+		superClean()
+		destroyChart()
+	}
+	
+	var superUpdateFrom = pub.updateFrom;
+	pub.updateFrom = function(data) {
+		destroyChart();
+		superUpdateFrom(data);
+	}
+	
+	/**
+	 * On start, bind connected inputs to series indices. We need
+	 * to know which input results in which series.
+	 */
+	$(SignalPath).on("started", startFunction)
+	
+	/**
+	 * On SignalPath stopped, check that all series are shown properly in relation to chart yaxis range
+	 */
+	$(SignalPath).on("stopped", stopFunction)
+
+	$(SignalPath).on("loaded", sendInitRequest)
 	
 	return pub;
 }
@@ -284,7 +222,7 @@ SignalPath.ChartInput = function(json, parentDiv, module, type, pub) {
 		
 		$yAxisSelectorButton.click(cycleYAxis)
 		pub.div.tooltip({
-			container: "#"+SignalPath.options.canvas,
+			container: SignalPath.getParentElement(),
 			selector: ".y-axis-number",
 			html: true,
 			title: function() {

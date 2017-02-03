@@ -24,9 +24,15 @@ modules = {
 	}
 	bootstrap {
 		dependsOn 'jquery'
-		// resource url:[dir:'js/bootstrap-3.2.0-dist/js', file:'bootstrap.min.js', plugin: 'unifina-core']
 		resource url:[dir:'js/bootstrap-3.2.0-dist/js', file:'bootstrap.js', plugin: 'unifina-core']
 		resource url:[dir:'js/bootstrap-3.2.0-dist/css', file:'bootstrap.min.css', plugin: 'unifina-core']
+	}
+	'font-awesome' {
+		resource url: "https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+	}
+	'bootstrap-docs' {
+		dependsOn "bootstrap"
+		resource url:[dir:'js/bootstrap-3.2.0-assets/css', file:'docs.min.css', plugin: 'unifina-core']
 	}
 	'bootstrap-contextmenu' {
 		dependsOn 'bootstrap'
@@ -41,7 +47,6 @@ modules = {
 		// Current version is from: https://raw.github.com/n9/bootstrap-datepicker/6deee4ec7fa22bd1dee78913e0340f3841f58982/js/bootstrap-datepicker.js
 		// due to this issue not yet fixed: https://github.com/eternicode/bootstrap-datepicker/issues/775
 		resource url:[dir:'js/bootstrap-datepicker/js', file:'bootstrap-datepicker.js', plugin: 'unifina-core']
-		resource url:[dir:'js/bootstrap-datepicker/css', file:'datepicker.css', plugin: 'unifina-core']
 	}
 	hopscotch {
 		resource url:[dir:'js/hopscotch', file:'hopscotch.css', plugin: 'unifina-core']
@@ -49,7 +54,7 @@ modules = {
 	}
 	typeahead {
 		dependsOn 'jquery'
-		resource url:[dir:'js/typeahead', file:'typeahead.bundle.min.js', plugin: 'unifina-core']
+		resource url:[dir:'js/typeahead', file:'typeahead.bundle.js', plugin: 'unifina-core']
 	}
 	mustache {
 		resource url:[dir:'js/mustache-0.8.2', file:'mustache.js', plugin: 'unifina-core']
@@ -75,7 +80,7 @@ modules = {
 		resource url:[dir:'js/atmosphere', file:'jquery.atmosphere.js', plugin: 'unifina-core']
 	}
 	"socket-io" {
-		resource url:[dir:'js/socket.io-1.2.1', file:'socket.io-1.2.1.min.js', plugin: 'unifina-core']
+		resource url:[dir:'js/socket.io-1.3.7', file:'socket.io-1.3.7.min.js', plugin: 'unifina-core']
 	}
 	hotkeys {
 		dependsOn 'jquery'
@@ -98,21 +103,17 @@ modules = {
 		dependsOn 'jquery'
 		resource url:[dir:'js/slimScroll-1.3.0/', file:'jquery.slimscroll.min.js', plugin: 'unifina-core']
 	}
-	'detect-timezone' {
-		resource url:[dir:'js/timezones', file:'detect_timezone.js', plugin: 'unifina-core']
-		resource url:[dir:'js/timezones', file:'list_timezones.js', plugin: 'unifina-core']
-	}
 	'raf-polyfill' {
 		resource url:[dir:'js/raf-polyfill', file:'raf-polyfill.js', plugin: 'unifina-core']
 	}
 	webcomponents {
 		resource url:[dir:'js/webcomponentsjs', file:'webcomponents.min.js', plugin: 'unifina-core'], disposition:'head'
 	}
-	underscore {
-		resource url:[dir:'js/underscore', file:'underscore-min.js', plugin: 'unifina-core']
+	lodash {
+		resource url:[dir:'js/lodash-3.10.1', file:'lodash.min.js', plugin: 'unifina-core']
 	}
 	backbone {
-		dependsOn 'underscore,jquery'
+		dependsOn 'lodash,jquery'
 		resource url:[dir:'js/backbone', file:'backbone.js', plugin: 'unifina-core']
 	}
 	'backbone-associations' {
@@ -120,17 +121,38 @@ modules = {
 		resource url:[dir:'js/backbone-associations', file:'backbone-associations-min.js', plugin: 'unifina-core']
 	}
 	leaflet {
-		resource url:[dir:'js/leaflet-0.7.3', file:'leaflet-0.7.3.min.js', plugin: 'unifina-core']
-		resource url:[dir:'js/leaflet-0.7.3', file:'leaflet-0.7.3.css', plugin: 'unifina-core']
+		resource url:[dir:'js/leaflet', file:'leafletGlobalOptions.js', plugin: 'unifina-core']
+		resource url:[dir:'js/leaflet', file:'leaflet-src.js', plugin: 'unifina-core']
+		resource url:[dir:'js/leaflet', file:'leaflet_canvas_layer.js', plugin: 'unifina-core']
+		resource url:[dir:'js/leaflet', file:'leaflet.css', plugin: 'unifina-core']
+		resource url:[dir:'js/Leaflet.RotatedMarker', file:'leaflet.rotatedMarker.js', plugin: 'unifina-core']
 	}
 	dropzone {
 		resource url:[dir:'js/dropzone', file:'dropzone.js', plugin: 'unifina-core']
 	}
-	
+	mathjax {
+		resource url:'https://cdn.mathjax.org/mathjax/2.2-latest/MathJax.js?config=TeX-AMS_HTML'
+	}
+	switcher {
+		resource url:[dir:'js/pixel-admin', file:'switcher.js', plugin:'unifina-core']
+	}
+	spectrum {
+		resource url:[dir:'js/spectrum', file:'spectrum.js', plugin:'unifina-core']
+		resource url:[dir:'js/spectrum', file:'spectrum.css', plugin:'unifina-core']
+	}
+	moment {
+		resource url:[dir:'js/moment', file:'moment.js', plugin:'unifina-core']
+	}
+	'moment-timezone' {
+		dependsOn 'moment'
+		resource url:[dir:'js/moment', file:'moment-timezone-with-data-2010-2020.js', plugin:'unifina-core']
+	}
+
 	/**
 	 * In-house widgets and resources
 	 */
 	streamr {
+		dependsOn 'pnotify, lodash'
 		resource url:[dir:'js/unifina', file:'streamr.js', plugin: 'unifina-core']
 	}
 	tour {
@@ -138,30 +160,43 @@ modules = {
 		resource url:[dir:'js/unifina/tour', file:'tour.js', plugin: 'unifina-core']
 	}
 	'dashboard-editor' {
-		dependsOn 'backbone, backbone-associations, jquery-ui, pnotify, toolbar, bootstrap'
+		dependsOn 'backbone, backbone-associations, jquery-ui, streamr, confirm-button, bootstrap'
 		resource url:[dir:'js/unifina/dashboard', file:'dashboard-editor.js', plugin: 'unifina-core']
 	}
 	'webcomponent-resources' {
-		dependsOn 'streamr-client, streamr-chart, streamr-heatmap'
+		dependsOn 'streamr-client, streamr-chart, streamr-heatmap, streamr-table, streamr-button, streamr-switcher, streamr-text-field, streamr-map'
 	}
 	'stream-fields' {
 		dependsOn 'jquery, backbone'
 		resource url:[dir:'js/unifina/stream-fields', file:'stream-fields.js', plugin: 'unifina-core']
 	}
-	'search-control' {
+	'streamr-search' {
 		dependsOn 'typeahead'
-		resource url:[dir:'js/unifina/search-control', file:'search-control.js', plugin: 'unifina-core']
+		resource url:[dir:'js/unifina/streamr-search', file:'streamr-search.js', plugin: 'unifina-core']
 	}
 	'remote-tabs' {
 		dependsOn 'bootbox, mustache'
 		resource url:[dir:'js/unifina/remote-tabs', file:'remote-tabs.js', plugin: 'unifina-core']
 	}
+	'sharing-dialog' {
+		dependsOn 'bootbox, backbone, switcher'
+		resource url: [dir: 'js/unifina/sharing-dialog', file: 'sharing-dialog.js', plugin: 'unifina-core']
+	}
 	'signalpath-browser' {
 		dependsOn 'remote-tabs'
 		resource url:[dir:'js/unifina/signalpath-browser', file:'signalpath-browser.js', plugin: 'unifina-core']
 	}
-	'clickable-table' {
-		resource url:[dir:'js/unifina/clickable-table', file:'clickable-table.js', plugin:'unifina-core']
+	'module-browser' {
+		dependsOn 'mathjax, bootstrap, lodash, streamr'
+		resource url:[dir:'js/unifina/module-browser', file:'module-browser.js', plugin:'unifina-core']
+	}
+	'key-value-editor' {
+		dependsOn 'bootstrap, backbone, mustache, list-editor'
+		resource url:[dir:'js/unifina/key-value-editor', file:'key-value-editor.js', plugin:'unifina-core']
+	}
+	'list-editor' {
+		dependsOn 'bootstrap, backbone, mustache'
+		resource url:[dir:'js/unifina/list-editor', file:'list-editor.js', plugin:'unifina-core']
 	}
 	toolbar {
 		dependsOn 'jquery'
@@ -174,15 +209,27 @@ modules = {
 	}
 	'signalpath-widgets' {
 		resource url:[dir:'css/signalPath/widgets', file:'loadBrowser.css', plugin: 'unifina-core']
-		resource url:[dir:'css/signalPath/widgets', file:'typeahead.css', plugin: 'unifina-core']
 	}
 	'streamr-client' {
 		dependsOn 'socket-io'
-		resource url:[dir:'js/unifina/streamr-socketio-client', file:'streamr-client.js', plugin: 'unifina-core'], disposition:'head'
+		resource url:[dir:'js/unifina/streamr-socketio-client', file:'streamr-client.js', plugin: 'unifina-core']
 	}
 	'streamr-chart' {
 		dependsOn 'jquery,highstock'
 		resource url:[dir:'js/unifina/streamr-chart', file:'streamr-chart.js', plugin: 'unifina-core']
+	}
+	'streamr-button' {
+		dependsOn 'jquery'
+		resource url:[dir:'js/unifina/streamr-button', file:'streamr-button.js', plugin: 'unifina-core']
+	}
+	'streamr-switcher' {
+		dependsOn 'jquery'
+		resource url:[dir:'js/unifina/streamr-switcher', file:'streamr-switcher.js', plugin: 'unifina-core']
+	}
+	'streamr-text-field' {
+		dependsOn 'jquery'
+		resource url:[dir:'js/unifina/streamr-text-field', file:'streamr-text-field.js', plugin: 'unifina-core']
+		resource url:[dir:'css/signalPath/modules', file:'textFieldModule.css', plugin: 'unifina-core']
 	}
 	'streamr-heatmap' {
 		dependsOn 'jquery, leaflet'
@@ -190,18 +237,67 @@ modules = {
 		resource url:[dir:'js/unifina/streamr-heatmap', file:'leaflet-heatmap.js', plugin: 'unifina-core']
 		resource url:[dir:'js/unifina/streamr-heatmap', file:'streamr-heatmap.js', plugin: 'unifina-core']
 	}
+	'streamr-map' {
+		dependsOn 'jquery, leaflet, font-awesome'
+		resource url:[dir:'css/signalPath/widgets/', file:'streamr-map.css', plugin: 'unifina-core']
+		resource url:[dir:'js/unifina/streamr-map', file:'streamr-map.js', plugin: 'unifina-core']
+	}
+	'streamr-table' {
+		resource url:[dir:'js/unifina/streamr-table', file:'streamr-table.js', plugin: 'unifina-core']
+	}
+	'scrollspy-helper' {
+		resource url:[dir:'js/unifina/scrollspy-helper', file:'scrollspy-helper.js', plugin: 'unifina-core']
+	}
+	'canvas-controls' {
+		dependsOn 'signalpath-core, backbone'
+		resource url:[dir:'js/unifina/signalPath/controls', file:'canvas-start-button.js', plugin: 'unifina-core']
+		resource url:[dir:'js/unifina/signalPath/controls', file:'canvas-name-editor.js', plugin: 'unifina-core']
+	}
+	'confirm-button' {
+		resource url:[dir:'js/unifina/confirm-button', file:'confirm-button.js', plugin: 'unifina-core']
+	}
 	'signalpath-core' {
-		dependsOn 'streamr, streamr-client, streamr-chart, streamr-heatmap, jsplumb, jstree, highstock, codemirror, tablesorter, bootstrap-contextmenu, typeahead, detect-timezone, raf-polyfill, signalpath-widgets'
+		// Easier to merge if dependencies are one-per-row instead of comma-separated list
+		dependsOn 'streamr'
+		dependsOn 'streamr-client'
+		dependsOn 'streamr-chart'
+		dependsOn 'streamr-table'
+		dependsOn 'streamr-heatmap'
+		dependsOn 'streamr-map'
+		dependsOn 'streamr-button'
+		dependsOn 'streamr-switcher'
+		dependsOn 'streamr-text-field'
+		dependsOn 'jsplumb'
+		dependsOn 'jstree'
+		dependsOn 'highstock'
+		dependsOn 'codemirror'
+		dependsOn 'tablesorter'
+		dependsOn 'bootstrap-contextmenu'
+		dependsOn 'typeahead'
+		dependsOn 'raf-polyfill'
+		dependsOn 'signalpath-widgets'
+		dependsOn 'mathjax'
+		dependsOn 'spectrum'
+		dependsOn 'lodash'
+		dependsOn 'key-value-editor'
+		dependsOn 'list-editor'
 		resource url:[dir:'js/unifina/signalPath/core', file:'signalPath.js', plugin: 'unifina-core']
 		resource url:[dir:'js/unifina/signalPath/generic', file:'emptyModule.js', plugin: 'unifina-core']
 		resource url:[dir:'js/unifina/signalPath/generic', file:'genericModule.js', plugin: 'unifina-core']
+		resource url:[dir:'js/unifina/signalPath/generic', file:'uiChannelModule.js', plugin: 'unifina-core']
 		resource url:[dir:'js/unifina/signalPath/core', file:'IOSwitch.js', plugin: 'unifina-core']
 		resource url:[dir:'js/unifina/signalPath/core', file:'Endpoint.js', plugin: 'unifina-core']
 		resource url:[dir:'js/unifina/signalPath/core', file:'Input.js', plugin: 'unifina-core']
+		resource url:[dir:'js/unifina/signalPath/core', file:'VariadicInput.js', plugin: 'unifina-core']
+		resource url:[dir:'js/unifina/signalPath/core', file:'VariadicOutput.js', plugin: 'unifina-core']
 		resource url:[dir:'js/unifina/signalPath/core', file:'Parameter.js', plugin: 'unifina-core']
 		resource url:[dir:'js/unifina/signalPath/core', file:'Output.js', plugin: 'unifina-core']
 		resource url:[dir:'js/unifina/signalPath/specific', file:'chartModule.js', plugin: 'unifina-core']
 		resource url:[dir:'js/unifina/signalPath/specific', file:'heatmapModule.js', plugin: 'unifina-core']
+		resource url:[dir:'js/unifina/signalPath/specific', file:'mapModule.js', plugin: 'unifina-core']
+		resource url:[dir:'js/unifina/signalPath/specific', file:'inputModule.js', plugin: 'unifina-core']
+		resource url:[dir:'css/signalPath/modules', file:'switcherModule.css', plugin: 'unifina-core']
+		resource url:[dir:'css/signalPath/modules', file:'buttonModule.css', plugin: 'unifina-core']
 		resource url:[dir:'css/signalPath/modules', file:'chartModule.css', plugin: 'unifina-core']
 		resource url:[dir:'css/signalPath/modules', file:'eventTable.css', plugin: 'unifina-core']
 		resource url:[dir:'js/unifina/signalPath/specific', file:'gaugeModule.js', plugin: 'unifina-core']
@@ -210,7 +306,14 @@ modules = {
 		resource url:[dir:'js/unifina/signalPath/specific', file:'commentModule.js', plugin: 'unifina-core']
 		resource url:[dir:'css/signalPath/modules', file:'commentModule.css', plugin: 'unifina-core']
 		resource url:[dir:'js/unifina/signalPath/specific', file:'labelModule.js', plugin: 'unifina-core']
-		
+		resource url:[dir:'js/unifina/signalPath/specific', file:'schedulerModule.js', plugin: 'unifina-core']
+		resource url:[dir:'js/unifina/signalPath/specific', file:'scheduler.js', plugin: 'unifina-core']
+		resource url:[dir:'js/unifina/signalPath/specific', file:'streamModule.js', plugin: 'unifina-core']
+		resource url:[dir:'js/unifina/signalPath/specific', file:'filterModule.js', plugin: 'unifina-core']
+		resource url:[dir:'js/unifina/signalPath/generic', file:'subCanvasModule.js', plugin: 'unifina-core']
+		resource url:[dir:'js/unifina/signalPath/specific', file:'canvasModule.js', plugin: 'unifina-core']
+		resource url:[dir:'js/unifina/signalPath/specific', file:'forEachModule.js', plugin: 'unifina-core']
+		resource url:[dir:'js/unifina/signalPath/specific', file:'exportCSVModule.js', plugin: 'unifina-core']
 	}
 	'signalpath-theme' {
 		dependsOn 'signalpath-core'
@@ -218,11 +321,26 @@ modules = {
 		resource url:[dir:'css/signalPath/themes/light', file:'light.js', plugin: 'unifina-core']
 	}
 	'main-theme' {
-		dependsOn 'bootstrap'
+		dependsOn 'bootstrap, font-awesome'
 		resource url: "https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,400,600,700,300&subset=latin", attrs: [type: "css"]
 		resource url:[dir:'css/compiled-less', file:'main.css', plugin: 'unifina-core']
 	}
-	'zoom-control' {
-		resource url:[dir:'js/unifina/zoom-control', file:'zoom-control.js', plugin: 'unifina-core']
+	'marked' {
+		resource url:[dir: 'js/marked/', file: 'marked.min.js', plugin: 'unifina-core']
 	}
+	'swagger' {
+		dependsOn 'jquery, lodash, jquery-migrate, marked'
+		resource url:[dir: 'js/swagger-ui/dist/lib/', file: 'jquery.slideto.min.js', plugin: 'unifina-core']
+		resource url:[dir: 'js/swagger-ui/dist/lib/', file: 'jquery.wiggle.min.js', plugin: 'unifina-core']
+		resource url:[dir: 'js/swagger-ui/dist/lib/', file: 'jquery.ba-bbq.min.js', plugin: 'unifina-core']
+		resource url:[dir: 'js/swagger-ui/dist/lib/', file: 'handlebars-2.0.0.js', plugin: 'unifina-core']
+		resource url:[dir: 'js/swagger-ui/dist/lib/', file: 'backbone-min.js', plugin: 'unifina-core']
+		resource url:[dir: 'js/swagger-ui/dist/', file: 'swagger-ui.min.js', plugin: 'unifina-core']
+		resource url:[dir: 'js/swagger-ui/dist/lib/', file: 'highlight.7.3.pack.js', plugin: 'unifina-core']
+		resource url:[dir: 'js/swagger-ui/dist/lib/', file: 'jsoneditor.min.js', plugin: 'unifina-core']
+		resource url:[dir: 'js/swagger-ui/dist/lib/', file: 'swagger-oauth.js', plugin: 'unifina-core']
+		resource url:[dir: 'js/swagger-ui/dist/css/', file: 'reset.css', plugin: 'unifina-core']
+		resource url:[dir: 'js/swagger-ui/dist/css/', file: 'screen.css', plugin: 'unifina-core']
+	}
+
 }

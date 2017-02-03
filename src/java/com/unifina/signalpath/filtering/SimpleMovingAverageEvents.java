@@ -9,6 +9,7 @@ import com.unifina.signalpath.IntegerParameter;
 import com.unifina.signalpath.TimeSeriesInput;
 import com.unifina.signalpath.TimeSeriesOutput;
 
+@Deprecated
 public class SimpleMovingAverageEvents extends AbstractSignalPathModule {
 	
 	IntegerParameter length = new IntegerParameter(this,"length",60);
@@ -36,7 +37,7 @@ public class SimpleMovingAverageEvents extends AbstractSignalPathModule {
 			ma.setLength(length.getValue());
 			
 		ma.add(input.value);
-		if (ma.size()>=minSamples.value)
+		if (ma.size()>=minSamples.getValue())
 			out.send(ma.getValue());
 	}
 	

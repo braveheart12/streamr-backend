@@ -1,6 +1,6 @@
-<ui:labeled label="${message(code:"stream.uuid.label")}">
-    	${stream.uuid}
+<ui:labeled label="${message(code:"stream.id.label")}">
+    	<span class="stream-id">${stream.id}</span>
 </ui:labeled>
 <ui:labeled label="${message(code:"stream.apiKey.label")}">
-    	${stream.apiKey}
+    	<span class="stream-auth">${stream.apiKey}</span>
 </ui:labeled>

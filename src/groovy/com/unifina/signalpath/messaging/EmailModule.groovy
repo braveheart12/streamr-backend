@@ -1,30 +1,21 @@
 package com.unifina.signalpath.messaging
 
+import com.unifina.signalpath.*
+
 import java.text.SimpleDateFormat
 
-import com.unifina.signalpath.AbstractSignalPathModule
-import com.unifina.signalpath.Input
-import com.unifina.signalpath.ModuleOption
-import com.unifina.signalpath.ModuleOptions
-import com.unifina.signalpath.NotificationMessage
-import com.unifina.signalpath.Parameter
-import com.unifina.signalpath.StringParameter
-
-class EmailModule extends AbstractSignalPathModule {
+class EmailModule extends ModuleWithSideEffects {
 
 	StringParameter sub = new StringParameter(this, "subject", "")
 	StringParameter message = new StringParameter(this, "message", "")
 
-	def mailService
 	String sender
 
-	int inputCount = 1
+	int emailInputCount = 1
 
-	SimpleDateFormat df
+	transient SimpleDateFormat df
 
 	Long prevTime = 0
-	Long prevWarnNotif
-
 	Long emailIntervall = 60000
 	boolean emailSent
 
@@ -32,29 +23,47 @@ class EmailModule extends AbstractSignalPathModule {
 	public void init() {
 		addInput(sub)
 		addInput(message)
-		mailService = globals.grailsApplication.getMainContext().getBean("mailService")
 		sender = globals.grailsApplication.config.unifina.email.sender
-		df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
-		df.setTimeZone(TimeZone.getTimeZone(globals.getUser().getTimezone()))
+		initDf()
 		emailSent = true
 	}
 
 	@Override
-	public void sendOutput() {
-		//		Create String with the input values
-		String inputValues = ""
-		for(Input i : super.getInputs()){
-			if(!(i instanceof Parameter)){
-				inputValues += "${i.getDisplayName() ?: i.getName()}: ${i.getValue()}\n"
+	public void activateWithSideEffects() {
+		if (isNotTooOften(emailIntervall, getTime(), prevTime)) {
+			emailSent = true
+			String messageTo = globals.getUser().getUsername()
+			def mailService = globals.grailsApplication.getMainContext().getBean("mailService")
+			String messageBody = getMessageBody()
+			mailService.sendMail {
+				from sender
+				to messageTo
+				subject sub.getValue()
+				body messageBody
+			}
+		} else {
+			if (emailSent) {
+				globals.uiChannel?.push(new NotificationMessage("Tried to send emails too often"), parentSignalPath.uiChannelId)
+				emailSent = false
 			}
 		}
+	}
 
-		//		Check that the subject is not empty
-		String messageSubject
-		if(sub.getValue() == ""){
-			messageSubject = "no subject"
-		} else {
-			messageSubject = sub.getValue()
+	@Override
+	public void activateWithoutSideEffects() {
+		// Show email contents as notifications in the UI
+		parentSignalPath?.showNotification(getMessageBody())
+	}
+
+	private String getMessageBody() {
+		initDf()
+
+		// Create String with the input values
+		String inputValues = ""
+		for (Input i : super.getInputs()){
+			if (!(i instanceof Parameter)){
+				inputValues += "${i.getDisplayName() ?: i.getName()}: ${i.getValue()}\n"
+			}
 		}
 
 		//		Create body for the email
@@ -69,33 +78,10 @@ Input Values:
 $inputValues
 """
 
-		//		Check that the module is running in current time. If not, do not send email, make just a notification
-
-		if (globals.isRealtime()) {
-			if(isNotTooOften(emailIntervall, getTime(), prevTime)){
-				emailSent = true
-				String messageTo = globals.getUser().getUsername()
-				mailService.sendMail {
-					from sender
-					to messageTo
-					subject messageSubject
-					body messageBody
-				}
-			} else {
-				if(emailSent){
-					globals.uiChannel?.push(new NotificationMessage("Tried to send emails too often"), parentSignalPath.uiChannelId)
-					emailSent = false
-				}
-			}
-		}
-		else {
-			globals.uiChannel?.push(new NotificationMessage(messageBody), parentSignalPath.uiChannelId)
-		}
-
-
+		return messageBody
 	}
-	
-	public long getTime(){
+
+	public long getTime() {
 		return System.currentTimeMillis()
 	}
 
@@ -119,7 +105,7 @@ $inputValues
 
 		// Module options
 		ModuleOptions options = ModuleOptions.get(config);
-		options.add(new ModuleOption("inputs", inputCount, "int"));
+		options.add(new ModuleOption("inputs", emailInputCount, "int"));
 
 		return config;
 	}
@@ -131,9 +117,9 @@ $inputValues
 		ModuleOptions options = ModuleOptions.get(config);
 
 		if (options.getOption("inputs")!=null)
-			inputCount = options.getOption("inputs").getInt();
+			emailInputCount = options.getOption("inputs").getInt();
 
-		for (int i=1;i<=inputCount;i++) {
+		for (int i=1;i<=emailInputCount;i++) {
 			createAndAddInput("value"+i);
 		}
 	}
@@ -144,6 +130,14 @@ $inputValues
 
 	@Override
 	public void clearState() {
+	}
+
+	private def initDf() {
+		if (df == null) {
+			df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
+			if (globals.getUser()!=null)
+				df.setTimeZone(TimeZone.getTimeZone(globals.getUser().getTimezone()))
+		}
 	}
 
 }

@@ -1,12 +1,12 @@
 (function(exports) {
 
-	var TYPES = ['string','number','boolean','map','list']
+	var TYPES = ['number','string','boolean','map','list']
 
 	// **Item class**: The atomic part of our Model. A model is basically a Javascript object, i.e. key-value pairs, with some helper functions to handle event triggering, persistence, etc.
 	var Item = Backbone.Model.extend({
 		defaults: {
 			name: 'name',
-			type: 'string'
+			type: TYPES[0]
 		}
 	});
 
@@ -33,7 +33,7 @@
 			$types.append(TYPES.map(function(type) {
 				return $("<option value='"+type+"'>"+type+"</option>")
 			}))
-			$(this.el).html('<td class="name"><input type="text" class="form-control input-sm" name="field_name" value="'+this.model.get('name')+'"></td><td class="types">'+this.model.get('type')+'</td><td><span class="btn btn-sm delete fa fa-trash-o"></span></td>');
+			$(this.el).html('<td class="name"><input type="text" class="form-control input-sm" name="field_name" value="'+this.model.get('name')+'"></td><td class="types">'+this.model.get('type')+'</td><td><span class="btn btn-sm delete fa fa-trash-o delete-field-button"></span></td>');
 			$types.val(this.model.get('type'))
 			$(this.el).find("td.types").html($types)
 			return this; // for chainable calls, like .render().el
@@ -74,7 +74,7 @@
 
 			var $table = $("<table class='table table-striped table-condensed'><thead><tr><th>Name</th><th>Type</th><th></th></tr></thead><tbody></tbody></table>")
 			$(this.el).html($table);
-			_(this.collection.models).each(function(item){ // in case collection is not empty
+			this.collection.models.forEach(function(item){ // in case collection is not empty
 				self.appendItem(item);
 			}, this);
 

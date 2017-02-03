@@ -11,16 +11,15 @@ SignalPath.CustomModuleOptions = {
 
 SignalPath.CustomModule = function(data,canvas,prot) {
 	prot = prot || {};
-	var pub = SignalPath.GenericModule(data,canvas,prot)
+	var pub = SignalPath.UIChannelModule(data,canvas,prot)
 
-	var module = pub.getDiv();
-	
 	var dialog = null;
 	var debug = null;
 	var debugTextArea = null;
 	var editor = null;
 	
-	addStuffToDiv();
+	createEditCodeButton();
+	$(prot).on('updated', createEditCodeButton)
 	
 	var codeWindow = ''
     +   '<div class="code-editor-dialog" style="width:600px; height:400px">'
@@ -42,8 +41,10 @@ SignalPath.CustomModule = function(data,canvas,prot) {
 	function createCodeWindow() {
 		if (dialog==null) {
 			dialog = $(codeWindow);
-			
 			prot.div.parent().append(dialog)
+
+			dialog.css('top',canvas.scrollTop() + 10);
+			dialog.css('left',canvas.scrollLeft() + 10);
 
 			dialog.draggable({
 				cancel: ".modal-body",
@@ -66,18 +67,16 @@ SignalPath.CustomModule = function(data,canvas,prot) {
 			dialog.find(".apply-btn").click(function() {
 				editor.clearGutter("breakpoints");
 				updateJson();
-				SignalPath.updateModule(pub, function() {
-					module = pub.getDiv();
-					addStuffToDiv();
-				});
+				SignalPath.updateModule(pub);
 			})
 			dialog.find(".close-btn").click(function(){
 				dialog.hide()
 			})
-						
 			
 			$(SignalPath).on("new", pub.onDelete);
 			$(SignalPath).on("loaded", pub.onDelete);
+
+			$(SignalPath).on("started", clearDebug);
 			
 			editor = CodeMirror(dialog.find(".modal-body")[0], $.extend({},SignalPath.CustomModuleOptions.codeMirrorOptions,{
 				value: prot.jsonData.code,
@@ -108,13 +107,17 @@ SignalPath.CustomModule = function(data,canvas,prot) {
     +				'<button class="close-btn btn btn-default">Close</button>'
     +			'</div>'
     +   	'</div>'
-	
+
+
 	function createDebugWindow() {
 		if (debug==null) {
 			debug = $(debugWindow);
 			debugTextArea = debug.find(".debugText")
 			
 			prot.div.parent().append(debug)
+
+			debug.css('top',canvas.scrollTop() + 10);
+			debug.css('left',canvas.scrollLeft() + 10);
 
 			debug.draggable({
 				cancel: ".modal-body",
@@ -130,7 +133,7 @@ SignalPath.CustomModule = function(data,canvas,prot) {
 				}
 			})
 			debug.find(".clear-btn").click(function() {
-				debugTextArea.html("");
+				clearDebug()
 			})
 			debug.find(".close-btn").click(function(){
 				debug.hide()
@@ -142,29 +145,26 @@ SignalPath.CustomModule = function(data,canvas,prot) {
 		} else debug.show()
 	}
 	
-	function addStuffToDiv() {
+	function createEditCodeButton() {
 		var editButton = $("<button class='btn btn-primary btn-sm'>Edit code</button>");
 		editButton.click(createCodeWindow);
-		
-		module.find(".modulefooter").prepend(editButton);
-		editButton.button();
+		pub.getDiv().find(".modulefooter").prepend(editButton);
 	}
 	
 	function updateJson() {
 		prot.jsonData.code = editor.getValue();
 	}
-	
-	var superReceiveResponse = pub.receiveResponse;
-	
-	pub.receiveResponse = function(payload) {
-		superReceiveResponse(payload);
-		
+
+	prot.receiveResponse = function(payload) {
 		if (payload.type=="debug" && debug != null) {
 			debugTextArea.append(payload.t+" - "+payload.msg+"<br>");
 		}
-		else if (payload.type=="compilationErrors") {
-			for (var i=0;i<payload.errors.length;i++) {
-				editor.setGutterMarker(payload.errors[i].line-1, "breakpoints", makeMarker());
+	}
+
+	pub.handleError = prot.handleError = function(error) {
+		if (error.type=="compilationErrors") {
+			for (var i=0;i<error.errors.length;i++) {
+				editor.setGutterMarker(error.errors[i].line-1, "breakpoints", makeMarker());
 			}
 		}
 	}
@@ -180,7 +180,22 @@ SignalPath.CustomModule = function(data,canvas,prot) {
 	pub.onDelete = function() {
 		if (super_onDelete)
 			super_onDelete();
-		
+		clearModule()
+	}
+
+	var super_onClose = pub.onClose;
+	pub.onClose = function() {
+		if(super_onClose)
+			super_onClose()
+		clearModule()
+	}
+
+	function clearDebug() {
+		if(debugTextArea)
+			debugTextArea.html("");
+	}
+
+	var clearModule = function(){
 		if (dialog!=null) {
 			$(dialog).remove()
 			dialog = null

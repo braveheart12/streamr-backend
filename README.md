@@ -1,13 +1,11 @@
 # unifina-core
 
-Unfortunately this README is *very* incomplete. Please let Henri know which topics you required information for but did not find any.
-
 ## Purpose of this plugin
 
 This is a Grails plugin providing core Streamr platform functionality. This includes, among other stuff:
 
 - Basic core library of modules (packages `com.unifina.signalpath.*`)
-- Controllers for instantiating, showing and running SignalPaths (canvases)
+- Controllers for instantiating, showing and running SignalPaths (canvases), creating Streams etc.
 - The Build view and its resources
 - Core webcomponents
 - Mechanism of communicating with running SignalPaths (/live/request)
@@ -18,15 +16,9 @@ This allows for app-specific configuration and extensions to reside at the top l
 
 This plugin is used in the app-level projects `unifina-trading` and `streamr-webapp`. Both projects contain this repository in the `plugins/unifina-core` folder as a Git submodule. This allows you to easily develop and test the app against development versions of the core plugin.
 
-## Setting up the development environment
+## More information
 
-- Install the Grails version required by the project (currently 2.3.7)
-- Add the Grails `bin` directory to `PATH`
-- You may also want to install `GGTS` (an Eclipse-based IDE for Groovy/Grails). Give it more memory by editing GGTS.ini and editing the -Xmx value!
-- Set the `GRAILS_HOME` and `JAVA_HOME` environment variables
-- Checkout the top-level project(s) you need (`unifina-trading` or `streamr-webapp`)
-- Do a `git submodule update --init`, which will pull this core plugin as well as other submodules
-- Run the app in GGTS or on the command line with `grails run-app`
+Please refer to the [Developer onboarding document](https://docs.google.com/document/d/1a14cJYjGBwe8-BXeAz08UvE-qa12KLA6OocnXEq_cKU/edit#)
 
 ## Testing
 
@@ -34,34 +26,4 @@ This plugin is used in the app-level projects `unifina-trading` and `streamr-web
 
 There are also `mocha` tests for javascript components. Install <a href="https://nodejs.org/">node.js</a>, then do `npm install` in the `unifina-core` directory. Then you can `npm test`.
 
-The top-level apps may contain functional tests (browser tests). Functional tests use Geb with <a href="https://code.google.com/p/selenium/wiki/ChromeDriver">chromedriver</a> and Google Chrome. You need to place the `chromedriver` executeble in your `PATH`, and set an environment variable `CHROMEDRIVER` to point to the executable.
-
-## Webcomponents
-
-A number of core webcomponents are available at `/webcomponents/<component-name>.html` with liberal CORS policy. An example of using them:
-
-```html
-<!-- import these in HEAD -->
-<script src="<local-path>/webcomponents.js"></script>
-<link rel="import" href="<server-url>/webcomponents/index.html">
-
-<!-- use the webcomponents in BODY -->
-<streamr-client server="<socketio-server-url>" autoconnect="true">
-</streamr-client>
-
-<streamr-label channel="<channel-id>"></streamr-label>
-```
-
-## Runtime requests
-
-For request-response cycles with running SignalPaths, you use the `/live/request` endpoint. Your request will be internally redirected to whichever server the live SignalPath is actually running on.
-
-The following request parameters should be supplied:
-
-Name 	| Description
---- 	| ---
-msg		| A stringified JSON message. The content is arbitrary but must include at least a key called `type`, which is a String that describes the request, for example `stopRequest` or `paramChange`.
-id 		| Id of the RunningSignalPath the message is intended for
-hash	| Hash of the module within the RunningSignalPath. Can be omitted when the message recipient is not a module but the RunningSignalPath itself.
-channel | Instead of the id and hash, messages can be targeted at a module with an UI channel id.
-
+Functional tests use Geb with <a href="https://code.google.com/p/selenium/wiki/ChromeDriver">chromedriver</a> and Google Chrome. You need to place the `chromedriver` executeble in your `PATH`, and set an environment variable `CHROMEDRIVER` to point to the executable.
