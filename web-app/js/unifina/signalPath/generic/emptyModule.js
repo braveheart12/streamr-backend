@@ -24,26 +24,6 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 	prot.warnings = []
 
 	prot.dragOptions = {
-<<<<<<< HEAD
-		drag: function(e, ui) {
-			var factor = (1 / SignalPath.getZoom()) - 1
-            ui.position.top += Math.round((ui.position.top - ui.originalPosition.top) * factor);
-            ui.position.left += Math.round((ui.position.left- ui.originalPosition.left) * factor);
-			var cpos = canvas.offset()
-			cpos.left = cpos.left
-			cpos.right = cpos.right
-			var x = ui.offset.left + canvas.scrollLeft()
-			var y = ui.offset.top + canvas.scrollTop()
-			
-			if (x < cpos.left - 100 || y < cpos.top - 50) {
-				return false
-			}
-			$(prot).add(pub).trigger("drag")
-		}
-		                   
-    }
-	
-=======
         containment: true,
         ignoreContainmentDirection: {
             bottom: true,
@@ -53,7 +33,6 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
         exclude: 'input, textarea, select, button, a, .ui-resizable-handle, .chart-resize-helper, .drag-exclude'
 	}
     
->>>>>>> origin/module-flex
 	pub.getDragOptions = function() {
 		return prot.dragOptions;
 	}
@@ -366,9 +345,6 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
         var optionsStop = options.stop
         delete options.stop
 		var defaultOptions = {
-<<<<<<< HEAD
-			// helper: "chart-resize-helper"
-=======
 			helper: "module-resize-helper",
             minWidth: 200,
             minHeight: 100,
@@ -376,7 +352,6 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
                 optionsStop(e, ui)
                 update(e, ui)
             }
->>>>>>> origin/module-flex
 		}
 		options.stop = undefined
 		options = $.extend({}, defaultOptions, options || {});
