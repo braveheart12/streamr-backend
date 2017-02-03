@@ -16,7 +16,7 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 	prot.jsonData = data;
 	prot.hash = prot.jsonData.hash;
 	prot.type = prot.jsonData.type;
-	prot.id = "module_"+prot.hash;
+	prot.id = "module_" + prot.hash;
 
 	var pub = {}
 	var $prot = $(prot)
@@ -24,6 +24,7 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 	prot.warnings = []
 
 	prot.dragOptions = {
+<<<<<<< HEAD
 		drag: function(e, ui) {
 			var factor = (1 / SignalPath.getZoom()) - 1
             ui.position.top += Math.round((ui.position.top - ui.originalPosition.top) * factor);
@@ -42,6 +43,17 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 		                   
     }
 	
+=======
+        containment: true,
+        ignoreContainmentDirection: {
+            bottom: true,
+            right: true
+        },
+        // Easiest way to exclude custom module element from dragging is to add class 'drag-exclude' for it
+        exclude: 'input, textarea, select, button, a, .ui-resizable-handle, .chart-resize-helper, .drag-exclude'
+	}
+    
+>>>>>>> origin/module-flex
 	pub.getDragOptions = function() {
 		return prot.dragOptions;
 	}
@@ -49,21 +61,11 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 	function createDiv() {
 		var buttons = []
 
-		prot.div = $("<div id='"+prot.id+"' class='component context-menu "+prot.type+"'></div>");
+		prot.div = $("<div id='"+prot.id+"' class='component module context-menu "+prot.type+"'></div>");
 		prot.div.data("spObject",prot);
 		
 		// Set absolute position
 		prot.div.css("position","absolute");
-		
-		// Read position and width/height if saved
-		if (prot.jsonData.layout) {
-			loadPosition();
-		} 
-		// Else add to default position in viewport
-		else {
-			prot.div.css('top',canvas.scrollTop() + 20);
-			prot.div.css('left',canvas.scrollLeft() + 70);
-		}
 		
 		// Module header
 		prot.header = $("<div class='moduleheader'></div>");
@@ -97,12 +99,12 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 			placement: 'auto top',
 			template: '<div class="tooltip" role="tooltip"><div class="tooltip-arrow"></div><div class="tooltip-inner modulehelp-tooltip"></div></div>'
 		}
-		
+
 		var delay=500, tooltipDelayTimer
 		helpLink.mouseenter(function() {
 			tooltipDelayTimer = setTimeout(function() {
-	 			prot.getHelp(false, function(htext) {
-	 				tooltipOptions.title = htext
+				prot.getHelp(false, function(htext) {
+					tooltipOptions.title = htext
 					// show tooltip after help text is loaded
 					helpLink.tooltip(tooltipOptions)
 
@@ -117,13 +119,13 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 								helpLink.tooltip("show")
 							}
 							MathJax.Hub.Queue(["Typeset",MathJax.Hub,$tt[0]]);
-							MathJax.Hub.Queue(function(){
+							MathJax.Hub.Queue(function() {
 								$tt.find(".math-tex").addClass("math-jax-ready")
 							})
 						}
 					})
 					helpLink.tooltip('show')
-	 			})
+				})
 			}, delay)
 		}).mouseleave(function() {
 			clearTimeout(tooltipDelayTimer)
@@ -154,6 +156,15 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 
 		prot.body = $("<div class='modulebody'></div>");
 		prot.div.append(prot.body);
+        
+        // Read position and width/height if saved
+        var layout = prot.jsonData.layout || {
+            position: {
+                top: canvas.scrollTop() + 60,
+                left: canvas.scrollLeft() + 70
+            }
+        }
+        loadPosition(layout);
 		
 		// If there are options, create options editor
 		if (prot.jsonData.options) {
@@ -193,7 +204,6 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 					}
 				})
 			})
-
 			buttons.push(editOptions)
 		}
 		
@@ -207,14 +217,34 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 			buttons.push(refresh);
 		}
 
-		prot.header.append(buttons.reverse())
-		
+		prot.moduleButtonContainer = $("<div/>", {
+			class: "modulebutton-container pull-right"
+		})
+		prot.header.append(prot.moduleButtonContainer)
+		prot.moduleButtonContainer.append(buttons.reverse())
+
 		// Must add to canvas before setting draggable
 		canvas.append(prot.div);
-		prot.div.addClass("draggable");
-		prot.div.draggable(prot.dragOptions);
+		prot.div.addClass("draggable")
+		prot.div.draggabilly(prot.dragOptions)
+        
+        prot.div.on("dragMove", function() {
+            var position = {
+                top: $(this).position().top,
+                bottom: $(this).position().top + prot.div.height(),
+                left: $(this).position().left,
+                right: $(this).position().left + prot.div.width()
+            }
+            var offset = 20
+            if (position.right + offset > canvas.width()) {
+                $("#canvas")[0].scrollBy(canvas.width() - position.right + offset, 0)
+            }
+            if (position.bottom + offset > canvas.height()) {
+                $("#canvas")[0].scrollBy(0, canvas.height() - position.bottom + offset)
+            }
+        })
 		
-		prot.div.on("click dragstart", function(event) {
+		prot.div.on("click dragStart", function(event) {
 			$(".component.focus").each(function(i,c) {
 				var ob = $(c).data("spObject");
 				if (ob !== prot)
@@ -223,11 +253,15 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 			prot.addFocus(true);
 			event.stopPropagation();
 		});
+        
+        prot.div.on("dragEnd", function() {
+            prot.redraw()
+        })
 
 		prot.div.hover(function() {
 			if (!prot.div.hasClass("focus")) {
-				prot.addFocus(false);
-			}
+                prot.addFocus(false);
+            }
 		}, function() {
 			if (!prot.div.hasClass("holdFocus")) {
 				prot.removeFocus();
@@ -257,16 +291,16 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 	}
 	prot.writePosition = writePosition;
 	
-	function loadPosition() {
-		var item = prot.jsonData.layout;
+	function loadPosition(layout) {
+		var item = layout || prot.jsonData.layout;
 
 		if (item.width)
-			prot.div.css('width',item.width);
+			prot.body.css('width', item.width);
 		if (item.height)
-			prot.div.css('height',item.height);
+			prot.body.css('height', item.height);
 
-		prot.div.css('top',item.position.top);
-		prot.div.css('left',item.position.left);
+		prot.div.css('top', item.position.top);
+		prot.div.css('left', item.position.left);
 	}
 	prot.loadPosition = loadPosition;
 	
@@ -326,13 +360,30 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 	}
 	
 	function initResizable(options, element) {
+        var update = function(e, ui) {
+            prot.redraw()
+        }
+        var optionsStop = options.stop
+        delete options.stop
 		var defaultOptions = {
+<<<<<<< HEAD
 			// helper: "chart-resize-helper"
+=======
+			helper: "module-resize-helper",
+            minWidth: 200,
+            minHeight: 100,
+            stop: function(e, ui) {
+                optionsStop(e, ui)
+                update(e, ui)
+            }
+>>>>>>> origin/module-flex
 		}
-		options = $.extend({},defaultOptions,options || {});
-		element = element || prot.div
-		element.resizable(options);
+		options.stop = undefined
+		options = $.extend({}, defaultOptions, options || {});
+		element = element || prot.body
 		prot.resizable = true;
+        
+		element.resizable(options);
 	}
 	prot.initResizable = initResizable;
 	
@@ -475,8 +526,8 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 	function toJSON() {
 		writePosition();
 		if (prot.resizable) {
-			prot.jsonData.layout.width = prot.div.css('width');
-			prot.jsonData.layout.height = prot.div.css('height');	
+			prot.jsonData.layout.width = prot.body.css('width');
+			prot.jsonData.layout.height = prot.body.css('height');	
 		}
 		return prot.jsonData;
 	}

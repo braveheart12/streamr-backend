@@ -72,15 +72,11 @@
 		})
 
 		// From https://github.com/pa7/heatmap.js/issues/120
-		this.map.on("resize", function() {
-			_this.map.removeLayer(_this.heatmapLayer)
-			_this.heatmapLayer = _this.createHeatmapLayer()
-			_this.syncData()
-		});
-
-		this.parent.on('resize', function() {
-			_this.map.invalidateSize()
-		})
+		// this.map.on("resize", function() {
+		// 	_this.map.removeLayer(_this.heatmapLayer)
+		// 	_this.heatmapLayer = _this.createHeatmapLayer()
+		// 	_this.syncData()
+		// });
 	}
 
 	StreamrHeatMap.prototype.getZoom = function() {
@@ -224,10 +220,8 @@
 		this.syncData()
 	}
 
-	StreamrHeatMap.prototype.resize = function(width, height) {
-		this.parent.css("width", width+"px")
-		this.parent.css("height", height+"px")
-		this.parent.trigger('resize')
+	StreamrHeatMap.prototype.redraw = function() {
+		this.map.invalidateSize()
 	}
 
 	exports.StreamrHeatMap = StreamrHeatMap

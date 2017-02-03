@@ -6,10 +6,8 @@
 		<title>Canvas</title>
 
 		<r:require module='jstree'/>
-		<r:require module='jquery-ui'/>
 		<r:require module="bootbox"/>
 		<r:require module="bootstrap-contextmenu"/>
-		<r:require module="bootstrap-datepicker"/>
 		<r:require module="slimscroll"/>
 		<r:require module="streamr-search"/>
 		<r:require module="signalpath-browser"/>
@@ -17,6 +15,7 @@
 		<r:require module="hotkeys"/>
 		<r:require module="touchpunch"/>
 		<r:require module="canvas-controls"/>
+		<r:require module="bootstrap-datepicker"/>
 
 		<r:script>
 
@@ -435,13 +434,15 @@ $(document).unload(function () {
 		</div> <!-- / #main-menu-inner -->
 	</div> <!-- / #main-menu -->
 
+
 	<div id="content-wrapper">
 		<ui:breadcrumb>
 			<li class="active">
 				<span id="canvas-name-editor"></span>
 			</li>
 		</ui:breadcrumb>
-		<div id="canvas" class="scrollable embeddable"></div>
+
+		<div id="canvas" class="streamr-canvas scrollable embeddable"></div>
 	</div>
 
 	<div id="main-menu-bg"></div>

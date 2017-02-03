@@ -2,13 +2,10 @@ SignalPath.MapModule = function(data,canvas,prot) {
 	prot = prot || {};
 	var pub = SignalPath.UIChannelModule(data,canvas,prot)
 
-	var $container = null
+	var container = null
 	var map = null
 
-	prot.enableIONameChange = false;	
-		
-	// Dragging in the chart container or the controls must not move the module
-	prot.dragOptions.cancel = ".map-container"
+	prot.enableIONameChange = false;
 
 	prot.getMap = function() {
 		return map
@@ -18,9 +15,11 @@ SignalPath.MapModule = function(data,canvas,prot) {
 	function createDiv() {
 		superCreateDiv();
 
-		prot.body.css("height", "100%")
+        prot.div.addClass('map-module')
 
-		container = $("<div class='map-container' style='width: 500px; height: 400px;'></div>")
+		container = $("<div class='map-container content'></div>")
+		prot.body.width(500)
+		prot.body.height(400)
 		prot.body.append(container)
 
 		var mapOptions = {
@@ -44,20 +43,16 @@ SignalPath.MapModule = function(data,canvas,prot) {
 		})
 
 		prot.initResizable({
-			minWidth: parseInt(prot.div.css("min-width").replace("px","")),
-			minHeight: parseInt(prot.div.css("min-height").replace("px","")),
+			minWidth: 350,
+			minHeight: 250,
 			stop: updateSize
 		});
-
-		$(SignalPath).on("loaded", updateSize)
 	}
 	prot.createDiv = createDiv;	
 	
 	function updateSize() {
 		if (map) {
-			var width = container.parent().width()
-			var height = container.parent().height() - container.parent().find(".ioTable").outerHeight() - 20
-			map.resize(width, height)
+			map.redraw()
 		}
 	}
 
