@@ -14861,7 +14861,7 @@ body.canvas-editor-page #main-wrapper #content-wrapper .breadcrumb li:first-chil
   position: relative;
   font-size: 12px;
   overflow: auto;
-  height: calc(100% - 38px);
+  height: 100%;
   width: 100%;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
@@ -15632,7 +15632,8 @@ dl dd {
   width: 100%;
 }
 #content-wrapper {
-  height: 100%;
+  height: calc(100% - 38px);
+  max-height: 100%;
 }
 .tt-cursor {
   background-color: #ccc;

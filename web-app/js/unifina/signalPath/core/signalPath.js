@@ -50,7 +50,9 @@ var SignalPath = (function () {
 			autoConnect: true,
 			autoDisconnect: true
 		},
-		zoom: 1
+		zoom: 1,
+        minZoom: 0.1,
+        maxZoom: 10
     };
     
     var connection
@@ -74,17 +76,16 @@ var SignalPath = (function () {
 
 	var isBeingReloaded = false
 	var debugLoopInterval = null
-    var zoomLevel = 1
 	
     // TODO: remove if not needed anymore!
-    pub.replacedIds = {};
+    pub.replacedIds = {}
 	
 	pub.init = function (opts) {
 		jQuery.extend(true, options, opts);
 		
 		parentElement = $(options.parentElement);
 		jsPlumb.Defaults.Container = parentElement;
-		parentElement.data("spObject",pub)
+		parentElement.data("spObject", pub)
 		
 		jsPlumb.bind('ready', function() {
 			pub.clear();
@@ -110,23 +111,30 @@ var SignalPath = (function () {
 			if (isRunning())
 				subscribe()
 		})
-        $(window).on("wheel", function(e) {
+        
+        $(parentElement).parent().on("wheel", function(e) {
             if (e.currentTarget !== this) {
                 return
             }
             var deltaY = e.originalEvent.deltaY
             if (e.ctrlKey || e.metaKey) {
                 e.preventDefault()
-                pub.setZoom(zoomLevel - Math.floor(deltaY / 10) * 0.05)
+                var zoom = Math.min(pub.options.maxZoom, Math.max(pub.options.minZoom, pub.zoomLevel - deltaY / 10 * 0.025))
+                pub.setZoom(zoom)
+                var mouseY = e.originalEvent.layerY
+                var mouseX = e.originalEvent.layerX
+                parentElement.parent().scrollTop(mouseY)
+                parentElement.parent().scrollLeft(mouseX)
             }
         })
-	};
+        pub.zoomLevel = options.zoom
+	}
 	pub.unload = function() {
 		jsPlumb.reset();
 		if (connection && connection.isConnected()) {
 			connection.unsubscribe()
 		}
-	};
+	}
 	pub.runtimeRequest = function(url, msg, callback) {
 		$.ajax({
 			type: 'POST',
@@ -736,32 +744,32 @@ var SignalPath = (function () {
 		}
 	}
 	pub.stop = stop;
-	
-	function getZoom() {
-		return parentElement.css("zoom") != null ? parseFloat(parentElement.css("zoom")) : 1
+    
+    pub.getZoom = function() {
+		return pub.zoomLevel || 1
 	}
-	pub.getZoom = getZoom
-
-	function setZoom(zoom, animate) {
-        zoomLevel = zoom
-		if (animate===undefined)
+    
+    pub.setZoom = function(zoom, animate) {
+        pub.zoomLevel = zoom
+		if (animate === undefined)
 			animate = true
 		
-		if (!animate) {
-            parentElement.addClass("no-animation")
+		if (animate) {
+            parentElement.addClass("zoom-animation")
         }
         parentElement.css({
-            "transform": "scale(" + zoom + ")",
-            "width": 1/zoom * 100 + "%",
-            "height": 1/zoom * 100 + "%"
-        });
-        if (!animate) {
-            parentElement.removeClass("no-animation")
+            "transform": "scale(" + pub.zoomLevel + ")",
+            //"width": 100/pub.zoomLevel + "%",
+            //"height": 100/pub.zoomLevel + "%"
+        })
+        
+        if (animate) {
+            parentElement.removeClass("zoom-animation")
         }
-        jsPlumb.setZoom(zoom)
-        Draggabilly.setZoom(zoom)
+        
+        jsPlumb.setZoom(pub.zoomLevel)
+        Draggabilly.setZoom(pub.zoomLevel)
 	}
-	pub.setZoom = setZoom
 
 	pub.isLoading = function() {
 		return SignalPath.isBeingReloaded;

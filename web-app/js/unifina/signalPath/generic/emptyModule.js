@@ -214,13 +214,15 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
                 left: $(this).position().left,
                 right: $(this).position().left + prot.div.width()
             }
-            var offset = 20
-            if (position.right + offset > canvas.width()) {
-                $("#canvas")[0].scrollBy(canvas.width() - position.right + offset, 0)
-            }
-            if (position.bottom + offset > canvas.height()) {
-                $("#canvas")[0].scrollBy(0, canvas.height() - position.bottom + offset)
-            }
+            $("#canvas").width(Math.max($("#canvas").width(), position.right / SignalPath.getZoom()))
+            $("#canvas").height(Math.max($("#canvas").height(), position.bottom / SignalPath.getZoom()))
+            //var offset = 20
+            //if (position.right + offset > canvas.width()) {
+            //    $("#canvas").scrollLeft($(document).outerWidth())
+            //}
+            //if (position.bottom + offset > canvas.height()) {
+            //    $("#canvas")[0].scrollBy(0, canvas.height() - position.bottom + offset)
+            //}
         })
 		
 		prot.div.on("click dragStart", function(event) {
