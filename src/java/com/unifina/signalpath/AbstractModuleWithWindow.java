@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 public abstract class AbstractModuleWithWindow<T> extends AbstractSignalPathModule implements ITimeListener {
 
 	// The time-based enums should have the same name as the corresponding TimeUnit.XXXX
-	protected enum WindowType {
+	public enum WindowType {
 		EVENTS,
 		SECONDS,
 		MINUTES,
@@ -32,8 +32,14 @@ public abstract class AbstractModuleWithWindow<T> extends AbstractSignalPathModu
 		DAYS
 	}
 
+	public enum WindowMode {
+		CONTINUOUS,
+		STEPWISE
+	}
+
 	protected IntegerParameter windowLength = new IntegerParameter(this, "windowLength", 0);
-	protected WindowTypeParameter windowType = new WindowTypeParameter(this, "windowType", WindowType.EVENTS.toString().toLowerCase());
+	protected EnumParameter<WindowType> windowType = new EnumParameter<>(this, "windowType", WindowType.values());
+	protected EnumParameter<WindowMode> windowMode = new EnumParameter<>(this, "windowMode", WindowMode.values());
 
 	@ExcludeInAutodetection
 	protected IntegerParameter minSamples = new IntegerParameter(this, "minSamples", 0);
@@ -41,7 +47,6 @@ public abstract class AbstractModuleWithWindow<T> extends AbstractSignalPathModu
 	protected LinkedHashMap<Object, AbstractWindow> windowByKey = new LinkedHashMap<>();
 	private boolean iteratingWindowByKey = false;
 	private Set<Object> keysPendingRemoval = new HashSet<>();
-	protected WindowType selectedWindowType = WindowType.EVENTS;
 
 	private transient Integer cachedLength = null;
 
@@ -53,10 +58,10 @@ public abstract class AbstractModuleWithWindow<T> extends AbstractSignalPathModu
 	public void init() {
 		addInput(windowLength);
 		addInput(windowType);
-
-		if (supportsMinSamples) {
-			addInput(minSamples);
-		}
+		addInput(windowMode);
+		windowType.setCanConnect(false);
+		windowMode.setCanConnect(false);
+		windowMode.setUpdateOnChange(true);
 
 		super.init();
 	}
@@ -78,7 +83,7 @@ public abstract class AbstractModuleWithWindow<T> extends AbstractSignalPathModu
 	 * @param key
 	 */
 	protected void addToWindow(T item, Object key) {
-		if (selectedWindowType == WindowType.EVENTS) {
+		if (windowType.getValue() == WindowType.EVENTS) {
 			getWindowForKey(key).add(item);
 		} else {
 			((TimeWindow) getWindowForKey(key)).add(item, getGlobals().time);
@@ -103,17 +108,19 @@ public abstract class AbstractModuleWithWindow<T> extends AbstractSignalPathModu
 
 	@Override
 	protected void onConfiguration(Map<String, Object> config) {
-		selectedWindowType = WindowType.valueOf(windowType.getValue().toUpperCase());
+		if (supportsMinSamples && windowMode.getValue().equals(WindowMode.CONTINUOUS)) {
+			addInput(minSamples);
+		}
 	}
 
 	protected AbstractWindow createWindow(Object key) {
 		AbstractWindow w;
 
-		if (selectedWindowType == WindowType.EVENTS) {
+		if (windowType.getValue() == WindowType.EVENTS) {
 			w = new EventWindow(windowLength.getValue(), createWindowListener(key));
 		} else {
 			// Expects the enum names between TimeUnit and WindowType to be equal
-			TimeUnit timeUnit = TimeUnit.valueOf(windowType.getValue());
+			TimeUnit timeUnit = TimeUnit.valueOf(windowType.getValue().toString());
 			w = new TimeWindow(windowLength.getValue(), timeUnit, createWindowListener(key));
 		}
 
@@ -157,7 +164,7 @@ public abstract class AbstractModuleWithWindow<T> extends AbstractSignalPathModu
 	@Override
 	public void setTime(Date time) {
 		// If we have time-based windows, all of them need to be updated on time events
-		if (selectedWindowType != WindowType.EVENTS) {
+		if (windowType.getValue() != WindowType.EVENTS) {
 			boolean windowChanged = false;
 
 			/**
@@ -182,8 +189,16 @@ public abstract class AbstractModuleWithWindow<T> extends AbstractSignalPathModu
 			}
 			keysPendingRemoval.clear();
 
-			if (windowChanged && isWindowReady()) {
+			/**
+			 * Output is sent on every tick for continuous windows if the window has changed,
+			 * and for stepwise windows it is sent on every even
+			 */
+			if (isWindowReady() && windowChanged) {
 				doSendOutput();
+
+				if (windowMode.getValue().equals(WindowMode.STEPWISE)) {
+					clearState();
+				}
 			}
 		}
 	}
@@ -194,13 +209,16 @@ public abstract class AbstractModuleWithWindow<T> extends AbstractSignalPathModu
 	 * Otherwise the window indicated by minSamplesWindowKey is inspected for enough values.
 	 */
 	protected boolean isWindowReady() {
-		if (!supportsMinSamples) {
+		if (windowMode.getValue() == WindowMode.CONTINUOUS && !supportsMinSamples) {
 			return true;
 		} else {
 			AbstractWindow<T> minSamplesWindow = windowByKey.get(minSamplesWindowKey);
-			if (minSamplesWindow == null)
+			if (minSamplesWindow == null) {
 				throw new NullPointerException("No window was found with key: " + minSamplesWindowKey + ", you need to set minSamplesWindowKey! Keys: " + windowByKey.keySet());
-			else return minSamplesWindow.getSize() >= minSamples.getValue();
+			} else {
+				Integer samplesNeededToBeReady = (windowMode.getValue() == WindowMode.CONTINUOUS ? minSamples.getValue() : minSamplesWindow.getLength());
+				return minSamplesWindow.getSize() >= samplesNeededToBeReady;
+			}
 		}
 	}
 
@@ -216,6 +234,10 @@ public abstract class AbstractModuleWithWindow<T> extends AbstractSignalPathModu
 		handleInputValues();
 		if (isWindowReady()) {
 			doSendOutput();
+
+			if (windowMode.getValue().equals(WindowMode.STEPWISE)) {
+				clearState();
+			}
 		}
 	}
 
@@ -226,29 +248,6 @@ public abstract class AbstractModuleWithWindow<T> extends AbstractSignalPathModu
 		}
 		windowByKey.clear();
 		cachedLength = null;
-	}
-
-	class WindowTypeParameter extends StringParameter {
-
-		public WindowTypeParameter(AbstractSignalPathModule owner, String name, String defaultValue) {
-			super(owner, name, defaultValue);
-		}
-
-		@Override
-		public Map<String, Object> getConfiguration() {
-			Map<String, Object> config = super.getConfiguration();
-
-			List<Map<String, String>> possibleValues = new ArrayList<>();
-			for (WindowType wt : WindowType.values()) {
-				Map<String, String> m = new LinkedHashMap<>();
-				m.put("name", wt.name().toLowerCase());
-				m.put("value", wt.name());
-				possibleValues.add(m);
-			}
-			config.put("possibleValues", possibleValues);
-
-			return config;
-		}
 	}
 
 }

@@ -29,6 +29,9 @@ public abstract class AbstractWindow<T> implements Serializable, Iterable<T> {
 		values = new ArrayDeque<T>(length);
 	}
 
+	/**
+	 * Returns the maximum length of the window. The semantics (unit) of the length is defined by the implementation.
+	 */
 	public int getLength() {
 		return length;
 	}
@@ -51,6 +54,9 @@ public abstract class AbstractWindow<T> implements Serializable, Iterable<T> {
 		}
 	}
 
+	/**
+	 * Returns the number of elements in the window.
+     */
 	public int getSize() {
 		return size;
 	}
