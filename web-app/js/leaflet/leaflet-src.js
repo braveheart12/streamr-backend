@@ -4807,7 +4807,7 @@ L.Map.include({
 
 
 /*
- * Popup extension to L.Path (polylines, polygons, circles), adding popup-related methods.
+ * Popup extension to L.Path (polylineGroups, polygons, circles), adding popup-related methods.
  */
 
 L.Path.include({
@@ -5218,7 +5218,7 @@ L.Map.include((L.Path.SVG && !window.L_PREFER_CANVAS) || !L.Browser.canvas ? {} 
 
 /*
  * L.LineUtil contains different utility functions for line segments
- * and polylines (clipping, simplification, distances, etc.)
+ * and polylineGroups (clipping, simplification, distances, etc.)
  */
 
 /*jshint bitwise:false */ // allow bitwise operations for this file
@@ -5421,7 +5421,7 @@ L.LineUtil = {
 
 
 /*
- * L.Polyline is used to display polylines on a map.
+ * L.Polyline is used to display polylineGroups on a map.
  */
 
 L.Polyline = L.Path.extend({
@@ -5973,7 +5973,7 @@ L.circleMarker = function (latlng, options) {
 
 
 /*
- * Extends L.Polyline to be able to manually detect clicks on Canvas-rendered polylines.
+ * Extends L.Polyline to be able to manually detect clicks on Canvas-rendered polylineGroups.
  */
 
 L.Polyline.include(!L.Path.CANVAS ? {} : {

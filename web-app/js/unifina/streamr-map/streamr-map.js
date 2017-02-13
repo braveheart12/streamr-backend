@@ -43,10 +43,13 @@
             zoom: 2,
             minZoom: 2,
             maxZoom: 18,
-            traceRadius: 2,
+            traceWidth: 2,
+            traceLineCap: 'butt',
+            traceOpacity: 0.75,
+            traceSmoothFactor: 1,
             drawTrace: false,
             skin: "default",
-            markerIcon: DEFAULT_MARKER_ICON
+            markerIcon: DEFAULT_MARKER_ICON,
         }, options || {})
 
         this.defaultAutoZoomBounds = {
@@ -61,18 +64,17 @@
         }
         this.autoZoomBounds = this.defaultAutoZoomBounds
 
-        if (!this.parent.attr("id"))
-            this.parent.attr("id", "map-"+Date.now())
+        if (!this.parent.attr("id")) {
+            this.parent.attr("id", "map-" + Date.now())
+        }
 
         this.skin = skins[this.options.skin] || skins.default
 
-        this.baseLayer = L.tileLayer(
-            this.skin.layerUrl, {
-                attribution: this.skin.layerAttribution,
-                minZoom: _this.options.minZoom,
-                maxZoom: _this.options.maxZoom
-            }
-        )
+        this.baseLayer = L.tileLayer(this.skin.layerUrl, {
+            attribution: this.skin.layerAttribution,
+            minZoom: _this.options.minZoom,
+            maxZoom: _this.options.maxZoom
+        })
 
         this.map = new L.Map(this.parent[0], {
             center: new L.LatLng(this.options.centerLat, this.options.centerLng),
@@ -100,65 +102,70 @@
             })
         })
 
-        if(this.options.drawTrace)
-            this.lineLayer = this.createLinePointLayer()
+        if(this.options.drawTrace) {
+            this.lineLayer = this.initTrace()
+        }
     }
 
-    StreamrMap.prototype.createLinePointLayer = function() {
-        var _this = this
-        this.circles = []
-        var LinePointLayer = L.CanvasLayer.extend({
-            renderCircle: function(ctx, point, radius, color) {
-                color = color || 'rgba(255,0,0,1)'
-                ctx.fillStyle = color;
-                ctx.strokeStyle = color;
-                ctx.beginPath();
-                ctx.arc(point.x, point.y, radius, 0, Math.PI * 2.0, true, true);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-                _this.circles.push(ctx)
-            },
-
-            render: function(changesOnly) {
-                var bigPointLayer = this
-                var canvas = this.getCanvas();
-                var ctx = canvas.getContext('2d');
-
-                var updates
-                if (changesOnly) {
-                    updates = _this.pendingLineUpdates
-                }
-                else {
-                    updates = _this.allLineUpdates
-                    // clear canvas
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                }
-
-                if(!changesOnly)
-                    clearTimeout(_this.traceRedrawTimeout)
-
-                var i = 0
-                function redrawTrace() {
-                    _this.traceRedrawTimeout = setTimeout(function() {
-                        var count = i + TRACE_REDRAW_BATCH_SIZE
-                        while (i < count && i < updates.length) {
-                            var point = bigPointLayer._map.latLngToContainerPoint(updates[i].latlng);
-                            bigPointLayer.renderCircle(ctx, point, _this.options.traceRadius, updates[i].color)
-                            i++
-                        }
-                        if (i < updates.length)
-                            redrawTrace()
-                    })
-                }
-                redrawTrace()
-
-                _this.pendingLineUpdates = []
-            }
-        })
-
-        var layer = new LinePointLayer().addTo(this.map)
-        return layer
+    StreamrMap.prototype.initTrace = function() {
+        var _this           = this
+        this.polylineGroups = {}
+        //var LinePointLayer = L.CanvasLayer.extend({
+        //    renderCircle: function(ctx, point, radius, color) {
+        //        color = color || 'rgba(255,0,0,1)'
+        //        ctx.fillStyle = color;
+        //        ctx.strokeStyle = color;
+        //        ctx.beginPath();
+        //        ctx.arc(point.x, point.y, radius, 0, Math.PI * 2.0, true, true);
+        //        ctx.closePath();
+        //        ctx.fill();
+        //        ctx.stroke();
+        //        _this.circles.push(ctx)
+        //    },
+        //
+        //    render: function(changesOnly) {
+        //        var bigPointLayer = this
+        //        var canvas = this.getCanvas();
+        //        var ctx = canvas.getContext('2d');
+        //
+        //        var updates
+        //        if (changesOnly) {
+        //            updates = _this.pendingLineUpdates
+        //        }
+        //        else {
+        //            updates = _this.allLineUpdates
+        //            // clear canvas
+        //            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        //        }
+        //
+        //        if(!changesOnly)
+        //            clearTimeout(_this.traceRedrawTimeout)
+        //
+        //        var i = 0
+        //        function redrawTrace() {
+        //            _this.traceRedrawTimeout = setTimeout(function() {
+        //                var count = i + TRACE_REDRAW_BATCH_SIZE
+        //                while (i < count && i < updates.length) {
+        //                    var point = bigPointLayer._map.latLngToContainerPoint(updates[i].latlng);
+        //                    bigPointLayer.renderCircle(ctx, point, _this.options.traceRadius, updates[i].color)
+        //                    i++
+        //                }
+        //                if (i < updates.length)
+        //                    redrawTrace()
+        //            })
+        //        }
+        //        redrawTrace()
+        //
+        //        _this.pendingLineUpdates = []
+        //    }
+        //})
+        //
+        //var layer = new LinePointLayer().addTo(this.map)
+        //return layer
+    }
+    
+    StreamrMap.prototype.createNewPolylineGroup = function(id) {
+        this.polylineGroups[id] = L.layerGroup().addTo(this.map)
     }
 
     StreamrMap.prototype.getZoom = function() {
@@ -194,7 +201,7 @@
             this.moveMarker(id, lat, lng, rotation)
         }
         if(this.options.drawTrace)
-            this.addLinePoint(id, lat, lng, color)
+            this.addPolyLinePoint(id, lat, lng, color)
 
         return marker
     }
@@ -301,14 +308,18 @@
         this.animationFrameRequested = false
     }
 
-    StreamrMap.prototype.addLinePoint = function(id, lat, lng, color) {
-        var latlng = L.latLng(lat,lng)
-        var update = {
-            latlng: latlng,
-            color: color
+    StreamrMap.prototype.addPolyLinePoint = function(id, lat, lng, color) {
+        var oldLatLng = this.markers[id] && this.markers[id].getLatLng()
+        var newLatlng = L.latLng(lat,lng)
+        if (this.polylineGroups[id]) {
+            this.createNewPolylineGroup(id)
         }
-        this.pendingLineUpdates.push(update)
-        this.allLineUpdates.push(update)
+        if (oldLatLng) {
+            var polyLine = L.polyline([oldLatLng, newLatlng], {
+                color: color
+            })
+            this.polylineGroups[id].addLayer(polyLine)
+        }
     }
 
     StreamrMap.prototype.handleMessage = function(d) {
