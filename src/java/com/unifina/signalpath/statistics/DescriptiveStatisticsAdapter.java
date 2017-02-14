@@ -39,7 +39,7 @@ public abstract class DescriptiveStatisticsAdapter extends AbstractModuleWithWin
 	}
 
 	@Override
-	protected void doSendOutput() {
+	protected void sendCurrentValues() {
 		if (storeless) {
 			out.send(storelessStats.getResult());
 		}

@@ -34,7 +34,7 @@ public class LinearRegression extends AbstractModuleWithWindow<com.unifina.signa
 	}
 
 	@Override
-	protected void doSendOutput() {
+	protected void sendCurrentValues() {
 		slope.send(regression.getSlope());
 		error.send(regression.getMeanSquareError());
 		rsq.send(regression.getRSquare());

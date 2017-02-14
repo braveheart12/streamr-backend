@@ -34,9 +34,14 @@ public abstract class BivariateStatisticAdapter<Statistic> extends AbstractModul
 	}
 
 	@Override
-	protected void doSendOutput() {
+	protected void sendCurrentValues() {
 		AbstractWindow<Double> xWindow = windowByKey.get(0);
 		AbstractWindow<Double> yWindow = windowByKey.get(1);
+
+		// If windows are empty, don't send output
+		if (xWindow == null || yWindow == null || xWindow.isEmpty() || yWindow.isEmpty()) {
+			return;
+		}
 
 		if (stat == null) {
 			stat = createStatistic();

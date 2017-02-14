@@ -41,7 +41,7 @@ public abstract class AggregateByKey extends AbstractModuleWithWindow<Double> {
 	}
 
 	@Override
-	protected void doSendOutput() {
+	protected void sendCurrentValues() {
 		pruneTreeIfNeeded();
 		map.send(Collections.unmodifiableMap(aggregateByKey));
 	}

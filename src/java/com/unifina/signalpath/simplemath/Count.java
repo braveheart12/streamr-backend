@@ -19,7 +19,7 @@ public class Count extends AbstractModuleWithWindow<Object> {
 	}
 
 	@Override
-	protected void doSendOutput() {
+	protected void sendCurrentValues() {
 		out.send(count);
 	}
 

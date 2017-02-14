@@ -21,7 +21,7 @@ class CountByKeySpec extends Specification {
 				options: [sort: [value: false]],
 				inputs: [
 						[name: "windowLength", value: 0],
-						[name: "windowType", value: AbstractModuleWithWindow.WindowType.EVENTS],
+						[name: "windowType", value: AbstractModuleWithWindow.WindowLengthUnit.EVENTS],
 						[name: "maxKeyCount", value: 0]
 				]
 		])
@@ -51,7 +51,7 @@ class CountByKeySpec extends Specification {
 				options: [sort: [value: true], sortOrder: [value: "descending"]],
 				inputs: [
 						[name: "windowLength", value: 0],
-						[name: "windowType", value: AbstractModuleWithWindow.WindowType.EVENTS],
+						[name: "windowType", value: AbstractModuleWithWindow.WindowLengthUnit.EVENTS],
 						[name: "maxKeyCount", value: 3]
 				]
 		])
@@ -81,7 +81,7 @@ class CountByKeySpec extends Specification {
 				options: [sort: [value: true], sortOrder: [value: "ascending"]],
 				inputs: [
 						[name: "windowLength", value: 0],
-						[name: "windowType", value: AbstractModuleWithWindow.WindowType.EVENTS],
+						[name: "windowType", value: AbstractModuleWithWindow.WindowLengthUnit.EVENTS],
 						[name: "maxKeyCount", value: 3]
 				]
 		])

@@ -37,7 +37,7 @@ public class LinearRegressionXY extends AbstractModuleWithWindow<LinearRegressio
 	}
 
 	@Override
-	protected void doSendOutput() {
+	protected void sendCurrentValues() {
 		double s = regression.getSlope();
 		if (s != Double.NaN) {
 			slope.send(regression.getSlope());

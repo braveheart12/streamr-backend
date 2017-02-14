@@ -19,7 +19,7 @@ public class Sum extends AbstractModuleWithWindow<Double> {
 	}
 
 	@Override
-	protected void doSendOutput() {
+	protected void sendCurrentValues() {
 		out.send(sum);
 	}
 

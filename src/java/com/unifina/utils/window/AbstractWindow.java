@@ -61,6 +61,10 @@ public abstract class AbstractWindow<T> implements Serializable, Iterable<T> {
 		return size;
 	}
 
+	public boolean isEmpty() {
+		return getSize() == 0;
+	}
+
 	public void add(T item) {
 		// Don't keep values in memory if length is 0 (infinite)
 		if (length > 0)

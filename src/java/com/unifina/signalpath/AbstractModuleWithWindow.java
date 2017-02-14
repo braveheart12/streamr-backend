@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
  * and dynamic (eg. window per key) windowing.
  * <p/>
  * The module can have a minSamples parameter that controls how many samples
- * the window must contain. Before this number is reached, doSendOutput() will
+ * the window must contain. Before this number is reached, sendCurrentValues() will
  * not be called. The variable minSamplesWindowKey controls which window will
  * be used to determine if the minSamples condition has been reached or not.
  * Set supportsMinSamples = false to disable the minSamples feature altogether.
@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 public abstract class AbstractModuleWithWindow<T> extends AbstractSignalPathModule implements ITimeListener {
 
 	// The time-based enums should have the same name as the corresponding TimeUnit.XXXX
-	public enum WindowType {
+	public enum WindowLengthUnit {
 		EVENTS,
 		SECONDS,
 		MINUTES,
@@ -38,7 +38,7 @@ public abstract class AbstractModuleWithWindow<T> extends AbstractSignalPathModu
 	}
 
 	protected IntegerParameter windowLength = new IntegerParameter(this, "windowLength", 0);
-	protected EnumParameter<WindowType> windowType = new EnumParameter<>(this, "windowType", WindowType.values());
+	protected EnumParameter<WindowLengthUnit> windowUnit = new EnumParameter<>(this, "windowUnit", WindowLengthUnit.values());
 	protected EnumParameter<WindowMode> windowMode = new EnumParameter<>(this, "windowMode", WindowMode.values());
 
 	@ExcludeInAutodetection
@@ -54,12 +54,15 @@ public abstract class AbstractModuleWithWindow<T> extends AbstractSignalPathModu
 	protected boolean supportsMinSamples = true;
 	protected Object minSamplesWindowKey = 0;
 
+	protected boolean timeWindowChangedSinceLastOutput = false;
+
 	@Override
 	public void init() {
 		addInput(windowLength);
-		addInput(windowType);
+		windowUnit.addAlias("windowType"); // Backwards compatibility
+		addInput(windowUnit);
 		addInput(windowMode);
-		windowType.setCanConnect(false);
+		windowUnit.setCanConnect(false);
 		windowMode.setCanConnect(false);
 		windowMode.setUpdateOnChange(true);
 
@@ -83,7 +86,7 @@ public abstract class AbstractModuleWithWindow<T> extends AbstractSignalPathModu
 	 * @param key
 	 */
 	protected void addToWindow(T item, Object key) {
-		if (windowType.getValue() == WindowType.EVENTS) {
+		if (windowUnit.getValue() == WindowLengthUnit.EVENTS) {
 			getWindowForKey(key).add(item);
 		} else {
 			((TimeWindow) getWindowForKey(key)).add(item, getGlobals().time);
@@ -116,11 +119,11 @@ public abstract class AbstractModuleWithWindow<T> extends AbstractSignalPathModu
 	protected AbstractWindow createWindow(Object key) {
 		AbstractWindow w;
 
-		if (windowType.getValue() == WindowType.EVENTS) {
+		if (windowUnit.getValue() == WindowLengthUnit.EVENTS) {
 			w = new EventWindow(windowLength.getValue(), createWindowListener(key));
 		} else {
 			// Expects the enum names between TimeUnit and WindowType to be equal
-			TimeUnit timeUnit = TimeUnit.valueOf(windowType.getValue().toString());
+			TimeUnit timeUnit = TimeUnit.valueOf(windowUnit.getValue().toString());
 			w = new TimeWindow(windowLength.getValue(), timeUnit, createWindowListener(key));
 		}
 
@@ -143,11 +146,13 @@ public abstract class AbstractModuleWithWindow<T> extends AbstractSignalPathModu
 	protected abstract void handleInputValues();
 
 	/**
-	 * Should send out the current value. Only gets called if the
-	 * window is ready, eg. does not require a minimum number of samples
-	 * or the minimum has been reached.
+	 * Should send out the current values as calculated from the values in the windows.
+	 *
+	 * Note that the windows might be empty, in which case a default value should be sent
+	 * (eg. 0 for Sum and Count). If no default value is defined (eg. moving average),
+	 * do not send any output.
 	 */
-	protected abstract void doSendOutput();
+	protected abstract void sendCurrentValues();
 
 	/**
 	 * Should create a WindowListener for the given key. The WindowListener
@@ -164,9 +169,7 @@ public abstract class AbstractModuleWithWindow<T> extends AbstractSignalPathModu
 	@Override
 	public void setTime(Date time) {
 		// If we have time-based windows, all of them need to be updated on time events
-		if (windowType.getValue() != WindowType.EVENTS) {
-			boolean windowChanged = false;
-
+		if (isTimeWindow()) {
 			/**
 			 * Calling TimeWindow#setTime() below might call deleteWindow() further down the stack.
 			 * Directly modifying windowByKey would result in an ConcurrentModificationException,
@@ -178,7 +181,7 @@ public abstract class AbstractModuleWithWindow<T> extends AbstractSignalPathModu
 				int initialSize = window.getSize();
 				((TimeWindow) window).setTime(time);
 				if (window.getSize() != initialSize) {
-					windowChanged = true;
+					timeWindowChangedSinceLastOutput = true;
 				}
 			}
 			iteratingWindowByKey = false;
@@ -193,8 +196,9 @@ public abstract class AbstractModuleWithWindow<T> extends AbstractSignalPathModu
 			 * Output is sent on every tick for continuous windows if the window has changed,
 			 * and for stepwise windows it is sent on every even
 			 */
-			if (isWindowReady() && windowChanged) {
-				doSendOutput();
+			if (checkSendOnTime()) {
+				sendCurrentValues();
+				timeWindowChangedSinceLastOutput = false;
 
 				if (windowMode.getValue().equals(WindowMode.STEPWISE)) {
 					clearState();
@@ -203,22 +207,51 @@ public abstract class AbstractModuleWithWindow<T> extends AbstractSignalPathModu
 		}
 	}
 
+	protected boolean isTimeWindow() {
+		return windowUnit.getValue() != WindowLengthUnit.EVENTS;
+	}
+
 	/**
 	 * Determines if a window has enough values, controlled by minSamples, for the module
 	 * to activate. If supportsMinSamples is false, this method always returns true.
 	 * Otherwise the window indicated by minSamplesWindowKey is inspected for enough values.
 	 */
-	protected boolean isWindowReady() {
-		if (windowMode.getValue() == WindowMode.CONTINUOUS && !supportsMinSamples) {
+	protected boolean continuousWindowHasEnoughValues() {
+		if (windowMode.getValue() != WindowMode.CONTINUOUS) {
+			throw new IllegalStateException("Do not call this method unless the window mode is continuous!");
+		}
+
+		if (!supportsMinSamples) {
 			return true;
 		} else {
 			AbstractWindow<T> minSamplesWindow = windowByKey.get(minSamplesWindowKey);
 			if (minSamplesWindow == null) {
 				throw new NullPointerException("No window was found with key: " + minSamplesWindowKey + ", you need to set minSamplesWindowKey! Keys: " + windowByKey.keySet());
 			} else {
-				Integer samplesNeededToBeReady = (windowMode.getValue() == WindowMode.CONTINUOUS ? minSamples.getValue() : minSamplesWindow.getLength());
+				Integer samplesNeededToBeReady = minSamples.getValue();
 				return minSamplesWindow.getSize() >= samplesNeededToBeReady;
 			}
+		}
+	}
+
+	protected boolean stepwiseWindowHasEnoughEvents() {
+		if (windowUnit.getValue() != WindowLengthUnit.EVENTS) {
+			throw new IllegalStateException("Window type is "+ windowUnit.getValue()+"! This method should only be called for event-based windows!");
+		}
+
+		AbstractWindow<T> minSamplesWindow = windowByKey.get(minSamplesWindowKey);
+		return minSamplesWindow != null && minSamplesWindow.getSize() >= windowLength.getValue();
+	}
+
+	protected boolean isTimeStep() {
+		// Continuous time windows can always send
+		if (windowMode.getValue() != WindowMode.STEPWISE) {
+			throw new IllegalStateException("Window mode is "+windowMode.getValue()+"! This method should only be called for stepwise windows!");
+		} else {
+			// Stepwise time windows only send on multiples on windowLength * windowType
+			long timestamp = getGlobals().time.getTime();
+			TimeUnit timeUnit = TimeUnit.valueOf(windowUnit.getValue().toString());
+			return timestamp % timeUnit.toMillis(windowLength.getValue()) == 0;
 		}
 	}
 
@@ -232,13 +265,27 @@ public abstract class AbstractModuleWithWindow<T> extends AbstractSignalPathModu
 		}
 
 		handleInputValues();
-		if (isWindowReady()) {
-			doSendOutput();
+
+		// Values are output on incoming events if this is not a time-based window OR WindowMode is CONTINUOUS
+		if (checkSendOnEvent()) {
+			sendCurrentValues();
 
 			if (windowMode.getValue().equals(WindowMode.STEPWISE)) {
 				clearState();
 			}
 		}
+	}
+
+	private boolean checkSendOnEvent() {
+		// Time-based windows don't send on event unless they are CONTINUOUS
+		return (!isTimeWindow() || windowMode.getValue() == WindowMode.CONTINUOUS) &&
+						(windowMode.getValue() == WindowMode.CONTINUOUS && continuousWindowHasEnoughValues() || 		// Continuous windows support minSamples
+								(windowMode.getValue() == WindowMode.STEPWISE && stepwiseWindowHasEnoughEvents()));		// Stepwise event windows check if step is full
+	}
+
+	private boolean checkSendOnTime() {
+		return (windowMode.getValue() == WindowMode.CONTINUOUS && continuousWindowHasEnoughValues() && timeWindowChangedSinceLastOutput ||
+						windowMode.getValue() == WindowMode.STEPWISE && isTimeStep());
 	}
 
 	@Override
@@ -248,6 +295,7 @@ public abstract class AbstractModuleWithWindow<T> extends AbstractSignalPathModu
 		}
 		windowByKey.clear();
 		cachedLength = null;
+		timeWindowChangedSinceLastOutput = false;
 	}
 
 }

@@ -20,7 +20,7 @@ public class MovingAverageModule extends AbstractModuleWithWindow<Double> {
 	}
 
 	@Override
-	protected void doSendOutput() {
+	protected void sendCurrentValues() {
 		out.send(sum / count);
 	}
 

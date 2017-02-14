@@ -24,13 +24,13 @@ class AbstractModuleWithWindowSpec extends Specification {
 		return m
 	}
 
-	def "the windowLength, windowType, windowMode and minSamples inputs are the first parameters, the rest are autodetected"() {
+	def "the windowLength, windowUnit, windowMode and minSamples inputs are the first parameters, the rest are autodetected"() {
 		WindowingModule m = makeModule()
 
 		expect:
 		m.getInputs().length == 5
 		m.getInputs()[0].name == "windowLength"
-		m.getInputs()[1].name == "windowType"
+		m.getInputs()[1].name == "windowUnit"
 		m.getInputs()[2].name == "windowMode"
 		m.getInputs()[3].name == "test"
 		m.getInputs()[4].name == "minSamples"
@@ -42,7 +42,7 @@ class AbstractModuleWithWindowSpec extends Specification {
 		expect:
 		m.getInputs().length == 4
 		m.getInputs()[0].name == "windowLength"
-		m.getInputs()[1].name == "windowType"
+		m.getInputs()[1].name == "windowUnit"
 		m.getInputs()[2].name == "windowMode"
 		m.getInputs()[3].name == "test"
 	}
@@ -50,14 +50,14 @@ class AbstractModuleWithWindowSpec extends Specification {
 	def "if windowMode is stepwise, minSamples input is not added even if supported"() {
 		WindowingModule m = makeModule(true, [inputs: [
 				[name: "windowLength", value: "5"],
-				[name: "windowType", value: AbstractModuleWithWindow.WindowType.EVENTS.toString()],
+				[name: "windowUnit", value: AbstractModuleWithWindow.WindowLengthUnit.EVENTS.toString()],
 				[name: "windowMode", value: AbstractModuleWithWindow.WindowMode.STEPWISE.toString()],
 		]])
 
 		expect:
 		m.getInputs().length == 4
 		m.getInputs()[0].name == "windowLength"
-		m.getInputs()[1].name == "windowType"
+		m.getInputs()[1].name == "windowUnit"
 		m.getInputs()[2].name == "windowMode"
 		m.getInputs()[3].name == "test"
 	}
@@ -65,7 +65,7 @@ class AbstractModuleWithWindowSpec extends Specification {
 	def "event listeners get correct calls for EVENTS window"() {
 		WindowingModule m = makeModule(true, [inputs: [
 				[name: "windowLength", value: "5"],
-				[name: "windowType", value: AbstractModuleWithWindow.WindowType.EVENTS.toString()],
+				[name: "windowUnit", value: AbstractModuleWithWindow.WindowLengthUnit.EVENTS.toString()],
 				[name: "windowMode", value: AbstractModuleWithWindow.WindowMode.CONTINUOUS.toString()],
 		]])
 
@@ -80,7 +80,7 @@ class AbstractModuleWithWindowSpec extends Specification {
 	def "event listeners get correct calls for SECONDS window"() {
 		WindowingModule m = makeModule(true, [inputs: [
 				[name: "windowLength", value: "5"],
-				[name: "windowType", value: AbstractModuleWithWindow.WindowType.SECONDS.toString()],
+				[name: "windowUnit", value: AbstractModuleWithWindow.WindowLengthUnit.SECONDS.toString()],
 				[name: "windowMode", value: AbstractModuleWithWindow.WindowMode.CONTINUOUS.toString()],
 		]])
 
@@ -111,7 +111,7 @@ class AbstractModuleWithWindowSpec extends Specification {
 	def "event listeners get correct calls for MINUTES window"() {
 		WindowingModule m = makeModule(true, [inputs: [
 				[name: "windowLength", value: "5"],
-				[name: "windowType", value: AbstractModuleWithWindow.WindowType.MINUTES.toString()],
+				[name: "windowUnit", value: AbstractModuleWithWindow.WindowLengthUnit.MINUTES.toString()],
 				[name: "windowMode", value: AbstractModuleWithWindow.WindowMode.CONTINUOUS.toString()]
 		]])
 
@@ -144,7 +144,7 @@ class AbstractModuleWithWindowSpec extends Specification {
 				true,
 				[inputs: [
 						[name: "windowLength", value: "5"],
-						[name: "windowType", value: AbstractModuleWithWindow.WindowType.EVENTS.toString()],
+						[name: "windowUnit", value: AbstractModuleWithWindow.WindowLengthUnit.EVENTS.toString()],
 						[name: "windowMode", value: AbstractModuleWithWindow.WindowMode.CONTINUOUS.toString()]
 				]],
 				2)
@@ -163,7 +163,7 @@ class AbstractModuleWithWindowSpec extends Specification {
 	def "sendOutput must call handleInputValues() and doSendOutput()"() {
 		WindowingModule m = makeModule(true, [inputs: [
 				[name: "windowLength", value: "5"],
-				[name: "windowType", value: AbstractModuleWithWindow.WindowType.MINUTES.toString()],
+				[name: "windowUnit", value: AbstractModuleWithWindow.WindowLengthUnit.MINUTES.toString()],
 				[name: "windowMode", value: AbstractModuleWithWindow.WindowMode.CONTINUOUS.toString()],
 				[name: "minSamples", value: "1"]
 		]])
@@ -177,13 +177,13 @@ class AbstractModuleWithWindowSpec extends Specification {
 
 		then:
 		5 * m.mock.handleInputValues()
-		5 * m.mock.doSendOutput()
+		5 * m.mock.sendCurrentValues()
 	}
 
 	def "must not call doSendOutput before minSamples is reached"() {
 		WindowingModule m = makeModule(true, [inputs: [
 				[name: "windowLength", value: "5"],
-				[name: "windowType", value: AbstractModuleWithWindow.WindowType.MINUTES.toString()],
+				[name: "windowUnit", value: AbstractModuleWithWindow.WindowLengthUnit.MINUTES.toString()],
 				[name: "windowMode", value: AbstractModuleWithWindow.WindowMode.CONTINUOUS.toString()],
 				[name: "minSamples", value: "5"]
 		]])
@@ -196,7 +196,7 @@ class AbstractModuleWithWindowSpec extends Specification {
 
 		then:
 		4 * m.mock.handleInputValues()
-		0 * m.mock.doSendOutput()
+		0 * m.mock.sendCurrentValues()
 
 		when:
 		(5..7).each {
@@ -206,13 +206,13 @@ class AbstractModuleWithWindowSpec extends Specification {
 
 		then:
 		3 * m.mock.handleInputValues()
-		3 * m.mock.doSendOutput()
+		3 * m.mock.sendCurrentValues()
 	}
 
 	def "STEPWISE EVENTS window must send out values when window is full"() {
 		WindowingModule m = makeModule(true, [inputs: [
 				[name: "windowLength", value: "5"],
-				[name: "windowType", value: AbstractModuleWithWindow.WindowType.EVENTS.toString()],
+				[name: "windowUnit", value: AbstractModuleWithWindow.WindowLengthUnit.EVENTS.toString()],
 				[name: "windowMode", value: AbstractModuleWithWindow.WindowMode.STEPWISE.toString()]
 		]])
 
@@ -224,7 +224,7 @@ class AbstractModuleWithWindowSpec extends Specification {
 
 		then:
 		4 * m.mock.handleInputValues()
-		0 * m.mock.doSendOutput()
+		0 * m.mock.sendCurrentValues()
 
 		when:
 		(5..5).each {
@@ -234,7 +234,7 @@ class AbstractModuleWithWindowSpec extends Specification {
 
 		then:
 		1 * m.mock.handleInputValues()
-		1 * m.mock.doSendOutput()
+		1 * m.mock.sendCurrentValues()
 
 		when:
 		(6..9).each {
@@ -244,7 +244,7 @@ class AbstractModuleWithWindowSpec extends Specification {
 
 		then:
 		4 * m.mock.handleInputValues()
-		0 * m.mock.doSendOutput()
+		0 * m.mock.sendCurrentValues()
 
 		when:
 		(10..10).each {
@@ -254,32 +254,44 @@ class AbstractModuleWithWindowSpec extends Specification {
 
 		then:
 		1 * m.mock.handleInputValues()
-		1 * m.mock.doSendOutput()
+		1 * m.mock.sendCurrentValues()
+	}
+
+	def "empty STEPWISE time window sends on tick"() {
+		WindowingModule m = makeModule(true, [inputs: [
+				[name: "windowLength", value: "5"],
+				[name: "windowUnit", value: AbstractModuleWithWindow.WindowLengthUnit.SECONDS.toString()],
+				[name: "windowMode", value: AbstractModuleWithWindow.WindowMode.STEPWISE.toString()]
+		]])
+
+		when: "time ticks but window is empty"
+		m.globals.time = new Date(0)
+		m.setTime(m.globals.time)
+
+		then:
+		1 * m.mock.sendCurrentValues()
 	}
 
 	def "STEPWISE time window must send out values when the appropriate time has passed"() {
 		WindowingModule m = makeModule(true, [inputs: [
 				[name: "windowLength", value: "5"],
-				[name: "windowType", value: AbstractModuleWithWindow.WindowType.SECONDS.toString()],
+				[name: "windowUnit", value: AbstractModuleWithWindow.WindowLengthUnit.SECONDS.toString()],
 				[name: "windowMode", value: AbstractModuleWithWindow.WindowMode.STEPWISE.toString()]
 		]])
 
-		when:
+		when: "values are added during first four seconds"
 		(1..4).each {
 			m.globals.time = new Date(it*1000)
 			m.setTime(m.globals.time)
-			// Add multiple test values per second
-			m.addTestValue(it)
-			m.sendOutput()
 			m.addTestValue(it)
 			m.sendOutput()
 		}
 
-		then:
+		then: "input values are handled but output is not sent"
 		4 * m.mock.handleInputValues()
-		0 * m.mock.doSendOutput()
+		0 * m.mock.sendCurrentValues()
 
-		when:
+		when: "the fifth second ticks"
 		(5..5).each {
 			m.globals.time = new Date(it*1000)
 			m.setTime(m.globals.time)
@@ -287,36 +299,48 @@ class AbstractModuleWithWindowSpec extends Specification {
 			m.sendOutput()
 		}
 
-		then:
+		then: "values are sent"
+		1 * m.mock.sendCurrentValues()
+		then: "the new value is added"
 		1 * m.mock.handleInputValues()
-		1 * m.mock.doSendOutput()
 
-		when:
+		when: "the next four seconds pass, with two events added per second"
 		(6..9).each {
 			m.globals.time = new Date(it*1000)
 			m.setTime(m.globals.time)
-			// Add multiple test values per second
+			// Try adding multiple test values per second
 			m.addTestValue(it)
 			m.sendOutput()
 			m.addTestValue(it)
 			m.sendOutput()
 		}
 
-		then:
-		4 * m.mock.handleInputValues()
-		0 * m.mock.doSendOutput()
+		then: "all input values are handled, but output is not sent"
+		8 * m.mock.handleInputValues()
+		0 * m.mock.sendCurrentValues()
 
-		when:
+		when: "the tenth second ticks"
 		(10..10).each {
 			m.globals.time = new Date(it*1000)
 			m.setTime(m.globals.time)
-			m.addTestValue(it)
-			m.sendOutput()
 		}
 
-		then:
-		1 * m.mock.handleInputValues()
-		1 * m.mock.doSendOutput()
+		then: "output is sent"
+		1 * m.mock.sendCurrentValues()
+
+		when: "window becomes empty after time has passed"
+		m.globals.time = new Date(15*1000)
+		m.setTime(m.globals.time)
+
+		then: "a value is still sent"
+		1 * m.mock.sendCurrentValues()
+
+		when: "the window remains empty after time passes"
+		m.globals.time = new Date(20*1000)
+		m.setTime(m.globals.time)
+
+		then: "a value is still sent"
+		1 * m.mock.sendCurrentValues()
 	}
 
 	class WindowingModule extends AbstractModuleWithWindow<Double> {
@@ -352,8 +376,8 @@ class AbstractModuleWithWindowSpec extends Specification {
 		}
 
 		@Override
-		protected void doSendOutput() {
-			mock.doSendOutput()
+		protected void sendCurrentValues() {
+			mock.sendCurrentValues()
 		}
 	}
 

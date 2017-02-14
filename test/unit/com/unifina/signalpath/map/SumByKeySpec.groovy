@@ -23,7 +23,7 @@ class SumByKeySpec extends Specification {
 				options: [sort: [value: false]],
 				inputs: [
 						[name: "windowLength", value: 0],
-						[name: "windowType", value: AbstractModuleWithWindow.WindowType.EVENTS],
+						[name: "windowType", value: AbstractModuleWithWindow.WindowLengthUnit.EVENTS],
 						[name: "maxKeyCount", value: 0]
 				]
 		])
@@ -54,7 +54,7 @@ class SumByKeySpec extends Specification {
 				options: [sort: [value: false]],
 				inputs: [
 						[name: "windowLength", value: 2],
-						[name: "windowType", value: AbstractModuleWithWindow.WindowType.EVENTS],
+						[name: "windowType", value: AbstractModuleWithWindow.WindowLengthUnit.EVENTS],
 						[name: "maxKeyCount", value: 0]
 				]
 		])
@@ -85,7 +85,7 @@ class SumByKeySpec extends Specification {
 				options: [sort: [value: true], sortOrder: [value: "descending"], deleteEmptyKeys: [value: false]],
 				inputs: [
 						[name: "windowLength", value: 2],
-						[name: "windowType", value: AbstractModuleWithWindow.WindowType.EVENTS],
+						[name: "windowType", value: AbstractModuleWithWindow.WindowLengthUnit.EVENTS],
 						[name: "maxKeyCount", value: 3]
 				]
 		])
@@ -116,7 +116,7 @@ class SumByKeySpec extends Specification {
 				options: [sort: [value: false], deleteEmptyKeys: [value: true]],
 				inputs: [
 						[name: "windowLength", value: 5],
-						[name: "windowType", value: AbstractModuleWithWindow.WindowType.SECONDS],
+						[name: "windowType", value: AbstractModuleWithWindow.WindowLengthUnit.SECONDS],
 						[name: "maxKeyCount", value: 0]
 				]
 		])

@@ -7,6 +7,7 @@ import com.unifina.utils.window.TimedValue;
 import com.unifina.utils.window.WindowListener;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class MovingWindow extends AbstractModuleWithWindow<Object> {
@@ -19,7 +20,7 @@ public class MovingWindow extends AbstractModuleWithWindow<Object> {
 	}
 
 	@Override
-	protected void doSendOutput() {
+	protected void sendCurrentValues() {
 		List<Object> lst = new ArrayList<>();
 		for (Object o : get1DWindow()) {
 			if (o instanceof TimedValue) {
