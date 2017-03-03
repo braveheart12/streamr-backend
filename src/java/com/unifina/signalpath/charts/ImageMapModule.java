@@ -44,4 +44,22 @@ public class ImageMapModule extends MapModule {
 			customImageUrl = options.getOption("customImageUrl").getString();
 		}
 	}
+
+	String getYInputName() {
+		return "y";
+	}
+
+	String getXInputName() {
+		return "x";
+	}
+
+	@Override
+	String getCenterYOptionName() {
+		return "centerY";
+	}
+
+	@Override
+	String getCenterXOptionName() {
+		return "centerX";
+	}
 }

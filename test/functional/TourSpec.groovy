@@ -109,8 +109,8 @@ class TourSpec extends LoginTester1Spec {
 		}
 
 		advance {
-			connectEndpoints(findOutput("Stream", "lat"), findInput("Map", "latitude"))
-			connectEndpoints(findOutput("Stream", "long"), findInput("Map", "longitude"))
+			connectEndpoints(findOutput("Stream", "lat"), findInput("Map", "yInput"))
+			connectEndpoints(findOutput("Stream", "long"), findInput("Map", "xInput"))
 		}
 
 		advance {

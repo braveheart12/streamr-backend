@@ -6,22 +6,9 @@
     // default non-directional marker icon
     var DEFAULT_MARKER_ICON = "fa fa-map-marker fa-4x"
 
-    var skins = {
-        default: {
-            layerUrl: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-            layerAttribution: "© OpenStreetMap contributors, Streamr"
-        },
-        cartoDark: {
-            layerUrl: "http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-            layerAttribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://cartodb.com/attributions">CartoDB</a>, Streamr'
-        },
-        esriDark: {
-            layerUrl: "{s}.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
-            layerAttribution: "Esri, HERE, DeLorme, MapmyIndia, © OpenStreetMap contributors, Streamr"
-        }
-    }
+    
 
-    function StreamrMap(parent, options) {
+    function AbstractStreamrMap(parent, options) {
 
         var _this = this
 
@@ -37,14 +24,11 @@
 
         // Default options
         this.options = $.extend({}, {
-            centerLat: 35,
-            centerLng: 15,
             zoom: 2,
             minZoom: 2,
             maxZoom: 18,
             traceWidth: 2,
             drawTrace: false,
-            skin: "default",
             markerIcon: DEFAULT_MARKER_ICON
         }, options || {})
 
@@ -63,77 +47,45 @@
         if (!this.parent.attr("id")) {
             this.parent.attr("id", "map-" + Date.now())
         }
-
-        this.skin = skins[this.options.skin] || skins.default
-
-        this.map = new L.Map(this.parent[0], {
-            center: new L.LatLng(this.options.centerLat, this.options.centerLng),
-            zoom: this.options.zoom,
-            minZoom: this.options.minZoom,
-            maxZoom: this.options.maxZoom
-        })
         
-        if (!this.options.customImageUrl) {
-            this.createMapLayer()
-        } else {
-            this.createCustomImageLayer()
-        }
-
-        var mouseEventHandler = function() {
-            _this.untouched = false
-        }
-
-        this.map.once("dragstart click", mouseEventHandler)
-        // For some reason, listening to 'wheel' event didn't work
-        this.map._container.addEventListener("mousewheel", mouseEventHandler)
-        // 'mousewheel' doesn't work in Firefox but 'DOMMouseScroll' does
-        this.map._container.addEventListener("DOMMouseScroll", mouseEventHandler)
-
-        this.map.on("moveend", function() {
-            $(_this).trigger("move", {
-                centerLat: _this.getCenter().lat,
-                centerLng: _this.getCenter().lng,
-                zoom: _this.getZoom()
-            })
-        })
+		this.createMap()
+		this.createMapLayer()
 
         if (this.options.drawTrace) {
             this.lineLayer = this.createTraceLayer()
         }
     }
-    
-    StreamrMap.prototype.createMapLayer = function() {
-        L.tileLayer(
-            this.skin.layerUrl, {
-                attribution: this.skin.layerAttribution,
-                minZoom: this.options.minZoom,
-                maxZoom: this.options.maxZoom
-            }
-        ).addTo(this.map)
-    }
 
-    StreamrMap.prototype.createCustomImageLayer = function() {
-        // Load image with jQuery to get width/height
-        var _this = this
-        $("<img/>", {
-            src: this.options.customImageUrl,
-            load: function() {
-                _this.customImageWidth = this.width;
-                _this.customImageHeight = this.height;
-                console.info("Read", _this.options.customImageUrl, "with dimensions", this.width, "x", this.height)
+    AbstractStreamrMap.prototype.createMap = function() {
+		var _this = this
+		
+		this.map = new L.Map(this.parent[0], {
+			center: new L.LatLng(this.options.centerLat, this.options.centerLng),
+			zoom: this.options.zoom,
+			minZoom: this.options.minZoom,
+			maxZoom: this.options.maxZoom
+		})
+		var mouseEventHandler = function() {
+			_this.untouched = false
+		}
+	
+		this.map.once("dragstart click", mouseEventHandler)
+		// For some reason, listening to 'wheel' event didn't work
+		this.map._container.addEventListener("mousewheel", mouseEventHandler)
+		// 'mousewheel' doesn't work in Firefox but 'DOMMouseScroll' does
+		this.map._container.addEventListener("DOMMouseScroll", mouseEventHandler)
+	
+		//this.map.on("moveend", function() {
+		//	$(_this).trigger("move", {
+		//		centerLat: _this.getCenter().lat,
+		//		centerLng: _this.getCenter().lng,
+		//		zoom: _this.getZoom()
+		//	})
+		//})
+		return this.map
+	}
 
-                _this.map.options.crs = L.CRS.Simple
-                _this.map.setView(L.latLng(_this.options.centerLat, _this.options.centerLng), _this.options.zoom, {
-                    animate: false
-                })
-                var bounds = L.latLngBounds(L.latLng(_this.customImageHeight, 0), L.latLng(0, _this.customImageWidth))
-                L.imageOverlay(_this.options.customImageUrl, bounds).addTo(_this.map)
-                _this.parent.find(".leaflet-tile-pane").css("z-index", 1000)
-            }
-        })
-    }
-
-    StreamrMap.prototype.createTraceLayer = function() {
+    AbstractStreamrMap.prototype.createTraceLayer = function() {
         var _this = this
         this.traceUpdates = {}
         this.lastLatLngs = {}
@@ -201,23 +153,23 @@
         }).addTo(this.map)
     }
     
-    StreamrMap.prototype.getZoom = function() {
+    AbstractStreamrMap.prototype.getZoom = function() {
         return this.map.getZoom()
     }
 
-    StreamrMap.prototype.getCenter = function() {
+    AbstractStreamrMap.prototype.getCenter = function() {
         return this.map.getCenter()
     }
 
-    StreamrMap.prototype.setCenter = function(lat, lng) {
+    AbstractStreamrMap.prototype.setCenter = function(lat, lng) {
         this.map.setView(new L.LatLng(lat, lng))
     }
 
-    StreamrMap.prototype.addMarker = function(attr) {
+    AbstractStreamrMap.prototype.addMarker = function(attr) {
         var id = attr.id
         var label = attr.label || attr.id
-        var lat = attr.lat
-        var lng = attr.lng
+        var lat = attr.y
+        var lng = attr.x
         var rotation = attr.dir
         var color = attr.color
         var latlng = new L.LatLng(lat, lng)
@@ -240,7 +192,7 @@
         return marker
     }
     
-    StreamrMap.prototype.removeMarkerById = function(id) {
+    AbstractStreamrMap.prototype.removeMarkerById = function(id) {
         var marker = this.markers[id]
         delete this.markers[id]
         delete this.pendingMarkerUpdates[id]
@@ -250,20 +202,20 @@
         this.map.removeLayer(marker)
     }
     
-    StreamrMap.prototype.removeMarkersByIds = function(idList) {
+    AbstractStreamrMap.prototype.removeMarkersByIds = function(idList) {
         for (var i in idList) {
             this.removeMarkerById(idList[i])
         }
     }
     
-    StreamrMap.prototype.removeTracePoints = function(tracePointIds) {
+    AbstractStreamrMap.prototype.removeTracePoints = function(tracePointIds) {
         for (var i=0; i < tracePointIds.length; ++i) {
             delete this.traceUpdates[tracePointIds[i]]
         }
         this.lineLayer.render()
     }
     
-    StreamrMap.prototype.setAutoZoom = function(lat, lng) {
+    AbstractStreamrMap.prototype.setAutoZoom = function(lat, lng) {
         var _this = this
 
         this.autoZoomBounds.lat.min = Math.min(lat, this.autoZoomBounds.lat.min)
@@ -284,7 +236,7 @@
         }
     }
 
-    StreamrMap.prototype.createMarker = function(id, label, latlng, rotation) {
+    AbstractStreamrMap.prototype.createMarker = function(id, label, latlng, rotation) {
         var marker = this.options.directionalMarkers ? L.marker(latlng, {
             icon: L.divIcon({
                 iconSize:     [19, 48], // size of the icon
@@ -316,7 +268,7 @@
         return marker
     }
 
-    StreamrMap.prototype.moveMarker = function(id, lat, lng, rotation) {
+    AbstractStreamrMap.prototype.moveMarker = function(id, lat, lng, rotation) {
         var newLatLng = L.latLng(lat, lng)
         var update = { latlng: newLatLng }
         if (this.options.directionalMarkers) {
@@ -340,14 +292,14 @@
         this.requestUpdate()
     }
 
-    StreamrMap.prototype.requestUpdate = function() {
+    AbstractStreamrMap.prototype.requestUpdate = function() {
         if (!this.animationFrameRequested) {
             this.animationFrameRequested = true;
             L.Util.requestAnimFrame(this.animate, this, true);
         }
     }
 
-    StreamrMap.prototype.animate = function() {
+    AbstractStreamrMap.prototype.animate = function() {
         var _this = this
         Object.keys(this.pendingMarkerUpdates).forEach(function(id) {
             var update = _this.pendingMarkerUpdates[id]
@@ -368,7 +320,7 @@
         this.animationFrameRequested = false
     }
 
-    StreamrMap.prototype.addTracePoint = function(id, lat, lng, color, tracePointId) {
+    AbstractStreamrMap.prototype.addTracePoint = function(id, lat, lng, color, tracePointId) {
         var latlng = L.latLng(lat,lng)
         var lastLatLng = this.lastLatLngs[id]
         if (lastLatLng) {
@@ -386,22 +338,9 @@
         this.lastLatLngs[id] = latlng
     }
 
-    StreamrMap.prototype.handleMessage = function(d) {
-        if (d.t) {
-            if (d.t === "p") {
-                this.addMarker(d)
-            } else if (d.t === "d") {
-                if (d.markerList && d.markerList.length) {
-                    this.removeMarkersByIds(d.markerList)
-                }
-                if (d.pointList && d.pointList.length) {
-                    this.removeTracePoints(d.pointList)
-                }
-            }
-        }
-    }
+    
 
-    StreamrMap.prototype.resize = function(width, height) {
+    AbstractStreamrMap.prototype.resize = function(width, height) {
         this.parent.css("width", width+"px")
         this.parent.css("height", height+"px")
         this.map.invalidateSize()
@@ -409,19 +348,13 @@
             this.lineLayer.redraw()
     }
 
-    StreamrMap.prototype.toJSON = function() {
+    AbstractStreamrMap.prototype.toJSON = function() {
         return this.getCenterAndZoom();
     }
 
-    StreamrMap.prototype.getCenterAndZoom = function() {
-        return {
-            centerLat: this.map.getCenter().lat,
-            centerLng: this.map.getCenter().lng,
-            zoom: this.map.getZoom()
-        }
-    }
+   
 
-    StreamrMap.prototype.clear = function() {
+    AbstractStreamrMap.prototype.clear = function() {
         var _this = this
         $.each(this.markers, function(k, v) {
             _this.map.removeLayer(v)
@@ -440,6 +373,6 @@
         this.pendingLineUpdates = []
     }
 
-    exports.StreamrMap = StreamrMap
+    exports.AbstractStreamrMap = AbstractStreamrMap
 
 })(typeof(exports) !== 'undefined' ? exports : window)

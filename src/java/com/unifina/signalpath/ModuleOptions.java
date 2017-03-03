@@ -39,5 +39,4 @@ public class ModuleOptions extends LinkedHashMap<String, Object> {
 			add(option);
 		}
 	}
-	
 }

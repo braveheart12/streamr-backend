@@ -85,7 +85,7 @@ class CSVImporterSpec extends Specification {
 		schema.entries[5].type == "string"
 		schema.entries[6].name == "ucr_ncic_code"
 		schema.entries[6].type == "number"
-		schema.entries[7].name == "latitude"
+		schema.entries[7].name == "yInput"
 		schema.entries[7].type == "number"
 		schema.entries[8].name == "longitude"
 		schema.entries[8].type == "number"

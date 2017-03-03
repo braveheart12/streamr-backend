@@ -6,6 +6,7 @@ import com.unifina.signalpath.ModuleOptions;
 import java.util.Map;
 
 public class GeographicalMapModule extends MapModule {
+
 	private String skin;    // e.g. "default", "cartoDark", "esriDark"
 
 	public GeographicalMapModule() {
@@ -38,5 +39,23 @@ public class GeographicalMapModule extends MapModule {
 		if (options.containsKey("skin")) {
 			skin = options.getOption("skin").getString();
 		}
+	}
+
+	String getYInputName() {
+		return "latitude";
+	}
+
+	String getXInputName() {
+		return "longitude";
+	}
+
+	@Override
+	String getCenterYOptionName() {
+		return "centerLat";
+	}
+
+	@Override
+	String getCenterXOptionName() {
+		return "centerLng";
 	}
 }

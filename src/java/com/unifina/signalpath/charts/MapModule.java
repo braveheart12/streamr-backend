@@ -12,13 +12,15 @@ abstract class MapModule extends ModuleWithUI implements ITimeListener {
 
 	private final Input<Object> id = new Input<>(this, "id", "Object");
 	private final Input<Object> label = new Input<>(this, "label", "Object");
-	private final TimeSeriesInput latitude = new TimeSeriesInput(this, "latitude");
-	private final TimeSeriesInput longitude = new TimeSeriesInput(this, "longitude");
+
+	private final TimeSeriesInput yInput = new TimeSeriesInput(this, getYInputName());
+	private final TimeSeriesInput xInput = new TimeSeriesInput(this, getXInputName());
+
 	private final TimeSeriesInput heading = new TimeSeriesInput(this, "heading");		// degrees clockwise ("right-handed down")
 	private final ColorParameter color = new ColorParameter(this, "traceColor", new StreamrColor(233, 87, 15));
 
-	private double centerLat;
-	private double centerLng;
+	private double centerY;
+	private double centerX;
 	private int minZoom;
 	private int maxZoom;
 	private int zoom;
@@ -36,9 +38,9 @@ abstract class MapModule extends ModuleWithUI implements ITimeListener {
 	private int expiringTimeOfTraceInSecs = 0;
 	private final List<ExpiringItem> expiringTracePoints = new LinkedList<>();
 
-	MapModule(double centerLat, double centerLng, int minZoom, int maxZoom, int zoom, boolean autoZoom) {
-		this.centerLat = centerLat;
-		this.centerLng = centerLng;
+	MapModule(double centerY, double centerX, int minZoom, int maxZoom, int zoom, boolean autoZoom) {
+		this.centerY = centerY;
+		this.centerX = centerX;
 		this.minZoom = minZoom;
 		this.maxZoom = maxZoom;
 		this.zoom = zoom;
@@ -48,16 +50,16 @@ abstract class MapModule extends ModuleWithUI implements ITimeListener {
 	@Override
 	public void init() {
 		addInput(id);
-		addInput(latitude);
-		addInput(longitude);
+		addInput(yInput);
+		addInput(xInput);
 		this.resendAll = false;
 		this.resendLast = 0;
-		latitude.setDrivingInput(true);
-		latitude.canHaveInitialValue = false;
-		latitude.canBeFeedback = false;
-		longitude.setDrivingInput(true);
-		longitude.canHaveInitialValue = false;
-		longitude.canBeFeedback = false;
+		yInput.setDrivingInput(true);
+		yInput.canHaveInitialValue = false;
+		yInput.canBeFeedback = false;
+		xInput.setDrivingInput(true);
+		xInput.canHaveInitialValue = false;
+		xInput.canBeFeedback = false;
 		id.setDrivingInput(true);
 		id.canBeFeedback = false;
 		id.requiresConnection = false;
@@ -79,8 +81,8 @@ abstract class MapModule extends ModuleWithUI implements ITimeListener {
 	public void sendOutput() {
 		Marker marker = new Marker(
 			id.getValue(),
-			latitude.getValue(),
-			longitude.getValue(),
+			yInput.getValue(),
+			xInput.getValue(),
 			color.getValue()
 		);
 
@@ -120,8 +122,8 @@ abstract class MapModule extends ModuleWithUI implements ITimeListener {
 		Map<String, Object> config = super.getConfiguration();
 
 		ModuleOptions options = ModuleOptions.get(config);
-		options.addIfMissing(ModuleOption.createDouble("centerLat", centerLat));
-		options.addIfMissing(ModuleOption.createDouble("centerLng", centerLng));
+		options.addIfMissing(ModuleOption.createDouble(getCenterYOptionName(), centerY));
+		options.addIfMissing(ModuleOption.createDouble(getCenterXOptionName(), centerX));
 		options.addIfMissing(ModuleOption.createInt("minZoom", minZoom));
 		options.addIfMissing(ModuleOption.createInt("maxZoom", maxZoom));
 		options.addIfMissing(ModuleOption.createInt("zoom", zoom));
@@ -155,12 +157,12 @@ abstract class MapModule extends ModuleWithUI implements ITimeListener {
 		super.onConfiguration(config);
 		ModuleOptions options = ModuleOptions.get(config);
 
-		if (options.containsKey("centerLat")) {
-			centerLat = options.getOption("centerLat").getDouble();
+		if (options.containsKey("centerY")) {
+			centerY = options.getOption("centerY").getDouble();
 		}
 
-		if (options.containsKey("centerLng")) {
-			centerLng = options.getOption("centerLng").getDouble();
+		if (options.containsKey("centerX")) {
+			centerX = options.getOption("centerX").getDouble();
 		}
 
 		if (options.containsKey("minZoom")) {
@@ -252,11 +254,11 @@ abstract class MapModule extends ModuleWithUI implements ITimeListener {
 	 * Marker point
 	 */
 	private static class Marker extends LinkedHashMap<String, Object> {
-		private Marker(Object id, Double latitude, Double longitude, StreamrColor color) {
+		private Marker(Object id, Double y, Double x, StreamrColor color) {
 			put("t", "p");	// type: MapPoint
 			put("id", id.toString());
-			put("lat", latitude);
-			put("lng", longitude);
+			put("y", y);
+			put("x", x);
 			put("color", color.toString());
 		}
 	}
@@ -296,4 +298,9 @@ abstract class MapModule extends ModuleWithUI implements ITimeListener {
 			put("pointList", pointIdList);
 		}
 	}
+
+	abstract String getYInputName();
+	abstract String getXInputName();
+	abstract String getCenterYOptionName();
+	abstract String getCenterXOptionName();
 }

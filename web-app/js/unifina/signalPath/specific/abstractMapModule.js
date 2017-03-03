@@ -1,4 +1,5 @@
-SignalPath.MapModule = function(data, canvas, prot) {
+
+SignalPath.AbstractMapModule = function(data, canvas, prot) {
 	prot = prot || {};
 	var pub = SignalPath.UIChannelModule(data, canvas, prot)
     var container
@@ -25,7 +26,7 @@ SignalPath.MapModule = function(data, canvas, prot) {
         var mapOptions = _.mapValues(prot.jsonData.options, function(o) {
             return o.value
         })
-		map = new StreamrMap(container, mapOptions)
+		map = prot.createMap(mapOptions)
 
 		$(map).on("move", function(e, data) {
 			$.each(data, function(k, v) {
@@ -61,6 +62,7 @@ SignalPath.MapModule = function(data, canvas, prot) {
 	
 	var superClean = pub.clean;
 	pub.clean = function() {
+		superClean()
 		if (map)
 			map.clear()
 	}
