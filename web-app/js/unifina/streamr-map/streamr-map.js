@@ -143,7 +143,7 @@
                     _this.traceRedrawTimeout = setTimeout(function() {
                         var count = i + TRACE_REDRAW_BATCH_SIZE
                         while (i < count && i < updates.length) {
-                            var point = bigPointLayer._map.latLngToContainerPoint(updates[i].latlng);
+                            var point = bigPointLayer._mapToAdd.latLngToContainerPoint(updates[i].latlng);
                             bigPointLayer.renderCircle(ctx, point, _this.options.traceRadius, updates[i].color)
                             i++
                         }
@@ -156,8 +156,8 @@
                 _this.pendingLineUpdates = []
             }
         })
-
-        var layer = new LinePointLayer().addTo(this.map)
+        var layer = new LinePointLayer()
+        this.map.addLayer(layer)
         return layer
     }
 
