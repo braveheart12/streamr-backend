@@ -111,11 +111,7 @@
         this.map._container.addEventListener("DOMMouseScroll", mouseEventHandler)
 
         this.map.on("moveend", function() {
-            $(_this).trigger("move", {
-                centerLat: _this.getCenter().lat,
-                centerLng: _this.getCenter().lng,
-                zoom: _this.getZoom()
-            })
+            $(_this).trigger("move", _this.getCenterAndZoom())
         })
 
         if (this.options.drawTrace) {
