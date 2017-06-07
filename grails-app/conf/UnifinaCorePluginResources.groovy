@@ -262,6 +262,9 @@ modules = {
 	'confirm-button' {
 		resource url:[dir:'js/unifina/confirm-button', file:'confirm-button.js', plugin: 'unifina-core']
 	}
+	'two-finger-scroll-div' {
+		resource url:[dir:'js/unifina/two-finger-scroll-div', file:'TwoFingerScrollDiv.js', plugin: 'unifina-core']
+	}
 	'signalpath-core' {
 		// Easier to merge if dependencies are one-per-row instead of comma-separated list
 		dependsOn 'streamr'
@@ -289,6 +292,7 @@ modules = {
 		dependsOn 'list-editor'
 		dependsOn 'confirm-button'
 		dependsOn 'name-editor'
+		dependsOn 'two-finger-scroll-div'
 		resource url:[dir:'js/unifina/signalPath/core', file:'signalPath.js', plugin: 'unifina-core']
 		resource url:[dir:'js/unifina/signalPath/generic', file:'emptyModule.js', plugin: 'unifina-core']
 		resource url:[dir:'js/unifina/signalPath/generic', file:'genericModule.js', plugin: 'unifina-core']
