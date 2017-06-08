@@ -10,15 +10,15 @@ import {
     UPDATE_AND_SAVE_DASHBOARD_REQUEST,
     UPDATE_AND_SAVE_DASHBOARD_SUCCESS,
     UPDATE_AND_SAVE_DASHBOARD_FAILURE,
-    CREATE_DASHBOARD_REQUEST,
-    CREATE_DASHBOARD_SUCCESS,
-    CREATE_DASHBOARD_FAILURE,
+    CREATE_DASHBOARD,
     DELETE_DASHBOARD_REQUEST,
     DELETE_DASHBOARD_SUCCESS,
     DELETE_DASHBOARD_FAILURE,
     GET_MY_DASHBOARD_PERMISSIONS_REQUEST,
     GET_MY_DASHBOARD_PERMISSIONS_SUCCESS,
-    GET_MY_DASHBOARD_PERMISSIONS_FAILURE
+    GET_MY_DASHBOARD_PERMISSIONS_FAILURE,
+    OPEN_DASHBOARD,
+    UPDATE_DASHBOARD
 } from '../actions/dashboard.js'
 
 declare var _: any
@@ -26,19 +26,31 @@ declare var _: any
 import type {
     DashboardReducerState as State,
     DashboardReducerAction as Action
-} from '../types/dashboard-types'
+} from '../flowtype/dashboard-types'
 
 const initialState = {
     dashboardsById: {},
+    openDashboard: {
+        id: null,
+        saved: false,
+        new: true
+    },
     error: null,
-    fetching: false
+    fetching: false,
 }
 
 const dashboard = function(state: State = initialState, action: Action) : State {
     switch (action.type) {
+        case OPEN_DASHBOARD:
+            return {
+                ...state,
+                openDashboard: {
+                    ...state.openDashboard,
+                    id: action.id
+                }
+            }
         case GET_AND_REPLACE_DASHBOARDS_REQUEST:
         case GET_DASHBOARD_REQUEST:
-        case CREATE_DASHBOARD_REQUEST:
         case UPDATE_AND_SAVE_DASHBOARD_REQUEST:
         case DELETE_DASHBOARD_REQUEST:
         case GET_MY_DASHBOARD_PERMISSIONS_REQUEST:
@@ -53,8 +65,29 @@ const dashboard = function(state: State = initialState, action: Action) : State 
                 fetching: false,
                 error: null
             }
+        case CREATE_DASHBOARD:
+        case UPDATE_DASHBOARD: {
+            if (!action.dashboard || !action.dashboard.id) {
+                return state
+            }
+            return {
+                ...state,
+                dashboardsById: {
+                    ...state.dashboardsById,
+                    [action.dashboard.id]: {
+                        ...state.dashboardsById[action.dashboard.id],
+                        ...action.dashboard
+                    }
+                },
+                openDashboard: {
+                    ...state.openDashboard,
+                    saved: false
+                },
+                error: null,
+                fetching: false
+            }
+        }
         case GET_DASHBOARD_SUCCESS:
-        case CREATE_DASHBOARD_SUCCESS:
         case UPDATE_AND_SAVE_DASHBOARD_SUCCESS: {
             if (!action.dashboard || !action.dashboard.id) {
                 return state
@@ -67,6 +100,11 @@ const dashboard = function(state: State = initialState, action: Action) : State 
                         ...state.dashboardsById[action.dashboard.id],
                         ...action.dashboard
                     }
+                },
+                openDashboard: {
+                    ...state.openDashboard,
+                    saved: true,
+                    new: false
                 },
                 error: null,
                 fetching: false
@@ -96,7 +134,7 @@ const dashboard = function(state: State = initialState, action: Action) : State 
                     ...state.dashboardsById,
                     [action.id]: {
                         ...state.dashboardsById[action.id],
-                        permissions: action.permissions || []
+                        ownPermissions: action.permissions || []
                     }
                 },
                 error: null,
@@ -106,7 +144,6 @@ const dashboard = function(state: State = initialState, action: Action) : State 
         
         case GET_AND_REPLACE_DASHBOARDS_FAILURE:
         case GET_DASHBOARD_FAILURE:
-        case CREATE_DASHBOARD_FAILURE:
         case UPDATE_AND_SAVE_DASHBOARD_FAILURE:
         case DELETE_DASHBOARD_FAILURE:
         case GET_MY_DASHBOARD_PERMISSIONS_FAILURE:

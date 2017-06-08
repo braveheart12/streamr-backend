@@ -4,7 +4,7 @@ import React, {Component} from 'react'
 
 import ModuleInModuleList from './ModuleInModuleList'
 
-import type { Canvas, CanvasModule } from '../../../../../../types/canvas-types'
+import type { Canvas, CanvasModule } from '../../../../../../flowtype/canvas-types'
 
 export default class ModuleList extends Component {
     
@@ -18,7 +18,7 @@ export default class ModuleList extends Component {
         return (
             <ul className="mmc-dropdown-delay animated fadeInLeft">
                 {modules.sort((a, b) => a.name.localeCompare(b.name)).map(module => (
-                    <ModuleInModuleList key={module.id} module={module} canvasId={canvasId} />
+                    <ModuleInModuleList key={module.hash} module={module} canvasId={canvasId} />
                 ))}
             </ul>
         )

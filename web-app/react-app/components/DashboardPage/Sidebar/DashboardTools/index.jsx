@@ -1,14 +1,16 @@
 // @flow
 
 import React, {Component} from 'react'
+import {any} from 'prop-types'
 import {connect} from 'react-redux'
 import {Button} from 'react-bootstrap'
 import FontAwesome from 'react-fontawesome'
-import path from 'path'
+
+import ShareDialog from '../../../ShareDialog'
 
 import {updateAndSaveDashboard, deleteDashboard} from '../../../../actions/dashboard'
 
-import type { Dashboard } from '../../../../types'
+import type { Dashboard } from '../../../../flowtype/dashboard-types'
 
 declare var ConfirmButton: Function
 declare var Streamr: any
@@ -17,19 +19,25 @@ class DashboardTools extends Component {
     
     removeButton: HTMLButtonElement
     onSave: Function
-    onShare: Function
     onDelete: Function
     
     props: {
         dashboard: Dashboard,
-        dispatch: Function
+        openDashboard: {
+            new: boolean
+        },
+        dispatch: Function,
+        router: any
+    }
+    
+    static contextTypes = {
+        router: any
     }
     
     constructor() {
         super()
         
         this.onSave = this.onSave.bind(this)
-        this.onShare = this.onShare.bind(this)
         this.onDelete = this.onDelete.bind(this)
     }
     
@@ -46,17 +54,17 @@ class DashboardTools extends Component {
     }
     
     onSave() {
-        this.props.dispatch(updateAndSaveDashboard(this.props.dashboard))
-            .then(() => Streamr.showSuccess('Dashboard saved!'))
-    }
-    
-    onShare() {
-    
+        this.props.dispatch(updateAndSaveDashboard(this.props.dashboard, this.props.openDashboard.new || false))
+            .then(({dashboard}) => {
+                this.context.router.push(`/${dashboard.id}`)
+            })
     }
     
     onDelete() {
         this.props.dispatch(deleteDashboard(this.props.dashboard.id))
-            .then(() => window.location = path.resolve(window.location.href, '..'))
+            .then(() => window.location = Streamr.createLink({
+                uri: '/dashboards/list'
+            }))
     }
     
     render() {
@@ -71,13 +79,14 @@ class DashboardTools extends Component {
                 >
                     Save
                 </Button>
-                <Button
-                    block
-                    className="share-button"
-                    onClick={this.onShare}
-                >
-                    <FontAwesome name="user" />  Share
-                </Button>
+                <ShareDialog>
+                    <Button
+                        block
+                        className="share-button"
+                    >
+                        <FontAwesome name="user" />  Share
+                    </Button>
+                </ShareDialog>
                 <button
                     className="btn btn-default btn-block delete-button"
                     title="Delete dashboard"
@@ -90,4 +99,8 @@ class DashboardTools extends Component {
     }
 }
 
-export default connect()(DashboardTools)
+const mapStateToProps = ({dashboard}) => ({
+    openDashboard: dashboard.openDashboard || {}
+})
+
+export default connect(mapStateToProps)(DashboardTools)

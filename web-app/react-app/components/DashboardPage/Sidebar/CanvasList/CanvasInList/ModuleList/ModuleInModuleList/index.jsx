@@ -7,15 +7,10 @@ import FontAwesome from 'react-fontawesome'
 import {addDashboardItem, removeDashboardItem} from '../../../../../../../actions/dashboard'
 
 import styles from './moduleInModuleList.pcss'
+import uuid from 'uuid'
 
-import type { Dashboard, DashboardItem } from '../../../../../../../types/dashboard-types'
-import type { Canvas, CanvasModule } from '../../../../../../../types/canvas-types'
-
-declare var _: any
-
-// TODO: find a better way
-const id = parseFloat(window.location.href.split('/dashboard/showNew/')[1])
-
+import type { Dashboard, DashboardItem } from '../../../../../../../flowtype/dashboard-types'
+import type { Canvas, CanvasModule } from '../../../../../../../flowtype/canvas-types'
 
 class ModuleInModuleList extends Component {
     
@@ -26,7 +21,8 @@ class ModuleInModuleList extends Component {
         module: CanvasModule,
         canvasId: Canvas.id,
         checked: boolean,
-        dispatch: Function
+        dispatch: Function,
+        id: Dashboard.id
     }
     
     constructor() {
@@ -36,14 +32,14 @@ class ModuleInModuleList extends Component {
     
     onClick() {
         const dbItem: DashboardItem = {
-            id: null,
+            id: uuid.v4(),
             dashboard: this.props.dashboard.id,
             module: this.props.module.hash,
             canvas: this.props.canvasId,
             webcomponent: this.props.module.uiChannel.webcomponent,
             size: 'small',
             ord: 0,
-            name: 'Unknown'
+            title: this.props.module.name
         }
         if (this.props.checked) {
             this.props.dispatch(removeDashboardItem(this.props.dashboard, dbItem))
@@ -66,10 +62,10 @@ class ModuleInModuleList extends Component {
 }
 
 const mapStateToProps = ({dashboard}, ownProps) => {
-    const db = dashboard.dashboardsById[id]
+    const db = dashboard.dashboardsById[dashboard.openDashboard.id] || {}
     return {
         dashboard: db,
-        checked: _.find(db.items, item => item.canvas === ownProps.canvasId && item.module === ownProps.module.hash) !== undefined
+        checked: db && db.items ? db.items.find(item => item.canvas === ownProps.canvasId && item.module === ownProps.module.hash) !== undefined : false
     }
 }
 

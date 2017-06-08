@@ -1,8 +1,5 @@
 package com.unifina.controller.api
 
-import com.unifina.api.SaveDashboardCommand
-import com.unifina.api.StreamrApiHelper
-import com.unifina.api.ValidationException
 import com.unifina.domain.dashboard.Dashboard
 import com.unifina.domain.security.Permission
 import com.unifina.domain.security.SecUser
@@ -34,35 +31,25 @@ class DashboardApiController {
 	}
 
 	@StreamrApi
-	def show(Long id) {
+	def show(String id) {
 		def dashboard = dashboardService.findById(id, (SecUser) request.apiUser)
 		render(dashboard.toMap() as JSON)
 	}
 
 	@StreamrApi
-	def save(SaveDashboardCommand command) {
-		if (!command.validate()) {
-			throw new ValidationException(command.errors)
-		}
-		def dashboard = new Dashboard(
-			name: command.name,
-			user: request.apiUser
-		)
-		dashboard.save(failOnError: true, validate: true)
+	def save() {
+		def dashboard = dashboardService.create(request.JSON, request.apiUser)
 		render(dashboard.toMap() as JSON)
 	}
 
 	@StreamrApi
-	def update(Long id, SaveDashboardCommand command) {
-		if (!command.validate()) {
-			throw new ValidationException(command.errors)
-		}
-		def dashboard = dashboardService.update(id, command, (SecUser) request.apiUser)
+	def update() {
+		def dashboard = dashboardService.update(request.JSON, request.apiUser)
 		render(dashboard.toMap() as JSON)
 	}
 
 	@StreamrApi
-	def delete(Long id) {
+	def delete(String id) {
 		dashboardService.deleteById(id, (SecUser) request.apiUser)
 		render(status: 204)
 	}

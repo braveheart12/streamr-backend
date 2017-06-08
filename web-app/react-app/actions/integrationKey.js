@@ -21,20 +21,10 @@ export const DELETE_INTEGRATION_KEY_FAILURE = 'DELETE_INTEGRATION_KEY_FAILURE'
 
 const apiUrl = 'api/v1/integrationkeys'
 
-declare var Streamr: {
-    createLink: Function
-}
+declare var Streamr: any
 
-type IntegrationKey = {
-    name: string,
-    service: string,
-    json: {}
-}
-
-type Err = {
-    error: string,
-    code?: string
-}
+import type {IntegrationKey} from '../flowtype/integration-key-types.js'
+import type {ApiError as Err} from '../flowtype/common-types.js'
 
 export const getAndReplaceIntegrationKeys = () => (dispatch: Function) => {
     dispatch(getAndReplaceIntegrationKeysRequest())

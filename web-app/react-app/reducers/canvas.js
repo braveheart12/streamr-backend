@@ -10,15 +10,13 @@ import {
 import type {
     CanvasReducerState as State,
     CanvasReducerAction as Action
-} from '../types/canvas-types'
+} from '../flowtype/canvas-types'
 
 const initialState = {
     list: [],
     error: null,
     fetching: false
 }
-
-declare var _ : any
 
 export default function(state: State = initialState, action: Action) : State {
     switch (action.type) {
@@ -41,16 +39,16 @@ export default function(state: State = initialState, action: Action) : State {
                 error: action.error
             }
         case SET_MODULE_CHECKED: {
-            let canvas = _.find(state.list, canvas => canvas.id === action.canvasId)
-            let module = _.find(canvas.modules, module => module.id === action.moduleId)
+            let canvas = state.list.find(canvas => canvas.id === action.canvasId)
+            let module = canvas.modules.find(module => module.id === action.moduleId)
             return {
                 ...state,
                 list: [
-                    ...(_.without(state.list, canvas)),
+                    ...(state.list.filter(c => c.id === canvas.id)),
                     {
                         ...canvas,
                         modules: [
-                            ...(_.without(canvas.modules, module)),
+                            ...(canvas.modules.filter(m => m.id === module.id)),
                             {
                                 ...module,
                                 checked: action.state
