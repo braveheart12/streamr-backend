@@ -82,6 +82,7 @@ var SignalPath = (function () {
 		jQuery.extend(true, options, opts);
 		
 		parentElement = $(options.parentElement);
+  
 		jsPlumb.Defaults.Container = parentElement;
 		parentElement.data("spObject",pub)
 		
@@ -107,7 +108,12 @@ var SignalPath = (function () {
 			if (isRunning())
 				subscribe()
 		})
+        pub.setupContainer()
 	};
+	pub.setupContainer = function() {
+        pub.initBackgroundDragging()
+        pub.initControls()
+    }
 	pub.unload = function() {
 		jsPlumb.reset();
 		if (connection && connection.isConnected()) {
@@ -502,7 +508,8 @@ var SignalPath = (function () {
 		modules = {};
 		moduleHashGenerator = 0;
 		
-		parentElement.empty()
+		//parentElement.find('module')
+        //pub.setupContainer()
 
 		name = "Untitled canvas"
 		savedJson = {}
@@ -510,8 +517,9 @@ var SignalPath = (function () {
 		
 		jsPlumb.reset();		
 
-		if (!isSilent)
+		if (!isSilent) {
 			$(pub).trigger('new');
+        }
 	}
 	pub.clear = clear;
 	
@@ -753,6 +761,154 @@ var SignalPath = (function () {
 		else (parentElement.css("zoom", zoom))
 	}
 	pub.setZoom = setZoom
+    
+    function checkOverflow(minTop, maxRight, maxBottom, minLeft) {
+	   if (minTop < 0) {
+	      parentElement.addClass('overflow-top')
+       } else {
+	      parentElement.removeClass('overflow-top')
+       }
+       if (minLeft < 0) {
+           parentElement.addClass('overflow-left')
+       } else {
+           parentElement.removeClass('overflow-left')
+       }
+       if (maxBottom > parentElement[0].clientHeight) {
+           parentElement.addClass('overflow-bottom')
+       } else {
+           parentElement.removeClass('overflow-bottom')
+       }
+       if (maxRight > parentElement[0].clientWidth) {
+           parentElement.addClass('overflow-right')
+       } else {
+           parentElement.removeClass('overflow-right')
+       }
+    }
+    pub.checkOverflow = checkOverflow
+    
+    function scrollBy(left, top, exceptModuleWithHash) {
+	    var minTop = Infinity,
+            minLeft = Infinity,
+            maxBottom = -Infinity,
+            maxRight = -Infinity
+        var modules = pub.getModules()
+        modules.forEach(function(module, i) {
+            if (exceptModuleWithHash && module.hash === exceptModuleWithHash) {
+                return
+            }
+            window.requestAnimationFrame(function() {
+                var layout = module.getLayoutData()
+                var newLeft = parseFloat(layout.position.left.split('px')[0]) + left
+                var newTop = parseFloat(layout.position.top.split('px')[0]) + top
+                layout.position.left = newLeft + 'px'
+                layout.position.top = newTop + 'px'
+                module.setLayoutData(layout)
+                module.redraw()
+                
+                minTop = Math.min(minTop, newTop)
+                minLeft = Math.min(minLeft, newLeft)
+                maxBottom = Math.max(maxBottom, newTop + module.getDiv()[0].clientHeight)
+                maxRight = Math.max(maxRight, newLeft + module.getDiv()[0].clientWidth)
+
+                if (i >= modules.length - 1) {
+                    pub.checkOverflow(minTop, maxRight, maxBottom, minLeft)
+                }
+            })
+        })
+    }
+    pub.scrollBy = scrollBy
+    
+    function initBackgroundDragging() {
+        var isCorrectTarget = null,
+            lastY = null,
+            lastX = null
+        parentElement.on('mousedown touchstart', function(e) {
+            if (e.target === this && isCorrectTarget === null) {
+                isCorrectTarget = true
+                lastX = e.clientX
+                lastY = e.clientY
+            }
+        })
+        parentElement.on('mousemove touchmove', function(e) {
+            if (isCorrectTarget && !e.isDefaultPrevented()) {
+                var x, y
+                if (e.type === 'touchmove' && e.originalEvent.targetTouches.length === 2) {
+                    x = e.originalEvent.targetTouches[0].clientX
+                    y = e.originalEvent.targetTouches[0].clientY
+                } else if (e.type === 'mousemove' && e.buttons === 1) { // Left mouse button pressed
+                    x = e.clientX
+                    y = e.clientY
+                }
+                if (x !== undefined && y !== undefined) {
+                    pub.scrollBy(x - lastX, y - lastY)
+        
+                    lastX = x
+                    lastY = y
+                }
+            }
+        })
+        parentElement.on('mouseup touchend', function(e) {
+            if (e.target === this) {
+                isCorrectTarget = null
+                lastX = null
+                lastY = null
+            }
+        })
+    }
+    pub.initBackgroundDragging = initBackgroundDragging
+    
+    function initControls() {
+	    var scrollAmount = 5
+        var scrollInterval = 50
+        
+	    var top = $('<i/>', {
+            class: 'control-button control-up fa fa-arrow-up'
+        })
+        var right = $('<i/>', {
+            class: 'control-button control-right fa fa-arrow-right'
+        })
+        var bottom = $('<i/>', {
+            class: 'control-button control-down fa fa-arrow-down'
+        })
+        var left = $('<i/>', {
+            class: 'control-button control-left fa fa-arrow-left'
+        })
+        initScrollListeners(top, 0, scrollAmount)
+        initScrollListeners(right, -scrollAmount, 0)
+        initScrollListeners(bottom, 0, -scrollAmount)
+        initScrollListeners(left, scrollAmount, 0)
+        
+        parentElement.append(
+            $('<div/>', {
+                class: 'canvasControls hidden-xs hidden-sm'
+            })
+                .append(top)
+                .append(right)
+                .append(bottom)
+                .append(left)
+        )
+        
+        function initScrollListeners(el, x, y) {
+            var isDown = false
+	        el.on('mousedown mouseenter', function(e) {
+	            if (e.type === 'mouseenter' && !e.buttons) {
+	                return
+                }
+	            isDown = true
+                function move() {
+	                if (isDown) {
+                        pub.scrollBy(x, y)
+	                    setTimeout(move, scrollInterval)
+                    }
+                }
+                move()
+            })
+            el.on('mouseup mouseleave', function() {
+                isDown = false
+            })
+        }
+    }
+    pub.initControls = initControls
 
 	pub.isLoading = function() {
 		return SignalPath.isBeingReloaded;

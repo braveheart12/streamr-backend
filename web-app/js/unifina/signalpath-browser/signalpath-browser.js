@@ -56,7 +56,7 @@ SignalPathBrowser.contentAppender = function contentAppender(browser, url) {
 		)
 	}
 
-	browser.scroll(function() {
+	browser.scrollBy(function() {
 	    if (browser.scrollTop() >= browser.find('table').height() - browser.height())
 		    appendContent()
 	})

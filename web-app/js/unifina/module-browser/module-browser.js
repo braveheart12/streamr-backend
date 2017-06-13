@@ -488,7 +488,7 @@ Search.prototype.action = function(href){
 	var timeout
 
 	// By only changing the classes and triggering the 'show.bs.collapse' event 
-	// manually there's no animation, so the scroll doesn't mess up
+	// manually there's no animation, so the scrollBy doesn't mess up
 	this.openPanel = function(panel){
 		if($(panel).find(".panel-heading").hasClass("collapsed")){
 			$(panel).find(".panel-collapse.collapse").trigger("show.bs.collapse")

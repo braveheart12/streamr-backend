@@ -274,7 +274,7 @@ modules = {
 		resource url:[dir:'js/unifina/confirm-button', file:'confirm-button.js', plugin: 'unifina-core']
 	}
 	'two-finger-scroll-div' {
-		resource url:[dir:'js/unifina/two-finger-scroll-div', file:'TwoFingerScrollDiv.js', plugin: 'unifina-core']
+		resource url:[dir:'js/unifina/two-finger-scrollBy-div', file:'TwoFingerScrollDiv.js', plugin: 'unifina-core']
 	}
 	'signalpath-core' {
 		// Easier to merge if dependencies are one-per-row instead of comma-separated list
@@ -335,10 +335,10 @@ modules = {
 		resource url:[dir:'js/unifina/signalPath/specific', file:'forEachModule.js', plugin: 'unifina-core']
 		resource url:[dir:'js/unifina/signalPath/specific', file:'exportCSVModule.js', plugin: 'unifina-core']
 	}
-	'signalpath-theme' {
+	'signalpath-resources' {
 		dependsOn 'signalpath-core'
-		resource url:[dir:'css/signalPath/themes/light', file:'light.css', plugin: 'unifina-core']
-		resource url:[dir:'css/signalPath/themes/light', file:'light.js', plugin: 'unifina-core']
+		resource url: [dir: 'css/signalPath/themes/light', file: 'light.css', plugin: 'unifina-core']
+		resource url: [dir: 'css/signalPath/themes/light', file: 'light.js', plugin: 'unifina-core']
 	}
 	'main-theme' {
 		dependsOn 'bootstrap, font-awesome'

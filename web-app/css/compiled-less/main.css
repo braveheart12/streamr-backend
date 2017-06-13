@@ -14861,9 +14861,11 @@ body.canvas-editor-page #main-wrapper #content-wrapper .breadcrumb li:first-chil
   padding-left: 0;
 }
 .streamr-canvas {
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: hidden;
   font-size: 12px;
-  overflow: auto;
   height: calc(100% - 38px);
   width: 100%;
   -webkit-touch-callout: none;
@@ -14916,6 +14918,53 @@ body.canvas-editor-page #main-wrapper #content-wrapper .breadcrumb li:first-chil
   width: 350px !important;
   text-align: left;
   white-space: normal;
+}
+.streamr-canvas.overflow-top .canvasControls .control-up,
+.streamr-canvas.overflow-right .canvasControls .control-right,
+.streamr-canvas.overflow-bottom .canvasControls .control-down,
+.streamr-canvas.overflow-left .canvasControls .control-left {
+  color: rgba(150, 150, 150, 0.6);
+  cursor: pointer;
+}
+.streamr-canvas.overflow-top .canvasControls .control-up:hover,
+.streamr-canvas.overflow-right .canvasControls .control-right:hover,
+.streamr-canvas.overflow-bottom .canvasControls .control-down:hover,
+.streamr-canvas.overflow-left .canvasControls .control-left:hover {
+  color: #969696;
+}
+.streamr-canvas .canvasControls {
+  position: absolute;
+  top: 50px;
+  right: 30px;
+  height: 100px;
+  width: 100px;
+}
+.streamr-canvas .canvasControls > .control-button {
+  position: absolute;
+  font-size: 38px;
+  color: rgba(150, 150, 150, 0.3);
+}
+.streamr-canvas .canvasControls > .control-button.control-up,
+.streamr-canvas .canvasControls > .control-button.control-down {
+  left: 50%;
+  transform: translateX(-50%);
+}
+.streamr-canvas .canvasControls > .control-button.control-left,
+.streamr-canvas .canvasControls > .control-button.control-right {
+  top: 50%;
+  transform: translateY(-50%);
+}
+.streamr-canvas .canvasControls > .control-button.control-up {
+  top: 0;
+}
+.streamr-canvas .canvasControls > .control-button.control-right {
+  right: 0;
+}
+.streamr-canvas .canvasControls > .control-button.control-down {
+  bottom: 0;
+}
+.streamr-canvas .canvasControls > .control-button.control-left {
+  left: 0;
 }
 .bootbox-body .option .optionTitle {
   width: 100px;

@@ -21,9 +21,11 @@ body.canvas-editor-page #main-wrapper #content-wrapper {
 }
 
 .streamr-canvas {
-	position: relative;
+	position: absolute;
+    top: 0;
+    left: 0;
+    overflow: hidden;
 	font-size: 12px;
-	overflow: auto;
 	height: ~"calc(100% - 38px)";
 	width: 100%;
 	-webkit-touch-callout: none;
@@ -89,6 +91,52 @@ body.canvas-editor-page #main-wrapper #content-wrapper {
 			white-space: normal;
 		}
 	}
+
+  &.overflow-top .canvasControls .control-up,
+  &.overflow-right .canvasControls .control-right,
+  &.overflow-bottom .canvasControls .control-down,
+  &.overflow-left .canvasControls .control-left {
+    color: rgba(150, 150, 150, 0.6);
+    cursor: pointer;
+
+    &:hover {
+      color: rgba(150, 150, 150, 1.0);
+    }
+  }
+  .canvasControls {
+    position: absolute;
+    top: 50px;
+    right: 30px;
+    height: 100px;
+    width: 100px;
+
+    > .control-button {
+      position: absolute;
+      font-size: 38px;
+      color: rgba(150, 150, 150, 0.3);
+
+      &.control-up, &.control-down {
+        left: 50%;
+        transform: translateX(-50%)
+      }
+      &.control-left, &.control-right {
+        top: 50%;
+        transform: translateY(-50%)
+      }
+      &.control-up {
+        top: 0;
+      }
+      &.control-right {
+        right: 0;
+      }
+      &.control-down {
+        bottom: 0;
+      }
+      &.control-left {
+        left: 0;
+      }
+    }
+  }
 }
 
 .bootbox-body {

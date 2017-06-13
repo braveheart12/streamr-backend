@@ -244,7 +244,7 @@ Tour.prototype.step = function(content, target, opts, onShow) {
 			if (typeof(target) === 'function')
 				tgt = target()
 			
-			// Remove drag/scroll handlers for previous target
+			// Remove drag/scrollBy handlers for previous target
 			$(".tour-current-target").closest(".draggable").off("drag.tour")
 			$(".tour-current-target").closest(".scrollable").off("scroll.tour")
 			$(".tour-current-target").removeClass("tour-current-target")

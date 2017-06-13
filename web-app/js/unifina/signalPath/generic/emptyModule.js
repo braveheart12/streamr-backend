@@ -27,10 +27,10 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 
 	prot.dragOptions = {
         containment: true,
-        ignoreContainmentDirection: {
-            bottom: true,
-            right: true
-        },
+        //ignoreContainmentDirection: {
+        //    bottom: true,
+        //    right: true
+        //},
         // Easiest way to exclude custom module element from dragging is to add class 'drag-exclude' for it
         exclude: 'input, textarea, select, button, a, .ui-resizable-handle, .chart-resize-helper, .drag-exclude'
 	}
@@ -207,23 +207,8 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 		// Must add to canvas before setting draggable
 		canvas.append(prot.div);
 		prot.div.addClass("draggable")
-		prot.div.draggabilly(prot.dragOptions)
-        
-        prot.div.on("dragMove", function() {
-            var position = {
-                top: $(this).position().top,
-                bottom: $(this).position().top + prot.div.height(),
-                left: $(this).position().left,
-                right: $(this).position().left + prot.div.width()
-            }
-            var offset = 20
-            if (position.right + offset > canvas.width()) {
-                $("#canvas")[0].scrollLeft += (canvas.width() - position.right + offset)
-            }
-            if (position.bottom + offset > canvas.height()) {
-                $("#canvas")[0].scrollTop += (canvas.height() - position.bottom + offset)
-            }
-        })
+		
+        prot.initDraggable()
 		
 		prot.div.on("click dragStart", function(event) {
 			$(".component.focus").each(function(i,c) {
@@ -359,6 +344,29 @@ SignalPath.EmptyModule = function(data, canvas, prot) {
 		element.resizable(options);
 	}
 	prot.initResizable = initResizable;
+	
+	function initDraggable() {
+        prot.div.draggabilly(prot.dragOptions)
+        
+        //prot.div.on("dragMove", function() {
+        //    var ownPosition = this.getBoundingClientRect()
+        //    var canvasPosition = canvas[0].getBoundingClientRect()
+        //
+        //    if (ownPosition.top <= canvasPosition.top) {
+        //        SignalPath.scrollBy(0, 10, prot.hash)
+        //    }
+        //    if (ownPosition.right >= canvasPosition.right) {
+        //        SignalPath.scrollBy(-10, 0, prot.hash)
+        //    }
+        //    if (ownPosition.bottom >= canvasPosition.bottom) {
+        //        SignalPath.scrollBy(0, -10, prot.hash)
+        //    }
+        //    if (ownPosition.left <= canvasPosition.left) {
+        //        SignalPath.scrollBy(10, 0, prot.hash)
+        //    }
+        //})
+    }
+    prot.initDraggable = initDraggable
 	
 	function removeFocus() {
 		prot.div.removeClass("focus");

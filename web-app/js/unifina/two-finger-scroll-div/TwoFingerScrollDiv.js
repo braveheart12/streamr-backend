@@ -5,6 +5,7 @@ function TwoFingerScrollDiv(element, options) {
     
     this.element.addEventListener('touchmove', function(e) {
         if (e.targetTouches.length < 2 && _this.scrollEnabled) {
+            e.preventDefault()
             _this.disableScroll()
         } else if (!_this.scrollEnabled) {
             _this.enableScroll()
@@ -32,5 +33,3 @@ if ($ && $.fn) {
         new TwoFingerScrollDiv(this, options)
     }
 }
-
-new TwoFingerScrollDiv(document.getElementById('container'))

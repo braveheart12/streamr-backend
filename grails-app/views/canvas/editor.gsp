@@ -11,7 +11,7 @@
 		<r:require module="slimscroll"/>
 		<r:require module="streamr-search"/>
 		<r:require module="signalpath-browser"/>
-		<r:require module="signalpath-theme"/>
+		<r:require module="signalpath-resources"/>
 		<r:require module="hotkeys"/>
 		<r:require module="touchpunch"/>
 		<r:require module="sharing-dialog"/>
