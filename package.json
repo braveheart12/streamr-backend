@@ -94,7 +94,7 @@
     "@storybook/react": "^3.0.0"
     "@storybook/addons": "latest",
     "@storybook/addon-links": "latest",
-    "@storybook/addon-actions": "latest"
+    "@storybook/addon-actions": "latest",
     "write-file-webpack-plugin": "^4.0.2"
   }
 }
