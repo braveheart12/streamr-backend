@@ -6,28 +6,28 @@ import {connect} from 'react-redux'
 import {Button} from 'react-bootstrap'
 import FontAwesome from 'react-fontawesome'
 
+import ConfirmButton from '../../../ConfirmButton'
 import ShareDialog from '../../../ShareDialog'
 
 import {updateAndSaveDashboard, deleteDashboard} from '../../../../actions/dashboard'
 
 import type { Dashboard } from '../../../../flowtype/dashboard-types'
 
-declare var ConfirmButton: Function
 declare var Streamr: any
 
 class DashboardTools extends Component {
     
-    removeButton: HTMLButtonElement
     onSave: Function
     onDelete: Function
-    
     props: {
         dashboard: Dashboard,
         openDashboard: {
             new: boolean
         },
         dispatch: Function,
-        router: any
+        router: any,
+        canShare: boolean,
+        canWrite: boolean
     }
     
     static contextTypes = {
@@ -40,21 +40,9 @@ class DashboardTools extends Component {
         this.onSave = this.onSave.bind(this)
         this.onDelete = this.onDelete.bind(this)
     }
-    
-    componentDidMount() {
-        // TODO: message
-        new ConfirmButton(this.removeButton, {
-            title: 'Are you sure?',
-            message: `Are you sure you want to remove dashboard ${this.props.dashboard ? this.props.dashboard.name : ''}?`
-        }, res => {
-            if (res) {
-                this.onDelete()
-            }
-        })
-    }
-    
+
     onSave() {
-        this.props.dispatch(updateAndSaveDashboard(this.props.dashboard, this.props.openDashboard.new || false))
+        this.props.dispatch(updateAndSaveDashboard(this.props.dashboard))
             .then(({dashboard}) => {
                 this.context.router.push(`/${dashboard.id}`)
             })
@@ -79,28 +67,42 @@ class DashboardTools extends Component {
                 >
                     Save
                 </Button>
-                <ShareDialog>
+                <ShareDialog
+                    resourceType="DASHBOARD"
+                    resourceId={this.props.dashboard.id}
+                    resourceTitle={`Dashboard ${this.props.dashboard.name}`}
+                >
                     <Button
                         block
                         className="share-button"
+                        disabled={!this.props.canShare}
                     >
                         <FontAwesome name="user" />  Share
                     </Button>
                 </ShareDialog>
-                <button
-                    className="btn btn-default btn-block delete-button"
-                    title="Delete dashboard"
-                    ref={item => this.removeButton = item}
+                <ConfirmButton
+                    buttonProps={{
+                        block: true,
+                        disabled: !this.props.canWrite
+                    }}
+                    confirmCallback={this.onDelete}
+                    confirmTitle="Are you sure?"
+                    confirmMessage={`Are you sure you want to remove dashboard ${this.props.dashboard.name}?`}
                 >
                     Delete
-                </button>
+                </ConfirmButton>
             </div>
         )
     }
 }
 
-const mapStateToProps = ({dashboard}) => ({
-    openDashboard: dashboard.openDashboard || {}
-})
+const mapStateToProps = ({dashboard}) => {
+    const db = dashboard.dashboardsById[dashboard.openDashboard.id] || {}
+    return {
+        dashboard: db,
+        canShare: db.new !== true && (db.ownPermissions && db.ownPermissions.includes('share')),
+        canWrite: db.new !== true && (db.ownPermissions && db.ownPermissions.includes('write'))
+    }
+}
 
 export default connect(mapStateToProps)(DashboardTools)

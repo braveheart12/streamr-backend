@@ -5,30 +5,34 @@ import {connect} from 'react-redux'
 import {Modal, Button} from 'react-bootstrap'
 import ShareDialogContent from './ShareDialogContent'
 
+import {saveUpdatedResourcePermissions} from '../../actions/permission'
+
+import type {ReactChildren} from 'react-flow-types'
+import type {Permission} from '../../flowtype/permission-types'
+
 class ShareDialog extends Component {
     openModal: Function
     closeModal: Function
+    save: Function
     state: {
-        open: boolean,
-        isPublic: boolean,
-        list: Array<any>
+        open: boolean
     }
     props: {
-        children: any,
+        resourceId: Permission.resourceId,
+        resourceType: Permission.resourceType,
         resourceTitle: string,
-        resourceId: string,
-        resourceType: 'DASHBOARD' | 'CANVAS' | 'STREAM'
+        children?: ReactChildren,
+        save: Function
     }
     
     constructor() {
         super()
         this.state = {
-            open: false,
-            isPublic: false,
-            list: []
+            open: false
         }
         this.openModal = this.openModal.bind(this)
         this.closeModal = this.closeModal.bind(this)
+        this.save = this.save.bind(this)
     }
     
     openModal() {
@@ -43,33 +47,40 @@ class ShareDialog extends Component {
         })
     }
     
+    save() {
+        this.props.save()
+            .then(() => {
+                this.closeModal()
+            })
+    }
+    
     render() {
         const Child = React.Children.only(this.props.children)
-        // TODO: Better key
-        let childsChildren = React.Children.map(Child.props.children, c => React.isValidElement(c) ? React.cloneElement(c, {
-            key: Math.random()
-        }) : c) || []
+        let i = 0
+        let childsChildren = React.Children.map(Child.props.children, c => {
+            const el = React.isValidElement(c) ? React.cloneElement(c, {
+                key: i
+            }) : c
+            i++
+            return el
+        }) || []
         childsChildren.push(
             <Modal
-                animation={false}
-                key={Math.random()}
+                key={i}
                 show={this.state.open}
                 onHide={this.closeModal}
+                backdrop="static"
             >
                 <Modal.Header closeButton>
                     <Modal.Title>Share {this.props.resourceTitle}</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    <ShareDialogContent isPublic={this.state.isPublic} list={this.state.list} onIsPublicChange={() => this.setState({
-                        isPublic: !this.state.isPublic,
-                    })} onPush={item => this.setState({
-                        list: [...this.state.list, item]
-                    })}/>
+                    <ShareDialogContent resourceTitle={this.props.resourceTitle} resourceType={this.props.resourceType} resourceId={this.props.resourceId} />
                 </Modal.Body>
                 <Modal.Footer>
                     <Button
                         bsStyle="primary"
-                        onClick={this.closeModal}
+                        onClick={this.save}
                     >
                         Save
                     </Button>
@@ -88,4 +99,14 @@ class ShareDialog extends Component {
     }
 }
 
-export default connect()(ShareDialog)
+const mapStateToProps = ({permission}, ownProps) => ({
+    permissions: permission.byTypeAndId[ownProps.resourceType] && permission.byTypeAndId[ownProps.resourceType][ownProps.resourceId] || []
+})
+
+const mapDispatchToProps = (dispatch, ownProps) => ({
+    save() {
+        return dispatch(saveUpdatedResourcePermissions(ownProps.resourceType, ownProps.resourceId))
+    }
+})
+
+export default connect (mapStateToProps, mapDispatchToProps)(ShareDialog)

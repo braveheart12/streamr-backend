@@ -1,9 +1,28 @@
 
+import type {ApiError} from './common-types'
 import type {User} from './user-types'
 
+type resourceType = 'DASHBOARD' | 'CANVAS' | 'STREAM'
+type resourceId = string
+
+type Operation = 'read' | 'write' | 'share'
+
 export type Permission = {
-    resourceType: 'DASHBOARD' | 'CANVAS' | 'STREAM',
-    resourceId: string,
-    userId: User.id,
-    operations: Array<('read' | 'write' | 'share')>
+    operation: Operation,
+    user: User.email,
+    anonymous?: boolean,
+    fetching?: boolean,
+    new?: boolean,
+    removed?: boolean,
+    error?: ApiError
+}
+
+export type State = {
+    byTypeAndId: {
+        [resourceType]: {
+            [resourceId]: Array<Permission>
+        }
+    },
+    error: ?ApiError,
+    fetching: boolean
 }

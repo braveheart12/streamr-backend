@@ -10,7 +10,6 @@ import {
     UPDATE_AND_SAVE_DASHBOARD_REQUEST,
     UPDATE_AND_SAVE_DASHBOARD_SUCCESS,
     UPDATE_AND_SAVE_DASHBOARD_FAILURE,
-    CREATE_DASHBOARD,
     DELETE_DASHBOARD_REQUEST,
     DELETE_DASHBOARD_SUCCESS,
     DELETE_DASHBOARD_FAILURE,
@@ -18,6 +17,7 @@ import {
     GET_MY_DASHBOARD_PERMISSIONS_SUCCESS,
     GET_MY_DASHBOARD_PERMISSIONS_FAILURE,
     OPEN_DASHBOARD,
+    CREATE_DASHBOARD,
     UPDATE_DASHBOARD
 } from '../actions/dashboard.js'
 
@@ -31,12 +31,10 @@ import type {
 const initialState = {
     dashboardsById: {},
     openDashboard: {
-        id: null,
-        saved: false,
-        new: true
+        id: null
     },
     error: null,
-    fetching: false,
+    fetching: false
 }
 
 const dashboard = function(state: State = initialState, action: Action) : State {
@@ -61,11 +59,28 @@ const dashboard = function(state: State = initialState, action: Action) : State 
         case GET_AND_REPLACE_DASHBOARDS_SUCCESS:
             return {
                 ...state,
-                dashboardsById: _.groupBy(action.dashboards, dashboard => dashboard.id),
+                dashboardsById: _.keyBy(action.dashboards, 'id'),
                 fetching: false,
                 error: null
             }
-        case CREATE_DASHBOARD:
+        case CREATE_DASHBOARD: {
+            if (!action.dashboard || !action.dashboard.id) {
+                return state
+            }
+            return {
+                ...state,
+                dashboardsById: {
+                    ...state.dashboardsById,
+                    [action.dashboard.id]: {
+                        ...action.dashboard,
+                        new: true,
+                        saved: false
+                    }
+                },
+                error: null,
+                fetching: false
+            }
+        }
         case UPDATE_DASHBOARD: {
             if (!action.dashboard || !action.dashboard.id) {
                 return state
@@ -76,12 +91,9 @@ const dashboard = function(state: State = initialState, action: Action) : State 
                     ...state.dashboardsById,
                     [action.dashboard.id]: {
                         ...state.dashboardsById[action.dashboard.id],
-                        ...action.dashboard
+                        ...action.dashboard,
+                        saved: false
                     }
-                },
-                openDashboard: {
-                    ...state.openDashboard,
-                    saved: false
                 },
                 error: null,
                 fetching: false
@@ -98,13 +110,10 @@ const dashboard = function(state: State = initialState, action: Action) : State 
                     ...state.dashboardsById,
                     [action.dashboard.id]: {
                         ...state.dashboardsById[action.dashboard.id],
-                        ...action.dashboard
+                        ...action.dashboard,
+                        new: false,
+                        saved: true
                     }
-                },
-                openDashboard: {
-                    ...state.openDashboard,
-                    saved: true,
-                    new: false
                 },
                 error: null,
                 fetching: false
@@ -114,12 +123,13 @@ const dashboard = function(state: State = initialState, action: Action) : State 
             if (!action.id) {
                 return state
             }
+            let dbById = {
+                ...state.dashboardsById
+            }
+            delete dbById[action.id]
             return {
                 ...state,
-                dashboardsById: {
-                    ...state.dashboardsById,
-                    [action.id]: undefined
-                },
+                dashboardsById: dbById,
                 error: null,
                 fetching: false
             }
