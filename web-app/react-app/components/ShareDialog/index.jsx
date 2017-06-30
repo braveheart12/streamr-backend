@@ -10,7 +10,7 @@ import {saveUpdatedResourcePermissions} from '../../actions/permission'
 import type {ReactChildren} from 'react-flow-types'
 import type {Permission} from '../../flowtype/permission-types'
 
-class ShareDialog extends Component {
+export class ShareDialog extends Component {
     openModal: Function
     closeModal: Function
     save: Function

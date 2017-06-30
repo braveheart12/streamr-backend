@@ -38,7 +38,7 @@ const reduxDecorator = getStory => (
 //        <ProfilePageStory/>
 //    ))
 
-storiesOf('SharingDialog', module)
+storiesOf('ShareDialog', module)
     .addDecorator(reduxDecorator)
     .add('all', () => (
         <ShareDialogStory />
