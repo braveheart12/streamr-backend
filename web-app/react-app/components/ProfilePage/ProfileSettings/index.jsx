@@ -1,48 +1,39 @@
-/* global Streamr */
+// @flow
 
 import React, {Component} from 'react'
+import {connect} from 'react-redux'
 import moment from 'moment-timezone'
-import axios from 'axios'
 import Select from 'react-select'
 import 'react-select/dist/react-select.css'
 
-export default class ProfileSettings extends Component {
+import {getCurrentUser, updateCurrentUserName, updateCurrentUserTimezone} from '../../../actions/user'
+
+import type {User} from '../../../types/user-types'
+
+export class ProfileSettings extends Component {
+    
+    props: {
+        user: User,
+        getCurrentUser: Function,
+        updateCurrentUserName: Function,
+        updateCurrentUserTimezone: Function
+    }
+    onNameChange: Function
+    onTimezoneChange: Function
+    
     constructor() {
         super()
-        this.state = {
-            user: {
-                username: Streamr.user,
-                name: '',
-                timezone: ''
-            }
-        }
         this.onNameChange = this.onNameChange.bind(this)
         this.onTimezoneChange = this.onTimezoneChange.bind(this)
     }
     componentDidMount() {
-        axios.get(Streamr.createLink({
-            uri: 'api/v1/users/me'
-        })).then(({data}) => {
-            this.setState({
-                user: data
-            })
-        })
+        this.props.getCurrentUser()
     }
-    onNameChange(e) {
-        this.setState({
-            user: {
-                ...this.state.user,
-                name: e.target.value
-            }
-        })
+    onNameChange({target}: {target: any}) {
+        this.props.updateCurrentUserName(target.value)
     }
-    onTimezoneChange(selected) {
-        this.setState({
-            user: {
-                ...this.state.user,
-                timezone: selected.value
-            }
-        })
+    onTimezoneChange({target}: {target: any}) {
+        this.props.updateCurrentUserTimezone(target.value)
     }
     render() {
         const options = moment.tz.names().map(tz => ({
@@ -58,7 +49,7 @@ export default class ProfileSettings extends Component {
                     <div className="panel-body">
                         <div className="form-group ">
                             <label className="control-label">Email</label>
-                            <div>{this.state.user.username}</div>
+                            <div>{this.props.user.username}</div>
                         </div>
             
                         <div className="form-group">
@@ -70,7 +61,7 @@ export default class ProfileSettings extends Component {
             
                         <div className="form-group ">
                             <label className="control-label">Full Name</label>
-                            <input name="name" type="text" className="form-control" value={this.state.user.name} onChange={this.onNameChange} required />
+                            <input name="name" type="text" className="form-control" value={this.props.user.name || ''} onChange={this.onNameChange} required />
                         </div>
                 
                         <div className="form-group ">
@@ -78,7 +69,7 @@ export default class ProfileSettings extends Component {
                             <Select
                                 placeholder="Select timezone"
                                 options={options}
-                                value={this.state.user.timezone}
+                                value={this.props.user.timezone}
                                 name="timezone"
                                 onChange={this.onTimezoneChange}
                                 required={true}
@@ -94,3 +85,21 @@ export default class ProfileSettings extends Component {
         )
     }
 }
+
+const mapStateToProps = ({user}) => ({
+    user: user.currentUser || {}
+})
+
+const mapDispatchToProps = (dispatch) => ({
+    getCurrentUser() {
+        dispatch(getCurrentUser())
+    },
+    updateCurrentUserName(name) {
+        dispatch(updateCurrentUserName(name))
+    },
+    updateCurrentUserTimezone(tz) {
+        dispatch(updateCurrentUserTimezone(tz))
+    }
+})
+
+export default connect(mapStateToProps, mapDispatchToProps)(ProfileSettings)

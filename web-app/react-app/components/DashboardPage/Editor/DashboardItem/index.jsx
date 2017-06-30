@@ -2,16 +2,15 @@
 
 import React, {Component} from 'react'
 import {connect} from 'react-redux'
-import path from 'path'
+import {showError} from '../../../../actions/notification'
 
 import TitleRow from './DashboardItemTitleRow'
+import WebComponent from '../../../WebComponent'
 
 import styles from './dashboardItem.pcss'
 import './webcomponentStyles.css'
 
 import type {Dashboard, DashboardItem as DBItem} from '../../../../flowtype/dashboard-types'
-
-declare var Streamr: {}
 
 class DashboardItem extends Component {
     
@@ -20,7 +19,12 @@ class DashboardItem extends Component {
         dashboard: Dashboard,
         layout?: DBItem.layout,
         dragCancelClassName?: string,
-        currentLayout: ?{}
+        currentLayout: ?{},
+        showError: Function
+    }
+    static defaultProps = {
+        item: {},
+        dashboard: {}
     }
     
     constructor() {
@@ -42,26 +46,31 @@ class DashboardItem extends Component {
     onResize() {
         const event = new Event('Event')
         event.initEvent('resize', false, true)
-        this.webcomponent.dispatchEvent(event)
+        if (this.webcomponent) {
+            this.webcomponent.dispatchEvent(event)
+        }
     }
 
     render() {
-        const item = this.props.item || {}
-        const WebComponent = item.webcomponent || 'div'
+        const {item, dashboard} = this.props
         return (
             <div className={styles.dashboardItem}>
                 <div className={styles.header}>
                     <TitleRow dashboard={this.props.dashboard} item={item} dragCancelClassName={this.props.dragCancelClassName}/>
                 </div>
                 <div className={`${styles.body} ${this.props.dragCancelClassName || ''}`}>
-                    <div className={styles.wrapper}>
-                        <WebComponent
-                            ref={item => this.webcomponent = item}
-                            className="streamr-widget non-draggable"
-                            url={Streamr.createLink({
-                                uri: path.resolve('/api/v1/dashboards', item.dashboard.toString(), 'canvases', item.canvas.toString(), 'modules', item.module.toString())
-                            })}
-                        />
+                    <div className={`${styles.wrapper} ${styles[item.webcomponent] || item.webcomponent}`}>
+                        {item.webcomponent && (
+                            <WebComponent
+                                ref={i => this.a = i}
+                                type={item.webcomponent}
+                                onError={this.props.showError}
+                                webComponentRef={item => this.webcomponent = item}
+                                dashboardId={dashboard.id}
+                                canvasId={item.canvas}
+                                moduleId={item.module.toString()}
+                            />
+                        )}
                     </div>
                 </div>
             </div>
@@ -69,4 +78,20 @@ class DashboardItem extends Component {
     }
 }
 
-export default connect()(DashboardItem)
+const mapStateToProps = ({dashboard: {dashboardsById, openDashboard}}) => {
+    const dashboard = dashboardsById[openDashboard.id]
+    return {
+        dashboard
+    }
+}
+
+const mapDispatchToProps = (dispatch) => ({
+    showError({detail}) {
+        dispatch(showError({
+            title: 'Error!',
+            message: detail.message
+        }))
+    }
+})
+
+export default connect(mapStateToProps, mapDispatchToProps)(DashboardItem)

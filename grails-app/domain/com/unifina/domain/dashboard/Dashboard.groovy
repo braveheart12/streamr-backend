@@ -15,18 +15,19 @@ class Dashboard {
 
 	SortedSet<DashboardItem> items
 
-	String layout // JSON
+	String layout = "{}" // JSON
 
 	static hasMany = [items: DashboardItem]
 
 	static constraints = {
-		name(nullable: true)
-		layout(nullable: true)
+		name nullable: true, blank: false
+		layout nullable: true
+		id bindable: true
 	}
 
 	static mapping = {
-		items cascade: 'all-delete-orphan'
-		id generator: 'assigned'
+		items cascade: "merge"
+		id generator: "assigned"
 	}
 
 	@CompileStatic

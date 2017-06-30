@@ -7,7 +7,6 @@ target
 node_modules
 lib/grails-rt.jar
 .idea/*
-!.idea/runConfigurations/
 unifina-core*.iml
 .slcache/
 out/
@@ -16,4 +15,4 @@ hs_err_pid*
 grailsMarkdown-inplacePlugin.iml
 web-app/js/unifina/webpack-bundles/*
 npm-debug.log*
-
+tomcat.8081

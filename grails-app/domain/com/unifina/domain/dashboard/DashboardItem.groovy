@@ -8,37 +8,33 @@ class DashboardItem implements Comparable {
 	String id
 	String title
 	Canvas canvas
+	Dashboard dashboard
 	Integer module
 	String webcomponent
-
-	Integer ord
-	String size
 
 	static belongsTo = [dashboard: Dashboard, canvas: Canvas]
 
 	static constraints = {
-		title(nullable: true)
+		title nullable: true, blank: false
+		id bindable: true
 	}
 
 	int compareTo(obj) {
-		int cmp = ord.compareTo(obj.ord)
-		return cmp != 0 ? cmp :
-				id != null && obj.id != null ? id.compareTo(obj.id) :
-						title.compareTo(obj.title)
+		return id != null ? id.compareTo(obj.id) : title.compareTo(obj.title)
 	}
 
 	static mapping = {
-		id generator: 'assigned'
+		id generator: "assigned"
+		dashboard column: "dashboard_id"
+		canvas column: "canvas_id"
 	}
 
 	Map toMap() {
 		return [
 				id          : id,
-				dashboard   : dashboard.id,
+				dashboard   : dashboard?.id,
 				title       : title,
-				ord         : ord,
-				size        : size,
-				canvas      : canvas.id,
+				canvas      : canvas?.id,
 				module      : module,
 				webcomponent: webcomponent
 		]

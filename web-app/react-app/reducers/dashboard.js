@@ -18,7 +18,9 @@ import {
     GET_MY_DASHBOARD_PERMISSIONS_FAILURE,
     OPEN_DASHBOARD,
     CREATE_DASHBOARD,
-    UPDATE_DASHBOARD
+    UPDATE_DASHBOARD,
+    LOCK_DASHBOARD_EDITING,
+    UNLOCK_DASHBOARD_EDITING
 } from '../actions/dashboard.js'
 
 declare var _: any
@@ -47,6 +49,7 @@ const dashboard = function(state: State = initialState, action: Action) : State 
                     id: action.id
                 }
             }
+            
         case GET_AND_REPLACE_DASHBOARDS_REQUEST:
         case GET_DASHBOARD_REQUEST:
         case UPDATE_AND_SAVE_DASHBOARD_REQUEST:
@@ -56,6 +59,7 @@ const dashboard = function(state: State = initialState, action: Action) : State 
                 ...state,
                 fetching: true
             }
+            
         case GET_AND_REPLACE_DASHBOARDS_SUCCESS:
             return {
                 ...state,
@@ -63,6 +67,7 @@ const dashboard = function(state: State = initialState, action: Action) : State 
                 fetching: false,
                 error: null
             }
+            
         case CREATE_DASHBOARD: {
             if (!action.dashboard || !action.dashboard.id) {
                 return state
@@ -81,6 +86,7 @@ const dashboard = function(state: State = initialState, action: Action) : State 
                 fetching: false
             }
         }
+        
         case UPDATE_DASHBOARD: {
             if (!action.dashboard || !action.dashboard.id) {
                 return state
@@ -99,6 +105,7 @@ const dashboard = function(state: State = initialState, action: Action) : State 
                 fetching: false
             }
         }
+        
         case GET_DASHBOARD_SUCCESS:
         case UPDATE_AND_SAVE_DASHBOARD_SUCCESS: {
             if (!action.dashboard || !action.dashboard.id) {
@@ -119,11 +126,12 @@ const dashboard = function(state: State = initialState, action: Action) : State 
                 fetching: false
             }
         }
+        
         case DELETE_DASHBOARD_SUCCESS: {
             if (!action.id) {
                 return state
             }
-            let dbById = {
+            const dbById = {
                 ...state.dashboardsById
             }
             delete dbById[action.id]
@@ -134,6 +142,7 @@ const dashboard = function(state: State = initialState, action: Action) : State 
                 fetching: false
             }
         }
+        
         case GET_MY_DASHBOARD_PERMISSIONS_SUCCESS: {
             if (!action.id) {
                 return state
@@ -162,6 +171,31 @@ const dashboard = function(state: State = initialState, action: Action) : State 
                 fetching: false,
                 error: action.error
             }
+            
+        case LOCK_DASHBOARD_EDITING:
+            return {
+                ...state,
+                dashboardsById: {
+                    ...state.dashboardsById,
+                    [action.id]: {
+                        ...(state.dashboardsById[action.id] || {}),
+                        editingLocked: true
+                    }
+                }
+            }
+            
+        case UNLOCK_DASHBOARD_EDITING:
+            return {
+                ...state,
+                dashboardsById: {
+                    ...state.dashboardsById,
+                    [action.id]: {
+                        ...(state.dashboardsById[action.id] || {}),
+                        editingLocked: false
+                    }
+                }
+            }
+            
         default:
             return state
     }

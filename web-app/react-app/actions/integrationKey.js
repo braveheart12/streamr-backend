@@ -2,15 +2,16 @@
 
 import axios from 'axios'
 import parseError from './utils/parseError'
+import createLink from '../createLink'
 import {showError, showSuccess} from './notification'
 
-export const GET_AND_REPLACE_INTEGRATION_KEYS_REQUEST = 'GET_ALL_INTEGRATION_KEYS_REQUEST'
-export const GET_AND_REPLACE_INTEGRATION_KEYS_SUCCESS = 'GET_ALL_INTEGRATION_KEYS_SUCCESS'
-export const GET_AND_REPLACE_INTEGRATION_KEYS_FAILURE = 'GET_ALL_INTEGRATION_KEYS_FAILURE'
+export const GET_AND_REPLACE_INTEGRATION_KEYS_REQUEST = 'GET_AND_REPLACE_INTEGRATION_KEYS_REQUEST'
+export const GET_AND_REPLACE_INTEGRATION_KEYS_SUCCESS = 'GET_AND_REPLACE_INTEGRATION_KEYS_SUCCESS'
+export const GET_AND_REPLACE_INTEGRATION_KEYS_FAILURE = 'GET_AND_REPLACE_INTEGRATION_KEYS_FAILURE'
 
-export const GET_INTEGRATION_KEYS_BY_TYPE_REQUEST = 'GET_INTEGRATION_KEYS_BY_TYPE_REQUEST'
-export const GET_INTEGRATION_KEYS_BY_TYPE_SUCCESS = 'GET_INTEGRATION_KEYS_BY_TYPE_SUCCESS'
-export const GET_INTEGRATION_KEYS_BY_TYPE_FAILURE = 'GET_INTEGRATION_KEYS_BY_TYPE_FAILURE'
+export const GET_INTEGRATION_KEYS_BY_SERVICE_REQUEST = 'GET_INTEGRATION_KEYS_BY_SERVICE_REQUEST'
+export const GET_INTEGRATION_KEYS_BY_SERVICE_SUCCESS = 'GET_INTEGRATION_KEYS_BY_SERVICE_SUCCESS'
+export const GET_INTEGRATION_KEYS_BY_SERVICE_FAILURE = 'GET_INTEGRATION_KEYS_BY_SERVICE_FAILURE'
 
 export const CREATE_INTEGRATION_KEY_REQUEST = 'CREATE_INTEGRATION_KEY_REQUEST'
 export const CREATE_INTEGRATION_KEY_SUCCESS = 'CREATE_INTEGRATION_KEY_SUCCESS'
@@ -20,18 +21,14 @@ export const DELETE_INTEGRATION_KEY_REQUEST = 'DELETE_INTEGRATION_KEY_REQUEST'
 export const DELETE_INTEGRATION_KEY_SUCCESS = 'DELETE_INTEGRATION_KEY_SUCCESS'
 export const DELETE_INTEGRATION_KEY_FAILURE = 'DELETE_INTEGRATION_KEY_FAILURE'
 
-const apiUrl = 'api/v1/integrationkeys'
-
-declare var Streamr: any
+const apiUrl = 'api/v1/integration_keys'
 
 import type {IntegrationKey} from '../flowtype/integration-key-types.js'
 import type {ApiError as Err} from '../flowtype/common-types.js'
 
 export const getAndReplaceIntegrationKeys = () => (dispatch: Function) => {
     dispatch(getAndReplaceIntegrationKeysRequest())
-    return axios.get(Streamr.createLink({
-        uri: apiUrl
-    }))
+    return axios.get(createLink(apiUrl))
         .then(({data}) => {
             dispatch(getAndReplaceIntegrationKeysSuccess(data))
             dispatch(showSuccess({
@@ -50,9 +47,7 @@ export const getAndReplaceIntegrationKeys = () => (dispatch: Function) => {
 
 export const getIntegrationKeysByService = (service: string) => (dispatch: Function) => {
     dispatch(getIntegrationKeysByServiceRequest(service))
-    return axios.get(Streamr.createLink({
-        uri: apiUrl
-    }), {
+    return axios.get(createLink(apiUrl), {
         params: {
             service
         }
@@ -70,9 +65,7 @@ export const getIntegrationKeysByService = (service: string) => (dispatch: Funct
 
 export const createIntegrationKey = (integrationKey: IntegrationKey) => (dispatch: Function) => {
     dispatch(createIntegrationKeyRequest())
-    return axios.post(Streamr.createLink({
-        uri: apiUrl
-    }), integrationKey)
+    return axios.post(createLink(apiUrl), integrationKey)
         .then(({data}) => dispatch(createIntegrationKeySuccess(data)))
         .catch(res => {
             const e = parseError(res)
@@ -86,9 +79,7 @@ export const createIntegrationKey = (integrationKey: IntegrationKey) => (dispatc
 
 export const deleteIntegrationKey = (id: string) => (dispatch: Function) => {
     dispatch(deleteIntegrationKeyRequest(id))
-    return axios.delete(Streamr.createLink({
-        uri: `${apiUrl}/${id}`
-    }))
+    return axios.delete(createLink(`${apiUrl}/${id}`))
         .then(() => dispatch(deleteIntegrationKeySuccess(id)))
         .catch(res => {
             const e = parseError(res)
@@ -105,7 +96,7 @@ const getAndReplaceIntegrationKeysRequest = () => ({
 })
 
 const getIntegrationKeysByServiceRequest = (service: string) => ({
-    type: GET_INTEGRATION_KEYS_BY_TYPE_REQUEST,
+    type: GET_INTEGRATION_KEYS_BY_SERVICE_REQUEST,
     service
 })
 
@@ -124,7 +115,7 @@ const getAndReplaceIntegrationKeysSuccess = (integrationKeys: Array<IntegrationK
 })
 
 const getIntegrationKeysByServiceSuccess = (service: string, integrationKeys: Array<IntegrationKey>) => ({
-    type: GET_INTEGRATION_KEYS_BY_TYPE_SUCCESS,
+    type: GET_INTEGRATION_KEYS_BY_SERVICE_SUCCESS,
     integrationKeys,
     service
 })
@@ -145,7 +136,7 @@ const getAndReplaceIntegrationKeysFailure = (error: Err) => ({
 })
 
 const getIntegrationKeysByServiceFailure = (service: string, error: Err) => ({
-    type: GET_INTEGRATION_KEYS_BY_TYPE_FAILURE,
+    type: GET_INTEGRATION_KEYS_BY_SERVICE_FAILURE,
     error,
     service
 })

@@ -1,4 +1,7 @@
-eventConfigureTomcat = {tomcat ->
+
+import grails.util.Environment
+
+eventConfigureTomcat = { tomcat ->
 	
 	// Enable compression, from http://www.slideshare.net/gr8conf/gr8conf-2011-tuning-grails-applications-by-peter-ledbrook
 	tomcat.connector.setAttribute("compression","on")
@@ -24,11 +27,20 @@ eventTestPhaseStart = { args ->
 }
 
 eventPackagingEnd = { args ->
-	println "Running webpack build"
+	boolean prod = Environment.getCurrent() == Environment.PRODUCTION
+	println "Running webpack build in ${prod ? "production" : "development"} mode"
 	Runtime runtime = Runtime.getRuntime()
-	Process process = runtime.exec("npm run build")
+	String command = prod ? "npm run build" : "npm run build-dev"
+
+	Process process = runtime.exec(command)
 	StreamGobbler outputGobbler = new StreamGobbler(process.getInputStream());
 	outputGobbler.start()
+
+	// Wait for npm to exit before continuing
+	int exitValue = process.waitFor()
+	if (exitValue > 0) {
+		throw new RuntimeException("Webpack failed!")
+	}
 }
 
 // https://stackoverflow.com/questions/1732455/redirect-process-output-to-stdout

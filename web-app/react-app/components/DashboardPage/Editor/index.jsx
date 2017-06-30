@@ -5,6 +5,7 @@ import {connect} from 'react-redux'
 import {StreamrBreadcrumb} from '../../Breadcrumb'
 import {MenuItem} from 'react-bootstrap'
 import FontAwesome from 'react-fontawesome'
+import createLink from '../../../createLink'
 
 import {Responsive, WidthProvider} from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
@@ -13,13 +14,9 @@ import 'react-resizable/css/styles.css'
 import DashboardItem from './DashboardItem'
 import ShareDialog from '../../ShareDialog'
 
-import {updateDashboard, deleteDashboard} from '../../../actions/dashboard'
+import {updateDashboard, deleteDashboard, lockDashboardEditing, unlockDashboardEditing} from '../../../actions/dashboard'
 
 import styles from './editor.pcss'
-
-declare var Streamr: {
-    createLink: Function
-}
 
 declare var _: any
 
@@ -33,12 +30,17 @@ class Editor extends Component {
     onLayoutChange: Function
     generateLayout: Function
     onResize: Function
-    onDelete: Function
+    onBeforeUnload: Function
+    onMenuToggle: Function
     props: {
         dashboard: Dashboard,
-        dispatch: Function,
         canShare: boolean,
-        canWrite: boolean
+        canWrite: boolean,
+        delete: Function,
+        update: Function,
+        editorLocked: Function,
+        lockEditing: Function,
+        unlockEditing: Function
     }
     state: {
         breakpoints: {},
@@ -62,8 +64,8 @@ class Editor extends Component {
                 xs: 480
             },
             cols: {
-                lg: 12,
-                md: 8,
+                lg: 16,
+                md: 10,
                 sm: 4,
                 xs: 2,
             },
@@ -72,15 +74,31 @@ class Editor extends Component {
         this.onLayoutChange = this.onLayoutChange.bind(this)
         this.generateLayout = this.generateLayout.bind(this)
         this.onResize = this.onResize.bind(this)
-        this.onDelete = this.onDelete.bind(this)
+        this.onBeforeUnload = this.onBeforeUnload.bind(this)
+        this.onMenuToggle = this.onMenuToggle.bind(this)
+    }
+    
+    componentDidMount() {
+        window.addEventListener('beforeunload', this.onBeforeUnload)
+        
+        const menuToggle = document.getElementById('main-menu-toggle')
+        menuToggle && menuToggle.addEventListener('click', this.onMenuToggle)
+    }
+    
+    onMenuToggle() {
+        const menuIsOpen = document.body && document.body.classList && document.body.classList.contains('mmc')
+        if (menuIsOpen) {
+            this.props.unlockEditing()
+        } else {
+            this.props.lockEditing()
+        }
     }
     
     onLayoutChange(layout, allLayouts) {
         this.onResize(layout)
-        this.props.dispatch(updateDashboard({
-            ...this.props.dashboard,
+        this.props.update({
             layout: allLayouts
-        }))
+        })
     }
     
     generateLayout() {
@@ -88,15 +106,20 @@ class Editor extends Component {
         const db = this.props.dashboard
         return _.zipObject(sizes, _.map(sizes, size => {
             return db.items.map(item => {
-                const layout = db.layout && db.layout[size] && db.layout[size].find(layout => layout.i === item.id)
+                const layout = db.layout && db.layout[size] && db.layout[size].find(layout => layout.i === item.id) || {}
                 const defaultLayout = {
                     i: item.id,
                     x: 0,
                     y: 0,
                     h: 2,
-                    w: 3
+                    w: 4,
+                    minH: 2,
+                    minW: 3
                 }
-                return layout || defaultLayout
+                return {
+                    ...defaultLayout,
+                    ...layout
+                }
             })
         }))
     }
@@ -110,8 +133,10 @@ class Editor extends Component {
         })
     }
     
-    onDelete() {
-    
+    onBeforeUnload() {
+        if (!this.props.dashboard.saved) {
+            return 'You have unsaved changes in your Dashboard. Are you sure you want to leave?'
+        }
     }
 
     render() {
@@ -124,7 +149,7 @@ class Editor extends Component {
                 height: '100%'
             }}>
                 <StreamrBreadcrumb className="breadcrumb-page">
-                    <StreamrBreadcrumb.Item href={Streamr.createLink('dashboard', 'list')}>
+                    <StreamrBreadcrumb.Item href={createLink('dashboard/list')}>
                         Dashboards
                     </StreamrBreadcrumb.Item>
                     <StreamrBreadcrumb.Item active={true}>
@@ -146,11 +171,6 @@ class Editor extends Component {
                                 </ShareDialog>
                             )}
                             {this.props.canWrite && (
-                                <MenuItem>
-                                    <FontAwesome name="pencil"/> Rename
-                                </MenuItem>
-                            )}
-                            {this.props.canWrite && (
                                 <ConfirmButton
                                     buttonProps={{
                                         componentClass: MenuItem,
@@ -169,18 +189,19 @@ class Editor extends Component {
                 <ResponsiveReactGridLayout
                     className={styles.dashboard}
                     layouts={layout}
-                    rowHeight={100}
+                    rowHeight={60}
                     breakpoints={this.state.breakpoints}
                     cols={this.state.cols}
                     draggableCancel={`.${dragCancelClassName}`}
                     onLayoutChange={this.onLayoutChange}
                     onResize={this.onResize}
                     onResizeEnd={this.onResize}
+                    isDraggable={!this.props.editorLocked}
+                    isResizable={!this.props.editorLocked}
                 >
                     {items.map(dbItem => (
                         <div key={dbItem.id.toString()}>
-                            <DashboardItem currentLayout={this.state.layoutsByItemId[dbItem.id]} item={dbItem}
-                                           dashboard={dashboard} dragCancelClassName={dragCancelClassName}/>
+                            <DashboardItem item={dbItem} currentLayout={this.state.layoutsByItemId[dbItem.id]} dragCancelClassName={dragCancelClassName}/>
                         </div>
                     ))}
                 </ResponsiveReactGridLayout>
@@ -191,15 +212,28 @@ class Editor extends Component {
 
 const mapStateToProps = ({dashboard}) => {
     const db = dashboard.dashboardsById[dashboard.openDashboard.id] || {}
+    const canShare = db.new !== true && (db.ownPermissions && db.ownPermissions.includes('share'))
+    const canWrite = db.new !== true && (db.ownPermissions && db.ownPermissions.includes('write'))
     return {
         dashboard: db,
-        canShare: db.new !== true && (db.ownPermissions && db.ownPermissions.includes('share')),
-        canWrite: db.new !== true && (db.ownPermissions && db.ownPermissions.includes('write'))
+        canShare,
+        canWrite,
+        editorLocked: db.editingLocked || (!db.new && !canWrite)
     }
 }
 
 const mapDispatchToProps = (dispatch, ownProps) => ({
-    deleteDashboard: () => dispatch(deleteDashboard(ownProps.dashboard.id))
+    delete: () => dispatch(deleteDashboard(ownProps.dashboard.id)),
+    update: (changes) => dispatch(updateDashboard({
+        ...ownProps.dashboard,
+        ...changes
+    })),
+    lockEditing() {
+        dispatch(lockDashboardEditing(ownProps.dashboard.id))
+    },
+    unlockEditing() {
+        dispatch(unlockDashboardEditing(ownProps.dashboard.id))
+    }
 })
 
 export default connect(mapStateToProps, mapDispatchToProps)(Editor)

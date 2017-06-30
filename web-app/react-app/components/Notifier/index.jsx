@@ -3,9 +3,12 @@
 import {Component} from 'react'
 import {connect} from 'react-redux'
 
-declare var Streamr: any
-
 import type {Notification} from '../../flowtype/notification-types.js'
+
+declare var Streamr: {
+    showSuccess: (message: ?string, title: string, delay: number) => void,
+    showError: (message: ?string, title: string, delay: number) => void
+}
 
 class Notifier extends Component {
     props: {
@@ -17,11 +20,11 @@ class Notifier extends Component {
     createNotification({title, message, delay, type}) {
         switch (type) {
             case 'success':
-                return Streamr.showSuccess(title, message, delay)
+                return Streamr.showSuccess(message, title, delay)
             case 'info':
-                return Streamr.showSuccess(title, message, delay)
+                return Streamr.showSuccess(message, title, delay)
             case 'error':
-                return Streamr.showError(title, message, delay)
+                return Streamr.showError(message, title, delay)
         }
     }
     

@@ -5,7 +5,7 @@ import grails.converters.JSON
 import groovy.transform.CompileStatic
 import org.codehaus.groovy.grails.web.json.JSONObject
 
-class IntegrationKey {
+class IntegrationKey implements Serializable {
 
 	String id
 	SecUser user
@@ -34,7 +34,7 @@ class IntegrationKey {
 				id  : id,
 				user: user.id,
 				name: name,
-				type: service.toString(),
+				service: service.toString(),
 				json: (JSONObject) JSON.parse(json)
 		]
 	}

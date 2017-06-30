@@ -1,22 +1,27 @@
 package com.unifina.controller.api
 
+import com.unifina.api.SaveDashboardCommand
+import com.unifina.api.ValidationException
 import com.unifina.domain.dashboard.Dashboard
 import com.unifina.domain.security.Permission
 import com.unifina.domain.security.SecUser
 import com.unifina.security.AuthLevel
 import com.unifina.security.StreamrApi
+import com.unifina.service.ApiService
 import com.unifina.service.DashboardService
+import com.unifina.service.PermissionService
 import com.unifina.service.SignalPathService
 import grails.converters.JSON
 import grails.plugin.springsecurity.annotation.Secured
+import org.json.JSONObject
 
 @Secured(["IS_AUTHENTICATED_ANONYMOUSLY"])
 class DashboardApiController {
 
 	DashboardService dashboardService
 	SignalPathService signalPathService
-	def permissionService
-	def apiService
+	PermissionService permissionService
+	ApiService apiService
 
 	@StreamrApi
 	def index() {
@@ -37,14 +42,20 @@ class DashboardApiController {
 	}
 
 	@StreamrApi
-	def save() {
-		def dashboard = dashboardService.create(request.JSON, request.apiUser)
+	def save(SaveDashboardCommand command) {
+		if (!command.validate()) {
+			throw new ValidationException(command.errors)
+		}
+		def dashboard = dashboardService.create(command, request.apiUser)
 		render(dashboard.toMap() as JSON)
 	}
 
 	@StreamrApi
-	def update() {
-		def dashboard = dashboardService.update(request.JSON, request.apiUser)
+	def update(SaveDashboardCommand command) {
+		if (!command.validate()) {
+			throw new ValidationException(command.errors)
+		}
+		def dashboard = dashboardService.update(command, request.apiUser)
 		render(dashboard.toMap() as JSON)
 	}
 
@@ -64,4 +75,5 @@ class DashboardApiController {
 		log.info("request: responding with $response")
 		render response as JSON
 	}
+
 }
