@@ -6,8 +6,8 @@ import NameEditor from './NameEditor'
 import CanvasList from './CanvasList'
 import DashboardTools from './DashboardTools'
 
-import type { Dashboard } from '../../../flowtype/dashboard-types'
-import type { Canvas } from '../../../flowtype/canvas-types'
+import type { Dashboard } from '../../../../flowtype/dashboard-types'
+import type { Canvas } from '../../../../flowtype/canvas-types'
 
 import styles from './sidebar.pcss'
 

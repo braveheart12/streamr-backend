@@ -5,9 +5,9 @@ import {connect} from 'react-redux'
 
 import {FormControl} from 'react-bootstrap'
 
-import {updateDashboard} from '../../../../actions/dashboard'
+import {updateDashboard} from '../../../../../actions/dashboard'
 
-import type {Dashboard} from '../../../../flowtype/dashboard-types'
+import type {Dashboard} from '../../../../../flowtype/dashboard-types'
 
 class NameEditor extends Component {
     

@@ -2,10 +2,10 @@
 
 import React, {Component} from 'react'
 import {connect} from 'react-redux'
-import {showError} from '../../../../actions/notification'
+import {showError} from '../../../../../actions/notification'
 
 import TitleRow from './DashboardItemTitleRow'
-import WebComponent from '../../../WebComponent'
+import WebComponent from '../../../../WebComponent'
 
 import styles from './dashboardItem.pcss'
 import './webcomponentStyles.css'

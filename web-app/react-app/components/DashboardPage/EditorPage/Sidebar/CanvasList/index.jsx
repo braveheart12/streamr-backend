@@ -6,7 +6,7 @@ import CanvasInList from './CanvasInList'
 
 import styles from './canvasList.pcss'
 
-import type {Canvas} from '../../../../flowtype/canvas-types'
+import type {Canvas} from '../../../../../flowtype/canvas-types'
 
 class CanvasList extends Component {
     

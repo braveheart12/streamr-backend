@@ -26,7 +26,7 @@ export class ShareDialogInputRow extends Component {
         this.onSubmit = this.onSubmit.bind(this)
     }
     
-    onSubmit(e) {
+    onSubmit(e: any) {
         e.preventDefault()
         const data = serialize(e.target, {
             hash: true

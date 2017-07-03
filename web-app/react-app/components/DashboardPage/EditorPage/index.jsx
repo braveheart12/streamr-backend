@@ -4,12 +4,12 @@ import React, {Component} from 'react'
 import {connect} from 'react-redux'
 import {Helmet} from 'react-helmet'
 
-import Notifier from '../Notifier'
+import Notifier from '../../Notifier'
 import Sidebar from './Sidebar/index'
 import Editor from './Editor/index'
 
-import type { Dashboard } from '../../flowtype/dashboard-types'
-import type { Canvas } from '../../flowtype/canvas-types'
+import type { Dashboard } from '../../../flowtype/dashboard-types'
+import type { Canvas } from '../../../flowtype/canvas-types'
 
 
 class DashboardPage extends Component {

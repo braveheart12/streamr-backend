@@ -2,26 +2,26 @@
 
 import React, {Component} from 'react'
 import {connect} from 'react-redux'
-import {StreamrBreadcrumb} from '../../Breadcrumb'
+import {StreamrBreadcrumb} from '../../../Breadcrumb'
 import {MenuItem} from 'react-bootstrap'
 import FontAwesome from 'react-fontawesome'
-import createLink from '../../../createLink'
+import createLink from '../../../../createLink'
 
 import {Responsive, WidthProvider} from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
 
 import DashboardItem from './DashboardItem'
-import ShareDialog from '../../ShareDialog'
+import ShareDialog from '../../../ShareDialog'
 
-import {updateDashboard, deleteDashboard, lockDashboardEditing, unlockDashboardEditing} from '../../../actions/dashboard'
+import {updateDashboard, deleteDashboard, lockDashboardEditing, unlockDashboardEditing} from '../../../../actions/dashboard'
 
 import styles from './editor.pcss'
 
 declare var _: any
 
-import type {Dashboard} from '../../../flowtype/dashboard-types'
-import ConfirmButton from '../../ConfirmButton/index'
+import type {Dashboard} from '../../../../flowtype/dashboard-types'
+import ConfirmButton from '../../../ConfirmButton/index'
 
 const ResponsiveReactGridLayout = WidthProvider(Responsive)
 

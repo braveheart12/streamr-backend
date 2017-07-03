@@ -5,14 +5,14 @@ import {any} from 'prop-types'
 import {connect} from 'react-redux'
 import {Button} from 'react-bootstrap'
 import FontAwesome from 'react-fontawesome'
-import createLink from '../../../../createLink'
+import createLink from '../../../../../createLink'
 
-import ConfirmButton from '../../../ConfirmButton'
-import ShareDialog from '../../../ShareDialog'
+import ConfirmButton from '../../../../ConfirmButton'
+import ShareDialog from '../../../../ShareDialog'
 
-import {updateAndSaveDashboard, deleteDashboard} from '../../../../actions/dashboard'
+import {updateAndSaveDashboard, deleteDashboard} from '../../../../../actions/dashboard'
 
-import type { Dashboard } from '../../../../flowtype/dashboard-types'
+import type { Dashboard } from '../../../../../flowtype/dashboard-types'
 
 class DashboardTools extends Component {
     

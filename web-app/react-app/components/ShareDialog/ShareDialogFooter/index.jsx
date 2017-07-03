@@ -2,7 +2,10 @@
 import React from 'react'
 import {Button, Modal} from 'react-bootstrap'
 
-export default function ShareDialogFooter (props) {
+export default function ShareDialogFooter (props: {
+    save: () => void,
+    closeModal: () => {}
+}) {
     return (
         <Modal.Footer>
             <Button

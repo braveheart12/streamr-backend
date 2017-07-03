@@ -36,6 +36,7 @@ class Dashboard {
 				id        : id,
 				name      : name,
 				numOfItems: items == null ? 0 : items.size(),
+				lastUpdated: lastUpdated
 		]
 	}
 

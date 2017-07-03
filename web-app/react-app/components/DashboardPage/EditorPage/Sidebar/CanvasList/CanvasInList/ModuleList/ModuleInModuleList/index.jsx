@@ -4,13 +4,13 @@ import React, {Component} from 'react'
 import {connect} from 'react-redux'
 import FontAwesome from 'react-fontawesome'
 
-import {addDashboardItem, removeDashboardItem} from '../../../../../../../actions/dashboard'
+import {addDashboardItem, removeDashboardItem} from '../../../../../../../../actions/dashboard'
 
 import styles from './moduleInModuleList.pcss'
 import uuid from 'uuid'
 
-import type { Dashboard, DashboardItem } from '../../../../../../../flowtype/dashboard-types'
-import type { Canvas, CanvasModule } from '../../../../../../../flowtype/canvas-types'
+import type { Dashboard, DashboardItem } from '../../../../../../../../flowtype/dashboard-types'
+import type { Canvas, CanvasModule } from '../../../../../../../../flowtype/canvas-types'
 
 class ModuleInModuleList extends Component {
     

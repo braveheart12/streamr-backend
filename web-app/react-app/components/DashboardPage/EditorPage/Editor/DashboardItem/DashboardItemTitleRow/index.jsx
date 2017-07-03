@@ -5,11 +5,11 @@ import {connect} from 'react-redux'
 import FontAwesome from 'react-fontawesome'
 import {Button} from 'react-bootstrap'
 
-import {removeDashboardItem, updateDashboardItem} from '../../../../../actions/dashboard'
+import {removeDashboardItem, updateDashboardItem} from '../../../../../../actions/dashboard'
 
 import styles from './dashboardItemTitleRow.pcss'
 
-import type {Dashboard, DashboardItem} from '../../../../../flowtype/dashboard-types'
+import type {Dashboard, DashboardItem} from '../../../../../../flowtype/dashboard-types'
 
 class DashboardItemTitleRow extends Component {
     onRemove: Function
