@@ -32,7 +32,9 @@ class DashboardApiController {
 			}
 		})
 		def dashboards = permissionService.get(Dashboard, request.apiUser, Permission.Operation.READ, apiService.isPublicFlagOn(params), criteria)
-		render(dashboards*.toSummaryMap() as JSON)
+		dashboards = dashboards.collect { it.toSummaryMap() }
+
+		render(dashboards as JSON)
 	}
 
 	@StreamrApi
@@ -63,6 +65,12 @@ class DashboardApiController {
 	def delete(String id) {
 		dashboardService.deleteById(id, (SecUser) request.apiUser)
 		render(status: 204)
+	}
+
+	@StreamrApi
+	def getOwnPermissionsForAllDashboards() {
+		def permissions = permissionService.getPermissionsToClass(Dashboard, request.apiUser)
+		render(permissions*.toMap() as JSON)
 	}
 
 	/**

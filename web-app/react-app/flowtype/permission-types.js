@@ -14,7 +14,9 @@ export type Permission = {
     fetching?: boolean,
     new?: boolean,
     removed?: boolean,
-    error?: ApiError
+    error?: ApiError,
+    resourceType?: resourceType,
+    resourceId?: resourceId
 }
 
 export type State = {

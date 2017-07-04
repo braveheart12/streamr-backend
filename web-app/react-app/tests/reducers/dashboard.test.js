@@ -237,16 +237,16 @@ describe('Dashboard reducer', () => {
         })
     })
     
-    describe('GET_MY_DASHBOARD_PERMISSIONS', () => {
-        it('should handle GET_MY_DASHBOARD_PERMISSIONS_REQUEST', () => {
+    describe('GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID', () => {
+        it('should handle GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_REQUEST', () => {
             assert.deepStrictEqual(reducer(initialState, {
-                type: actions.GET_MY_DASHBOARD_PERMISSIONS_REQUEST
+                type: actions.GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_REQUEST
             }), {
                 ...initialState,
                 fetching: true
             })
         })
-        it('should handle GET_MY_DASHBOARD_PERMISSIONS_SUCCESS', () => {
+        it('should handle GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_SUCCESS', () => {
             assert.deepStrictEqual(reducer({
                 ...initialState,
                 dashboardsById: {
@@ -258,7 +258,7 @@ describe('Dashboard reducer', () => {
                     }
                 }
             }, {
-                type: actions.GET_MY_DASHBOARD_PERMISSIONS_SUCCESS,
+                type: actions.GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_SUCCESS,
                 id: 'test',
                 permissions: ['test', 'test2']
             }), {
@@ -276,9 +276,9 @@ describe('Dashboard reducer', () => {
                 fetching: false
             })
         })
-        it('should handle GET_MY_DASHBOARD_PERMISSIONS_FAILURE', () => {
+        it('should handle GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_FAILURE', () => {
             assert.deepStrictEqual(reducer(initialState, {
-                type: actions.GET_MY_DASHBOARD_PERMISSIONS_FAILURE,
+                type: actions.GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_FAILURE,
                 error: new Error('test')
             }), {
                 ...initialState,

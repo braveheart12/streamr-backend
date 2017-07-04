@@ -90,6 +90,26 @@ class PermissionService {
 	}
 
 	/**
+	 * 
+	 * @param resourceClass
+	 * @param userish
+	 * @return list of all permissions for the class and user
+	 */
+	public List<Permission> getPermissionsToClass(Class resourceClass, userish) {
+		List<Permission> perms =  Permission.withCriteria {
+			eq "clazz", resourceClass.name
+			or {
+				eq "anonymous", true
+				if (isValidUser(userish)) {
+					String userProp = getPermissionPropertyName(userish)
+					eq userProp, userish
+				}
+			}
+		}
+
+	}
+
+	/**
 	 * @return List of all Permissions granted to a specific resource
      */
 	public List<Permission> getPermissionsTo(resource) {

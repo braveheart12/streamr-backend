@@ -30,7 +30,7 @@ class PermissionServiceSpec extends Specification {
 	SignupInvite invite
 
 	Dashboard dashAllowed, dashRestricted, dashOwned, dashPublic
-	Permission dashReadPermission, dashAnonymousReadPermission
+	Permission dashReadPermission, dashAnonymousReadPermission, dashOtherReadPermission
 
     def setup() {
 
@@ -57,6 +57,7 @@ class PermissionServiceSpec extends Specification {
 
 		// Set up the Permissions to the allowed resources
 		dashReadPermission = service.grant(anotherUser, dashAllowed, me)
+		dashOtherReadPermission = service.grant(me, dashOwned, anotherUser)
 		dashAnonymousReadPermission = service.grantAnonymousAccess(anotherUser, dashPublic)
 		service.grant(anotherUser, dashAllowed, anonymousKey)
     }
@@ -133,6 +134,13 @@ class PermissionServiceSpec extends Specification {
 		!service.canRead(myKey, new Dashboard())
 		!service.canRead(anonymousKey, new Dashboard())
 		!service.canRead(myKey, null)
+	}
+
+	void "getPermissionsToClass returns all permissions for the given class"() {
+		setup:
+		def perm = service.getPermissionsToClass(Dashboard, anotherUser)
+		expect:
+		perm.length == 2
 	}
 
 	void "getPermissionsTo returns all permissions for the given resource"() {

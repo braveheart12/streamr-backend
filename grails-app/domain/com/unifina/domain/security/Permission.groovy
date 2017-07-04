@@ -50,24 +50,25 @@ class Permission {
 	 * Client-side representation of Permission object
 	 * Resource type/id is not indicated because API caller will have it in the URL
 	 * @return map to be shown to the API callers
-     */
+	 */
 	public Map toMap() {
+		Map base = [
+				id        : id,
+				resourceId: stringId ?: longId
+		]
 		if (anonymous) {
-			return [
-					id: id,
+			return base << [
 					anonymous: true,
 					operation: operation.id
 			]
 		} else if (user || invite) {
-			return [
-					id: id,
-					user: user?.username ?: invite?.username,
+			return base << [
+					user     : user?.username ?: invite?.username,
 					operation: operation.id
 			]
 		} else if (key) {
-			return [
-					id: id,
-					key: key.toMap(),
+			return base << [
+					key      : key.toMap(),
 					operation: operation.id
 			]
 		} else {

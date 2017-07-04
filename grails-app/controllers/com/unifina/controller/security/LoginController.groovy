@@ -1,6 +1,5 @@
 package com.unifina.controller.security
 
-import com.unifina.security.StreamrApi
 import grails.converters.JSON
 import grails.plugin.springsecurity.SpringSecurityUtils
 import grails.plugin.springsecurity.annotation.Secured

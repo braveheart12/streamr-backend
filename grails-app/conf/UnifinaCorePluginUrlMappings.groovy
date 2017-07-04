@@ -38,6 +38,7 @@ class UnifinaCorePluginUrlMappings {
 		"/api/v1/streams/$resourceId/keys"(resources: "keyApi", excludes: ["create", "edit", "update"]) { resourceClass = Stream }
 
 		"/api/v1/dashboards"(resources: "dashboardApi", excludes: ["create", "edit"])
+		"/api/v1/dashboards/permissions/me"(controller: "dashboardApi", action: "getOwnPermissionsForAllDashboards")
 		"/api/v1/dashboards/$dashboardId/items"(resources: "dashboardItemApi", excludes: ["create", "edit"])
 		"/api/v1/dashboards/$resourceId/permissions"(resources: "permissionApi", excludes: ["create", "edit", "update"]) { resourceClass = Dashboard }
 		"/api/v1/dashboards/$resourceId/permissions/me"(controller: "permissionApi", action: "getOwnPermissions") { resourceClass = Dashboard }
@@ -54,6 +55,6 @@ class UnifinaCorePluginUrlMappings {
 		"/api/v1/dashboards/($path**)/request"(controller: "dashboardApi", action: "runtimeRequest") // for internal use, runtime requests to canvases via dashboards
 
 		// Mappings for pages using React Router (the root for the router)
-		"/dashboard/editor/$id**?"(controller: "dashboard", action: "editor")
+		"/dashboard/$path**?"(controller: "dashboard", action: "index")
 	}
 }

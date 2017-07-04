@@ -321,8 +321,8 @@ describe('Dashboard actions', () => {
         })
     })
     
-    describe('getMyDashboardPermissions', () => {
-        it('creates GET_MY_DASHBOARD_PERMISSIONS_SUCCESS with the operations when fetching permissions has succeeded', async () => {
+    describe('getMyPermissionsForDashboardById', () => {
+        it('creates GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_SUCCESS with the operations when fetching permissions has succeeded', async () => {
             const id = 'asdfasdfasasd'
             moxios.stubRequest(`api/v1/dashboards/${id}/permissions/me`, {
                 status: 200,
@@ -335,17 +335,17 @@ describe('Dashboard actions', () => {
         
             const expectedActions = [{
                 id,
-                type: actions.GET_MY_DASHBOARD_PERMISSIONS_REQUEST
+                type: actions.GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_REQUEST
             }, {
                 id,
-                type: actions.GET_MY_DASHBOARD_PERMISSIONS_SUCCESS,
+                type: actions.GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_SUCCESS,
                 permissions: ['test', 'test2']
             }]
         
-            await store.dispatch(actions.getMyDashboardPermissions(id))
+            await store.dispatch(actions.getMyPermissionsForDashboardById(id))
             assert.deepStrictEqual(store.getActions(), expectedActions)
         })
-        it('creates GET_MY_DASHBOARD_PERMISSIONS_FAILURE when fetching permissions has failed', async () => {
+        it('creates GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_FAILURE when fetching permissions has failed', async () => {
             const id = 'asdfasdfasasd'
             moxios.stubRequest(`api/v1/dashboards/${id}/permissions/me`, {
                 status: 500,
@@ -354,15 +354,15 @@ describe('Dashboard actions', () => {
         
             const expectedActions = [{
                 id,
-                type: actions.GET_MY_DASHBOARD_PERMISSIONS_REQUEST
+                type: actions.GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_REQUEST
             }, {
                 id,
-                type: actions.GET_MY_DASHBOARD_PERMISSIONS_FAILURE,
+                type: actions.GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_FAILURE,
                 error: new Error('test-error')
             }]
         
             try {
-                await store.dispatch(actions.getMyDashboardPermissions(id))
+                await store.dispatch(actions.getMyPermissionsForDashboardById(id))
             } catch (e) {
                 assert.deepStrictEqual(store.getActions().slice(0, 2), expectedActions)
             }

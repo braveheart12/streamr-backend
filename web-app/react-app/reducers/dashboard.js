@@ -13,9 +13,12 @@ import {
     DELETE_DASHBOARD_REQUEST,
     DELETE_DASHBOARD_SUCCESS,
     DELETE_DASHBOARD_FAILURE,
-    GET_MY_DASHBOARD_PERMISSIONS_REQUEST,
-    GET_MY_DASHBOARD_PERMISSIONS_SUCCESS,
-    GET_MY_DASHBOARD_PERMISSIONS_FAILURE,
+    GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_REQUEST,
+    GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_SUCCESS,
+    GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_FAILURE,
+    GET_MY_PERMISSIONS_FOR_ALL_MY_DASHBOARDS_REQUEST,
+    GET_MY_PERMISSIONS_FOR_ALL_MY_DASHBOARDS_SUCCESS,
+    GET_MY_PERMISSIONS_FOR_ALL_MY_DASHBOARDS_FAILURE,
     OPEN_DASHBOARD,
     CREATE_DASHBOARD,
     UPDATE_DASHBOARD,
@@ -39,7 +42,7 @@ const initialState = {
     fetching: false
 }
 
-const dashboard = function(state: State = initialState, action: Action) : State {
+export default function(state: State = initialState, action: Action) : State {
     switch (action.type) {
         case OPEN_DASHBOARD:
             return {
@@ -54,7 +57,8 @@ const dashboard = function(state: State = initialState, action: Action) : State 
         case GET_DASHBOARD_REQUEST:
         case UPDATE_AND_SAVE_DASHBOARD_REQUEST:
         case DELETE_DASHBOARD_REQUEST:
-        case GET_MY_DASHBOARD_PERMISSIONS_REQUEST:
+        case GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_REQUEST:
+        case GET_MY_PERMISSIONS_FOR_ALL_MY_DASHBOARDS_REQUEST:
             return {
                 ...state,
                 fetching: true
@@ -64,6 +68,13 @@ const dashboard = function(state: State = initialState, action: Action) : State 
             return {
                 ...state,
                 dashboardsById: _.keyBy(action.dashboards, 'id'),
+                fetching: false,
+                error: null
+            }
+            
+        case GET_MY_PERMISSIONS_FOR_ALL_MY_DASHBOARDS_SUCCESS:
+            return {
+                ...state,
                 fetching: false,
                 error: null
             }
@@ -143,7 +154,7 @@ const dashboard = function(state: State = initialState, action: Action) : State 
             }
         }
         
-        case GET_MY_DASHBOARD_PERMISSIONS_SUCCESS: {
+        case GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_SUCCESS: {
             if (!action.id) {
                 return state
             }
@@ -152,7 +163,8 @@ const dashboard = function(state: State = initialState, action: Action) : State 
                 dashboardsById: {
                     ...state.dashboardsById,
                     [action.id]: {
-                        ...state.dashboardsById[action.id],
+                        ...(state.dashboardsById[action.id] || {}),
+                        id: action.id,
                         ownPermissions: action.permissions || []
                     }
                 },
@@ -165,7 +177,8 @@ const dashboard = function(state: State = initialState, action: Action) : State 
         case GET_DASHBOARD_FAILURE:
         case UPDATE_AND_SAVE_DASHBOARD_FAILURE:
         case DELETE_DASHBOARD_FAILURE:
-        case GET_MY_DASHBOARD_PERMISSIONS_FAILURE:
+        case GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_FAILURE:
+        case GET_MY_PERMISSIONS_FOR_ALL_MY_DASHBOARDS_FAILURE:
             return {
                 ...state,
                 fetching: false,
@@ -200,5 +213,3 @@ const dashboard = function(state: State = initialState, action: Action) : State 
             return state
     }
 }
-
-export default dashboard

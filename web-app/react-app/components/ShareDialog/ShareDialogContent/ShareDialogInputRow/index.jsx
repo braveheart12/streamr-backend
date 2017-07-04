@@ -58,7 +58,7 @@ export class ShareDialogInputRow extends Component {
     }
 }
 
-const mapStateToProps = (state) => ({})
+//const mapStateToProps = (state) => ({})
 
 const mapDispatchToProps = (dispatch, ownProps) => ({
     addPermission(permission) {
@@ -66,4 +66,4 @@ const mapDispatchToProps = (dispatch, ownProps) => ({
     }
 })
 
-export default connect(mapStateToProps, mapDispatchToProps)(ShareDialogInputRow)
+export default connect(null, mapDispatchToProps)(ShareDialogInputRow)

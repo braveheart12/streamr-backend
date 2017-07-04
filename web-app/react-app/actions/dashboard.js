@@ -3,6 +3,7 @@
 import axios from 'axios'
 import parseError from './utils/parseError'
 import createLink from '../createLink'
+import _ from 'lodash'
 
 import {showSuccess, showError} from './notification'
 
@@ -26,9 +27,13 @@ export const DELETE_DASHBOARD_REQUEST = 'DELETE_DASHBOARD_REQUEST'
 export const DELETE_DASHBOARD_SUCCESS = 'DELETE_DASHBOARD_SUCCESS'
 export const DELETE_DASHBOARD_FAILURE = 'DELETE_DASHBOARD_FAILURE'
 
-export const GET_MY_DASHBOARD_PERMISSIONS_REQUEST = 'GET_MY_DASHBOARD_PERMISSIONS_REQUEST'
-export const GET_MY_DASHBOARD_PERMISSIONS_SUCCESS = 'GET_MY_DASHBOARD_PERMISSIONS_SUCCESS'
-export const GET_MY_DASHBOARD_PERMISSIONS_FAILURE = 'GET_MY_DASHBOARD_PERMISSIONS_FAILURE'
+export const GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_REQUEST = 'GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_REQUEST'
+export const GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_SUCCESS = 'GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_SUCCESS'
+export const GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_FAILURE = 'GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_FAILURE'
+
+export const GET_MY_PERMISSIONS_FOR_ALL_MY_DASHBOARDS_REQUEST = 'GET_MY_PERMISSIONS_FOR_ALL_MY_DASHBOARDS_REQUEST'
+export const GET_MY_PERMISSIONS_FOR_ALL_MY_DASHBOARDS_SUCCESS = 'GET_MY_PERMISSIONS_FOR_ALL_MY_DASHBOARDS_SUCCESS'
+export const GET_MY_PERMISSIONS_FOR_ALL_MY_DASHBOARDS_FAILURE = 'GET_MY_PERMISSIONS_FOR_ALL_MY_DASHBOARDS_FAILURE'
 
 export const LOCK_DASHBOARD_EDITING = 'LOCK_DASHBOARD_EDITING'
 export const UNLOCK_DASHBOARD_EDITING = 'UNLOCK_DASHBOARD_EDITING'
@@ -122,13 +127,38 @@ export const deleteDashboard = (id: Dashboard.id) => (dispatch: Function) => {
         })
 }
 
-export const getMyDashboardPermissions = (id: Dashboard.id) => (dispatch: Function) => {
-    dispatch(getMyDashboardPermissionsRequest(id))
-    return axios.delete(createLink(`${apiUrl}/${id}/permissions/me`))
-        .then(res => dispatch(getMyDashboardPermissionsSuccess(id, res.data.filter(item => item.user === Streamr.user).map(item => item.operation))))
+export const getMyPermissionsForDashboardById = (id: Dashboard.id) => (dispatch: Function) => {
+    dispatch(getMyPermissionsForDashboardByIdRequest(id))
+    return axios.get(createLink(`${apiUrl}/${id}/permissions/me`))
+        .then(res => dispatch(getMyPermissionsForDashboardByIdSuccess(id, res.data.filter(item => item.user === Streamr.user).map(item => item.operation))))
         .catch(res => {
             const e = parseError(res)
-            dispatch(getMyDashboardPermissionsFailure(id, e))
+            dispatch(getMyPermissionsForDashboardByIdFailure(id, e))
+            dispatch(showError({
+                title: 'Error!',
+                message: e.message
+            }))
+            throw e
+        })
+}
+
+export const getMyPermissionsForAllMyDashboards = () => (dispatch: Function) => {
+    dispatch(getMyPermissionsForAllMyDashboardsRequest())
+    return axios.get(createLink(`${apiUrl}/permissions/me`))
+        .then(res => {
+            dispatch(getMyPermissionsForAllMyDashboardsSuccess())
+            debugger
+            const permissionsByResourceId = _.chain(res.data)
+                .groupBy(item => item.resourceId)
+                .mapValues(item => item.map(perm => perm.operation))
+                .value()
+            Object.keys(permissionsByResourceId).forEach(id => {
+                dispatch(getMyPermissionsForDashboardByIdSuccess(id, permissionsByResourceId[id]))
+            })
+        })
+        .catch(res => {
+            const e = parseError(res)
+            dispatch(getMyPermissionsForAllMyDashboardsFailure(e))
             dispatch(showError({
                 title: 'Error!',
                 message: e.message
@@ -209,8 +239,13 @@ const deleteDashboardRequest = (id: Dashboard.id) => ({
     id
 })
 
-const getMyDashboardPermissionsRequest = (id: Dashboard.id) => ({
-    type: GET_MY_DASHBOARD_PERMISSIONS_REQUEST,
+const getMyPermissionsForDashboardByIdRequest = (id: Dashboard.id) => ({
+    type: GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_REQUEST,
+    id
+})
+
+const getMyPermissionsForAllMyDashboardsRequest = (id: Dashboard.id) => ({
+    type: GET_MY_PERMISSIONS_FOR_ALL_MY_DASHBOARDS_REQUEST,
     id
 })
 
@@ -234,10 +269,14 @@ const deleteDashboardSuccess = (id: Dashboard.id) => ({
     id
 })
 
-const getMyDashboardPermissionsSuccess = (id: Dashboard.id, permissions: Array<string>) => ({
-    type: GET_MY_DASHBOARD_PERMISSIONS_SUCCESS,
+const getMyPermissionsForDashboardByIdSuccess = (id: Dashboard.id, permissions: Array<string>) => ({
+    type: GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_SUCCESS,
     id,
     permissions
+})
+
+const getMyPermissionsForAllMyDashboardsSuccess = () => ({
+    type: GET_MY_PERMISSIONS_FOR_ALL_MY_DASHBOARDS_SUCCESS,
 })
 
 const getAndReplaceDashboardsFailure = (error: ApiError) => ({
@@ -260,8 +299,13 @@ const deleteDashboardFailure = (error: ApiError) => ({
     error
 })
 
-const getMyDashboardPermissionsFailure = (id: Dashboard.id, error: ApiError) => ({
-    type: GET_MY_DASHBOARD_PERMISSIONS_FAILURE,
+const getMyPermissionsForAllMyDashboardsFailure = (id: Dashboard.id, error: ApiError) => ({
+    type: GET_MY_PERMISSIONS_FOR_ALL_MY_DASHBOARDS_FAILURE,
+    error
+})
+
+const getMyPermissionsForDashboardByIdFailure = (id: Dashboard.id, error: ApiError) => ({
+    type: GET_MY_PERMISSIONS_FOR_DASHBOARD_BY_ID_FAILURE,
     id,
     error
 })
