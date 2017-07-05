@@ -4,6 +4,7 @@ import axios from 'axios'
 import parseError from './utils/parseError'
 import createLink from '../createLink'
 import _ from 'lodash'
+import querystring from 'querystring'
 
 import {showSuccess, showError} from './notification'
 
@@ -42,17 +43,16 @@ const apiUrl = 'api/v1/dashboards'
 
 import type { ApiError } from '../flowtype/common-types'
 import type { Dashboard, DashboardItem } from '../flowtype/dashboard-types'
+import type { ResourceSearchQuery } from '../flowtype/resource-types'
 
 declare var Streamr: {
-    user: string
+    user: any
 }
 
-export const getAndReplaceDashboards = () => (dispatch: Function) => {
-    dispatch(getAndReplaceDashboardsRequest())
-    return axios.get(createLink(apiUrl))
-        .then(({data}) => {
-            dispatch(getAndReplaceDashboardsSuccess(data))
-        })
+export const getAndReplaceDashboards = (search?: ResourceSearchQuery) => (dispatch: Function) => {
+    dispatch(getAndReplaceDashboardsRequest(search))
+    return axios.get(createLink(apiUrl) + (search  ? ('?' + querystring.stringify(search)) : ''))
+        .then(({data}) => dispatch(getAndReplaceDashboardsSuccess(data)))
         .catch(res => {
             const e = parseError(res)
             dispatch(getAndReplaceDashboardsFailure(e))
@@ -147,7 +147,6 @@ export const getMyPermissionsForAllMyDashboards = () => (dispatch: Function) => 
     return axios.get(createLink(`${apiUrl}/permissions/me`))
         .then(res => {
             dispatch(getMyPermissionsForAllMyDashboardsSuccess())
-            debugger
             const permissionsByResourceId = _.chain(res.data)
                 .groupBy(item => item.resourceId)
                 .mapValues(item => item.map(perm => perm.operation))

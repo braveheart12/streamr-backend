@@ -3,6 +3,9 @@ package com.unifina.domain.dashboard
 import com.unifina.domain.security.SecUser
 import groovy.transform.CompileStatic
 
+import java.text.DateFormat
+import java.text.SimpleDateFormat
+
 class Dashboard {
 
 	SecUser user
@@ -32,11 +35,13 @@ class Dashboard {
 
 	@CompileStatic
 	Map toSummaryMap() {
-		[
+		DateFormat df = new SimpleDateFormat("YYYY-MM-dd HH:mm:ss zzz")
+		return [
 				id        : id,
 				name      : name,
 				numOfItems: items == null ? 0 : items.size(),
-				lastUpdated: lastUpdated
+				lastUpdated: df.format(lastUpdated),
+				user: user.username
 		]
 	}
 

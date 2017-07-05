@@ -13,3 +13,35 @@
     }
   }
 }
+
+.panelHeadingControls {
+  .inputGroup {
+    display: inline-block;
+
+    .inputGroupButton {
+      width: initial;
+    }
+
+    .searchInput,
+    .inputGroupButton {
+      display: inline-block;
+    }
+
+    .searchInput {
+      width: 150px;
+      transition: width 0.5s ease;
+
+      &:valid,
+      &:hover,
+      &:focus {
+        width: 250px;
+      }
+    }
+  }
+}
+
+.footerControl {
+  .maxSelect {
+    width: 70px;
+  }
+}

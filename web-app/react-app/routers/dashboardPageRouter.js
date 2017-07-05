@@ -56,7 +56,7 @@ export default function DashboardPageRouter() {
             }}>
                 <Route path="/list" component={ListPage} onEnter={() => {
                     store.dispatch(getAndReplaceDashboards())
-                    store.dispatch(getMyPermissionsForAllMyDashboards())
+                        .then(() => store.dispatch(getMyPermissionsForAllMyDashboards()))
                 }}/>
             </Route>
             <Redirect from="/" to="/list"/>

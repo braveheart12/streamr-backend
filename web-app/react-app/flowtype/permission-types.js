@@ -1,22 +1,19 @@
 
 import type {ApiError} from './common-types'
-import type {User} from './user-types'
+import type {CommonResource} from './resource-types'
 
-type resourceType = 'DASHBOARD' | 'CANVAS' | 'STREAM'
-type resourceId = string
+export type Operation = 'read' | 'write' | 'share'
 
-type Operation = 'read' | 'write' | 'share'
-
-export type Permission = {
+export type Permission = CommonResource & {
     operation: Operation,
-    user: User.email,
+    user: CommonResource.user,
     anonymous?: boolean,
     fetching?: boolean,
     new?: boolean,
     removed?: boolean,
     error?: ApiError,
-    resourceType?: resourceType,
-    resourceId?: resourceId
+    resourceType?: CommonResource.type,
+    resourceId?: CommonResource.id
 }
 
 export type State = {

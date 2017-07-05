@@ -1,5 +1,6 @@
 [ignore]
 .*/node_modules/react-resizable/build/ResizableBox.js
+.*/node_modules/redux-listener-middleware/*
 [include]
 
 [libs]

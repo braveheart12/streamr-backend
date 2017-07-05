@@ -13,6 +13,7 @@ export type DashboardReducerState = {
     dashboardsById?: {
         [Dashboard.id]: Dashboard
     },
+    searchResult: ?Array<Dashboard>,
     openDashboard: {
         id: ?Dashboard.id,
         saved: boolean,

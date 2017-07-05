@@ -1,5 +1,7 @@
 // @flow
 
+import _ from 'lodash'
+
 import {
     GET_AND_REPLACE_DASHBOARDS_REQUEST,
     GET_AND_REPLACE_DASHBOARDS_SUCCESS,
@@ -26,8 +28,6 @@ import {
     UNLOCK_DASHBOARD_EDITING
 } from '../actions/dashboard.js'
 
-declare var _: any
-
 import type {
     DashboardReducerState as State,
     DashboardReducerAction as Action
@@ -35,6 +35,7 @@ import type {
 
 const initialState = {
     dashboardsById: {},
+    searchResult: null,
     openDashboard: {
         id: null
     },
