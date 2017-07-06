@@ -54,10 +54,7 @@ export default function DashboardPageRouter() {
                     document.body.classList.remove('no-main-menu')
                 }
             }}>
-                <Route path="/list" component={ListPage} onEnter={() => {
-                    store.dispatch(getAndReplaceDashboards())
-                        .then(() => store.dispatch(getMyPermissionsForAllMyDashboards()))
-                }}/>
+                <Route path="/list" component={ListPage}/>
             </Route>
             <Redirect from="/" to="/list"/>
         </Router>

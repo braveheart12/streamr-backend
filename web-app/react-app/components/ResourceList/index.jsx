@@ -2,16 +2,15 @@
 
 import React, {Component} from 'react'
 import {
-    Row, Col, Panel, Table, DropdownButton, MenuItem, InputGroup, Button
+    Row, Col, Panel, DropdownButton, MenuItem, InputGroup, Button
 } from 'react-bootstrap'
 import { BootstrapTable, TableHeaderColumn } from 'react-bootstrap-table'
 import FontAwesome from 'react-fontawesome'
-import Select from 'react-select'
 
 import ShareDialog from '../ShareDialog'
-import {ClickableTr, ClickableTd} from '../ClickableTable'
+//import {ClickableTr, ClickableTd} from '../ClickableTable'
 
-import 'react-select/dist/react-select.css'
+import 'react-bootstrap-table/dist/react-bootstrap-table-all.min.css'
 import styles from './resourceList.pcss'
 
 import type {CommonResource} from '../../flowtype/resource-types'
@@ -26,8 +25,10 @@ declare var Streamr: {
 }
 
 export default class ResourceList extends Component {
-    search: Function
-    onMaxChange: Function
+    getItems: Function
+    onSearchChange: Function
+    onSortChange: Function
+    onPageChange: Function
     state: {
         search: string,
         max: number,
@@ -64,8 +65,10 @@ export default class ResourceList extends Component {
             max: 25,
             offset: 0
         }
-        this.search = this.search.bind(this)
-        this.onMaxChange = this.onMaxChange.bind(this)
+        this.getItems = this.getItems.bind(this)
+        this.onSearchChange = this.onSearchChange.bind(this)
+        this.onSortChange = this.onSortChange.bind(this)
+        this.onPageChange = this.onPageChange.bind(this)
     }
     
     componentWillMount() {
@@ -75,20 +78,39 @@ export default class ResourceList extends Component {
         })
     }
     
-    search({target}: { target: HTMLInputElement }) {
-        this.setState({
+    onSearchChange({target}: { target: HTMLInputElement }) {
+        const newState = {
             search: target.value
-        })
+        }
+        this.setState(newState)
         this.props.getItems({
-            max: this.state.max,
-            offset: this.state.offset,
-            search: target.value
+            ...this.state,
+            ...newState
         })
     }
     
-    onMaxChange(newValue: number) {
-        this.setState({
-            max: newValue
+    getItems() {
+        this.props.getItems({
+            max: this.state.max,
+            offset: this.state.offset,
+            search: this.state.search
+        })
+    }
+    
+    onSortChange() {
+        debugger
+    }
+    
+    onPageChange(page: number, sizePerPage: number) {
+        debugger
+        const newState = {
+            max: sizePerPage,
+            offset: sizePerPage * (page - 1)
+        }
+        this.setState(newState)
+        this.props.getItems({
+            ...this.state,
+            ...newState
         })
     }
     
@@ -107,7 +129,7 @@ export default class ResourceList extends Component {
                                                 required
                                                 placeholder="Search"
                                                 className={`form-control ${styles.searchInput}`}
-                                                onChange={this.search}
+                                                onChange={this.onSearchChange}
                                             />
                                             <InputGroup.Button className={styles.inputGroupButton}>
                                                 <Button>
@@ -122,92 +144,73 @@ export default class ResourceList extends Component {
                     >
                         <BootstrapTable
                             data={ this.props.items }
-                            noDataText="No items found"
+                            containerClass={styles.itemTableContainer}
+                            tableContainerClass={styles.itemTable}
+                            fetchInfo={{
+                                dataTotalSize: this.props.items.length || 0
+                            }}
+                            options={{
+                                noDataText: 'No items found',
+                                onSortChange: this.onSortChange,
+                                sizePerPage: this.state.max,
+                                sizePerPageList: [10, 25, 50, 100],
+                                onPageChange: this.onPageChange,
+                                page: this.state.offset / this.state.max + 1
+                            }}
+                            remote
                             pagination
                             striped
                             hover
                             bordered
-                            search
-                            //ignoreSinglePage
                         >
-                            <TableHeaderColumn dataField='name' isKey={ true }>Name</TableHeaderColumn>
-                            <TableHeaderColumn dataField='lastUpdated'>Last Updated</TableHeaderColumn>
+                            <TableHeaderColumn dataSort dataField='name' isKey={ true }>Name</TableHeaderColumn>
+                            <TableHeaderColumn dataSort dataField='lastUpdated'>Last Updated</TableHeaderColumn>
+                            <TableHeaderColumn dataField='action' columnClassName={ styles.itemActionColumn } className={ styles.itemActionColumnHeader } dataFormat={(cell, row) => (
+                                <ActionFormatter item={row} mapResourceToItem={this.props.mapResourceToItem} resourceType={this.props.resourceType} />
+                            )}/>
                         </BootstrapTable>
-                        {/*<Table className={styles.resourceTable} striped hover bordered>*/}
-                        {/*<thead>*/}
-                        {/*<tr>*/}
-                        {/*{this.props.fields.map(field => (*/}
-                        {/*<th key={JSON.stringify(field)}>*/}
-                        {/*{field.displayName || field}*/}
-                        {/*</th>*/}
-                        {/*))}*/}
-                        {/*<th/>*/}
-                        {/*</tr>*/}
-                        {/*</thead>*/}
-                        {/*<tbody>*/}
-                        {/*{this.props.items.map(item => {*/}
-                        {/*const resource: Object = this.props.mapResourceToItem(item)*/}
-                        {/*const canShare = item.ownPermissions && item.ownPermissions.includes('share') || item.user === Streamr.user*/}
-                        {/*const canDelete = item.ownPermissions && item.ownPermissions.includes('write') || item.user === Streamr.user*/}
-                        {/*return (*/}
-                        {/*<ClickableTr href={item.href} to={item.to} key={item.id}>*/}
-                        {/*{this.props.fields.map(field => (*/}
-                        {/*<ClickableTd key={JSON.stringify(field)}>*/}
-                        {/*{resource[field.name || field]}*/}
-                        {/*</ClickableTd>*/}
-                        {/*))}*/}
-                        {/*<td>*/}
-                        {/*{(canShare || canDelete) && (*/}
-                        {/*<DropdownButton*/}
-                        {/*pullRight*/}
-                        {/*title=""*/}
-                        {/*id={`dropdown-for-${item.id}`}*/}
-                        {/*bsSize="sm"*/}
-                        {/*className="btn-outline"*/}
-                        {/*>*/}
-                        {/*{canShare && (*/}
-                        {/*<ShareDialog*/}
-                        {/*resourceId={item.id}*/}
-                        {/*resourceType={this.props.resourceType}*/}
-                        {/*resourceTitle={item.name || item.id}*/}
-                        {/*>*/}
-                        {/*<MenuItem>*/}
-                        {/*Share*/}
-                        {/*</MenuItem>*/}
-                        {/*</ShareDialog>*/}
-                        {/*)}*/}
-                        {/*{canDelete && (*/}
-                        {/*<MenuItem>*/}
-                        {/*Delete*/}
-                        {/*</MenuItem>*/}
-                        {/*)}*/}
-                        {/*</DropdownButton>*/}
-                        {/*)}*/}
-                        {/*</td>*/}
-                        {/*</ClickableTr>*/}
-                        {/*)*/}
-                        {/*})}*/}
-                        {/*</tbody>*/}
-                        {/*</Table>*/}
-                        <div className={styles.footerControl}>
-                            <div className={styles.maxSelect}>
-                                <Select
-                                    className={styles.maxSelect}
-                                    value={this.state.max}
-                                    options={[10, 25, 50, 100].map(o => ({
-                                        value: o,
-                                        label: o
-                                    }))}
-                                    clearable={false}
-                                    searchable={false}
-                                    autosize={false}
-                                    onChange={this.onMaxChange}
-                                />
-                            </div>
-                        </div>
                     </Panel>
                 </Col>
             </Row>
         )
     }
+}
+
+function ActionFormatter(props: {
+    item: Item,
+    mapResourceToItem: (res: CommonResource | Item) => Item,
+    resourceType: CommonResource.type
+}) {
+    const item: Item = props.mapResourceToItem(props.item)
+    const canShare = item.ownPermissions && item.ownPermissions.includes('share') || item.user === Streamr.user
+    const canDelete = item.ownPermissions && item.ownPermissions.includes('write') || item.user === Streamr.user
+
+    return (
+        (canShare || canDelete) ? (
+            <DropdownButton
+                pullRight
+                title=""
+                id={`dropdown-for-${item.id}`}
+                bsSize="sm"
+                className="btn-outline"
+            >
+                {canShare && (
+                    <ShareDialog
+                        resourceId={item.id}
+                        resourceType={props.resourceType}
+                        resourceTitle={item.name || item.id}
+                    >
+                        <MenuItem>
+                            Share
+                        </MenuItem>
+                    </ShareDialog>
+                )}
+                {canDelete && (
+                    <MenuItem>
+                        Delete
+                    </MenuItem>
+                )}
+            </DropdownButton>
+        ) : null
+    )
 }

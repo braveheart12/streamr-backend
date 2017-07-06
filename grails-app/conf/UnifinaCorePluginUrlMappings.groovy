@@ -37,11 +37,13 @@ class UnifinaCorePluginUrlMappings {
 		"/api/v1/streams/$id/range"(controller: "streamApi", action: "range")
 		"/api/v1/streams/$resourceId/keys"(resources: "keyApi", excludes: ["create", "edit", "update"]) { resourceClass = Stream }
 
-		"/api/v1/dashboards"(resources: "dashboardApi", excludes: ["create", "edit"])
+		"/api/v1/dashboards/search"(controller: "dashboardApi", action: "search")
+		"/api/v1/dashboards/permissions/me"(controller: "dashboardApi", action: "getOwnPermissionsForAllDashboards")
 		"/api/v1/dashboards/permissions/me"(controller: "dashboardApi", action: "getOwnPermissionsForAllDashboards")
 		"/api/v1/dashboards/$dashboardId/items"(resources: "dashboardItemApi", excludes: ["create", "edit"])
 		"/api/v1/dashboards/$resourceId/permissions"(resources: "permissionApi", excludes: ["create", "edit", "update"]) { resourceClass = Dashboard }
 		"/api/v1/dashboards/$resourceId/permissions/me"(controller: "permissionApi", action: "getOwnPermissions") { resourceClass = Dashboard }
+		"/api/v1/dashboards"(resources: "dashboardApi", excludes: ["create", "edit"])
 
 		"/api/v1/modules"(resources: "moduleApi")
 		"/api/v1/modules/$id/help"(controller: "moduleApi", action: "help")

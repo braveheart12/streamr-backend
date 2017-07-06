@@ -39,10 +39,9 @@ class PermissionService {
 	final alsoRevoke = [read: [Operation.WRITE, Operation.SHARE]]
 	//final alsoGrant = [write: [Operation.READ], share: [Operation.READ]]
 
-
 	// TODO: does WRITE imply READ?
 	@CompileStatic
-	boolean canRead(userish, resource)  {
+	boolean canRead(userish, resource) {
 		return check(userish, resource, Operation.READ)
 	}
 
@@ -90,13 +89,13 @@ class PermissionService {
 	}
 
 	/**
-	 * 
+	 *
 	 * @param resourceClass
 	 * @param userish
 	 * @return list of all permissions for the class and user
 	 */
 	public List<Permission> getPermissionsToClass(Class resourceClass, userish) {
-		List<Permission> perms =  Permission.withCriteria {
+		List<Permission> perms = Permission.withCriteria {
 			eq "clazz", resourceClass.name
 			or {
 				eq "anonymous", true
@@ -111,7 +110,7 @@ class PermissionService {
 
 	/**
 	 * @return List of all Permissions granted to a specific resource
-     */
+	 */
 	public List<Permission> getPermissionsTo(resource) {
 		return getPermissionsList(resource, null, true)
 	}
@@ -125,7 +124,9 @@ class PermissionService {
 	}
 
 	private List<Permission> getPermissionsList(resource, userish, boolean getAllPermissions) {
-		if (!resource) { throw new IllegalArgumentException("Missing resource!") }
+		if (!resource) {
+			throw new IllegalArgumentException("Missing resource!")
+		}
 
 		userish = getSecUser(userish) ?: userish
 
@@ -152,11 +153,11 @@ class PermissionService {
 		if (hasOwner(resource) && (getAllPermissions || isOwner(userish, resource))) {
 			Permission.Operation.enumConstants.each {
 				perms << new Permission(
-					id: null,
-					user: resource.user,
-					clazz: resourceClass.name,
-					operation: it,
-					(idProp): resource.id
+						id: null,
+						user: resource.user,
+						clazz: resourceClass.name,
+						operation: it,
+						(idProp): resource.id
 				)
 			}
 		}
@@ -167,12 +168,11 @@ class PermissionService {
 	 * Get all resources of given type that the user has specified type of access to
 	 * @throws IllegalArgumentException for bad resourceClass
 	 */
-	public <T> List<T> get(Class<T> resourceClass,
-						   userish,
-						   Operation op,
-						   boolean includeAnonymous, Closure resourceFilter = {}) {
-		if (!includeAnonymous && !userish?.id) { return [] }
-		String resourceIdProp = getIdPropertyName(resourceClass)	// throws if bad resource class
+	public <T> List<T> get(Class<T> resourceClass, userish, Operation op, boolean includeAnonymous, Closure resourceFilter = {}, boolean includeOwnPermissions = false) {
+		if (!includeAnonymous && !userish?.id) {
+			return []
+		}
+		String resourceIdProp = getIdPropertyName(resourceClass)    // throws if bad resource class
 
 		userish = getSecUser(userish) ?: userish
 
@@ -180,7 +180,9 @@ class PermissionService {
 		//   in SQL, you could Permission p JOIN ResourceClass r ON p.(resourceIdProp)=r.id
 		def perms = Permission.withCriteria {
 			or {
-				if (includeAnonymous) { eq "anonymous", true }
+				if (includeAnonymous) {
+					eq "anonymous", true
+				}
 				if (isValidUser(userish)) {
 					eq getPermissionPropertyName(userish), userish
 				}
@@ -191,38 +193,58 @@ class PermissionService {
 
 		// or-clause in criteria query should become false, and nothing should be returned
 		boolean hasOwner = resourceClass.properties["declaredFields"].any { it.name == "user" }
-		if (!hasOwner && perms.size() == 0) { return [] }
+		if (!hasOwner && perms.size() == 0) {
+			return []
+		}
 
-		resourceClass.withCriteria {
+		def resources = resourceClass.withCriteria {
 			or {
 				// resources that specify an "owner" automatically give that user all access rights
 				if (hasOwner && userish instanceof SecUser) {
 					eq "user", userish
 				}
 				// empty in-list will work with Mock but fail with SQL
-				if (perms.size() > 0) {
-					"in" "id", perms.collect { it[resourceIdProp] }
+				def newPerms = perms.findAll { it.operation == op }
+				if (newPerms.size() > 0) {
+					"in" "id", newPerms.collect { it[resourceIdProp] }
 				}
 			}
 			resourceFilter.delegate = delegate
 			resourceFilter()
 		}
+		boolean ownPermissionsExists = false
+		try {
+			resourceClass.getDeclaredField("ownPermissions")
+			ownPermissionsExists = true
+		} catch (e) {}
+		if (includeOwnPermissions && ownPermissionsExists) {
+			// TODO: make better
+			resources = resources.collect({ res ->
+				res.ownPermissions = perms.findAll({ perm ->
+					res.id == perm[resourceIdProp]
+				})
+				res
+			})
+			return resources
+		} else {
+			return resources
+		}
 	}
 	/** Overload to allow leaving out the anonymous-include-flag but including the filter */
-	public <T> List<T> get(Class<T> resourceClass, userish, Operation op, Closure resourceFilter = {}) {
-		return get(resourceClass, userish, op, false, resourceFilter)
+	public <T> List<T> get(Class<T> resourceClass, userish, Operation op, Closure resourceFilter = {}, boolean includeOwnPermissions = false) {
+		return get(resourceClass, userish, op, false, resourceFilter, includeOwnPermissions)
 	}
 	/** Convenience overload, adding a flag for public resources may look cryptic */
-	public <T> List<T> getAll(Class<T> resourceClass, userish, Operation op, Closure resourceFilter = {}) {
-		return get(resourceClass, userish, op, true, resourceFilter)
+	public <T> List<T> getAll(Class<T> resourceClass, userish, Operation op, Closure resourceFilter = {}, boolean includeOwnPermissions = false) {
+		return get(resourceClass, userish, op, true, resourceFilter, includeOwnPermissions)
 	}
 	/** Overload to allow leaving out the op but including the filter */
-	public <T> List<T> get(Class<T> resourceClass, userish, Closure resourceFilter = {}) {
-		return get(resourceClass, userish, Operation.READ, false, resourceFilter)
+	public <T> List<T> get(Class<T> resourceClass, userish, Closure resourceFilter = {}, boolean includeOwnPermissions = false) {
+		return get(resourceClass, userish, Operation.READ, false, resourceFilter, includeOwnPermissions)
 	}
 	/** Convenience overload, adding a flag for public resources may look cryptic */
-	public <T> List<T> getAll(Class<T> resourceClass, userish, Closure resourceFilter = {}) {
-		return get(resourceClass, userish, Operation.READ, true, resourceFilter)
+	public <T> List<T> getAll(Class<T> resourceClass, userish, Closure resourceFilter = {}, boolean includeOwnPermissions = false) {
+		return get(resourceClass, userish, Operation.READ, true, resourceFilter, includeOwnPermissions)
 	}
 
 	/**
@@ -233,12 +255,12 @@ class PermissionService {
 	 * @return Permission object that was created
 	 * @throws AccessControlException if grantor doesn't have the 'share' permission
 	 * @throws IllegalArgumentException if trying to give resource owner "more" access permissions
-     */
+	 */
 	public Permission grant(SecUser grantor,
 							resource,
 							target,
-							Operation operation=Operation.READ,
-							boolean logIfDenied=true) throws AccessControlException, IllegalArgumentException {
+							Operation operation = Operation.READ,
+							boolean logIfDenied = true) throws AccessControlException, IllegalArgumentException {
 		if (isOwner(target, resource)) {
 			// owner already has all access, can't give "more" access
 			throw new IllegalArgumentException("Can't grant permissions for owner of $resource!")
@@ -256,11 +278,11 @@ class PermissionService {
 	 * "Internal" version of Permission granting; not done as any specific SecUser
 	 * @param target SecUser (or transiently SignupInvite) that will receive the access
 	 * @param resource to be shared
-     * @return created Permission object
-     */
+	 * @return created Permission object
+	 */
 	public Permission systemGrant(target,
 								  resource,
-								  Operation operation=Operation.READ) {
+								  Operation operation = Operation.READ) {
 		if (!resource) {
 			throw new IllegalArgumentException("Missing resource!")
 		}
@@ -272,33 +294,35 @@ class PermissionService {
 		String idProp = getIdPropertyName(resourceClass)
 
 		return new Permission(
-			clazz: resourceClass.name,
-			operation: operation,
-			(idProp): resource.id,
-			(userProp): target,
+				clazz: resourceClass.name,
+				operation: operation,
+				(idProp): resource.id,
+				(userProp): target,
 		).save(flush: true, failOnError: true)
 	}
 
 	public Permission grantAnonymousAccess(SecUser grantor,
 										   resource,
-										   Operation operation=Operation.READ,
-										   boolean logIfDenied=true) throws AccessControlException, IllegalArgumentException {
+										   Operation operation = Operation.READ,
+										   boolean logIfDenied = true) throws AccessControlException, IllegalArgumentException {
 		if (!canShare(grantor, resource)) {
 			throwAccessControlException(grantor, resource, logIfDenied)
 		}
 		return systemGrantAnonymousAccess(resource, operation)
 	}
 
-	public Permission systemGrantAnonymousAccess(resource, Operation operation=Operation.READ) {
-		if (!resource) { throw new IllegalArgumentException("Missing resource!") }
+	public Permission systemGrantAnonymousAccess(resource, Operation operation = Operation.READ) {
+		if (!resource) {
+			throw new IllegalArgumentException("Missing resource!")
+		}
 
 		def resourceClass = HibernateProxyHelper.getClassWithoutInitializingProxy(resource)
 		String idProp = getIdPropertyName(resourceClass)
 		return new Permission(
-			clazz: resourceClass.name,
-			operation: operation,
-			(idProp): resource.id,
-			anonymous: true
+				clazz: resourceClass.name,
+				operation: operation,
+				(idProp): resource.id,
+				anonymous: true
 		).save(flush: true, failOnError: true)
 	}
 
@@ -309,12 +333,12 @@ class PermissionService {
 	 * @param targetUserish user whose Permission is revoked
 	 * @param operation includes also all "higher" operations, e.g. READ also revokes SHARE
 	 * @returns Permission objects that were deleted
-     */
+	 */
 	public List<Permission> revoke(SecUser revoker,
 								   resource,
 								   userish,
-								   Operation operation=Operation.READ,
-								   boolean logIfDenied=true) throws AccessControlException {
+								   Operation operation = Operation.READ,
+								   boolean logIfDenied = true) throws AccessControlException {
 		if (isOwner(userish, resource)) {
 			throw new AccessControlException("Can't revoke owner's access to $resource!")
 		}
@@ -331,12 +355,14 @@ class PermissionService {
 	 * @param target userish whose Permission is revoked
 	 * @param resource to be revoked from target
 	 * @param operation includes also all "higher" operations, e.g. READ also revokes SHARE
-     * @return Permission objects that were deleted
-     */
+	 * @return Permission objects that were deleted
+	 */
 	public List<Permission> systemRevoke(target,
 										 resource,
-										 Operation operation=Operation.READ) {
-		if (!resource) { throw new IllegalArgumentException("Missing resource!") }
+										 Operation operation = Operation.READ) {
+		if (!resource) {
+			throw new IllegalArgumentException("Missing resource!")
+		}
 		String userProp = getPermissionPropertyName(target)
 
 		// proxy objects have funky class names, e.g. com.unifina.domain.signalpath.ModulePackage_$$_jvst12_1b
@@ -350,8 +376,8 @@ class PermissionService {
 	/**
 	 * Shortcut for removing a given Permission.
 	 * Doesn't need to load the resource at all if revoker has a share permission
-     */
-	public List<Permission> revoke(SecUser revoker, Permission p, boolean logIfDenied=true) {
+	 */
+	public List<Permission> revoke(SecUser revoker, Permission p, boolean logIfDenied = true) {
 		Class resourceClass = grailsApplication.getDomainClass(p.clazz)
 		String idProp = getIdPropertyName(resourceClass)
 		def resourceId = p[idProp]
@@ -369,9 +395,11 @@ class PermissionService {
 
 	/** "Internal" version of revoke shortcut */
 	public List<Permission> systemRevoke(Permission p) {
-		if (!p) { throw new IllegalArgumentException("Missing Permission object!") }
+		if (!p) {
+			throw new IllegalArgumentException("Missing Permission object!")
+		}
 		return performRevoke(
-				p.anonymous,	// userProp and target will be ignored if anonymous==true
+				p.anonymous,    // userProp and target will be ignored if anonymous==true
 				p.user ? "user" : "invite",
 				p.user ?: p.invite,
 				p.clazz,
@@ -427,8 +455,8 @@ class PermissionService {
 	/**
 	 * Convert signup-invitation Permissions that have been created when sharing resources to non-users
 	 * @param user that was just created from sign-up invite
-     * @return List of Permissions the invite had that the new user received
-     */
+	 * @return List of Permissions the invite had that the new user received
+	 */
 	public List<Permission> transferInvitePermissionsTo(SecUser user) {
 		// { invite { eq "username", user.username } } won't do: some invite are null => NullPointerException
 		return Permission.withCriteria {
@@ -447,11 +475,17 @@ class PermissionService {
 	 * @return name of field in Permission object that refers to the resource's id by type ("stringId" or "longId")
 	 */
 	private String getIdPropertyName(Class resourceClass) throws IllegalArgumentException {
-		if (!resourceClass?.name) { throw new IllegalArgumentException("Missing resource class") }
-		if (!grailsApplication.isDomainClass(resourceClass)) { throw new IllegalArgumentException("$resourceClass is not a Grails domain class") }
+		if (!resourceClass?.name) {
+			throw new IllegalArgumentException("Missing resource class")
+		}
+		if (!grailsApplication.isDomainClass(resourceClass)) {
+			throw new IllegalArgumentException("$resourceClass is not a Grails domain class")
+		}
 
 		def idProp = resourceClass.properties["declaredFields"].find { it.name == "id" }
-		if (idProp == null) { throw new IllegalArgumentException("$resourceClass doesn't have an 'id' field!") }
+		if (idProp == null) {
+			throw new IllegalArgumentException("$resourceClass doesn't have an 'id' field!")
+		}
 
 		if (idProp.type == String) {
 			return "stringId"
@@ -463,9 +497,9 @@ class PermissionService {
 	}
 
 	/** null is often a valid value (but not a valid user), and means "anonymous Permissions only" */
-    private boolean isValidUser(userish) {
-        return userish != null && userish.id != null
-    }
+	private boolean isValidUser(userish) {
+		return userish != null && userish.id != null
+	}
 
 	private boolean hasOwner(resource) {
 		return resource?.hasProperty("user") && resource?.user?.id != null
@@ -503,7 +537,7 @@ class PermissionService {
 	private boolean isOwner(userish, resource) {
 		SecUser user = getSecUser(userish)
 
-		return 	user && hasOwner(resource) &&
+		return user && hasOwner(resource) &&
 				user.id != null &&
 				resource.user.id == user.id
 	}

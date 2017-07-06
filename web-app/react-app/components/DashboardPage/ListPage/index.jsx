@@ -6,7 +6,7 @@ import {Button, ButtonGroup} from 'react-bootstrap'
 import {Link} from 'react-router'
 import FontAwesome from 'react-fontawesome'
 
-import {getAndReplaceDashboards} from '../../../actions/dashboard'
+import {getAndReplaceDashboards, getMyPermissionsForAllMyDashboards} from '../../../actions/dashboard'
 
 import ResourceList from '../../ResourceList'
 
@@ -41,7 +41,8 @@ export class DashboardListPage extends Component {
     render() {
         return (
             <div id="content-wrapper" className="scrollable" style={{
-                height: '100%'
+                minHeight: '100%',
+                overflow: 'auto'
             }}>
                 <div className="container">
                     <ButtonGroup className={styles.toolbarButtonGroup}>
@@ -82,6 +83,7 @@ const mapStateToProps = ({dashboard}) => ({
 const mapDispatchToProps = (dispatch) => ({
     getDashboards(search) {
         dispatch(getAndReplaceDashboards(search))
+            .then(() => dispatch(getMyPermissionsForAllMyDashboards()))
     }
 })
 
