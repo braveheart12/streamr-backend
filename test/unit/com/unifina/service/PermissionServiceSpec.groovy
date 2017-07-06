@@ -29,10 +29,10 @@ class PermissionServiceSpec extends Specification {
 	Key myKey, anotherUserKey, anonymousKey
 	SignupInvite invite
 
-	Dashboard dashAllowed, dashRestricted, dashOwned, dashPublic
-	Permission dashReadPermission, dashAnonymousReadPermission
+	Dashboard dashAllowed, dashRestricted, dashOwned, dashOwned2, dashPublic
+	Permission dashReadPermission, dashAnonymousReadPermission, dashOtherReadPermission, dashAnonymousKeyReadPermission
 
-    def setup() {
+	def setup() {
 
 		// Users
 		me = new SecUser(username: "me", password: "foo").save(validate:false)
@@ -48,25 +48,27 @@ class PermissionServiceSpec extends Specification {
 		invite = new SignupInvite(username: "him", code: "sikritCode", sent: true, used: false).save(validate:false)
 
 		// Dashboards
-		dashAllowed = new Dashboard(name:"allowed", user:anotherUser).save(validate:false)
-		dashRestricted = new Dashboard(name:"restricted", user:anotherUser).save(validate:false)
-		dashOwned = new Dashboard(name:"owned", user:me).save(validate:false)
-		dashPublic = new Dashboard(name:"public", user:anotherUser).save(validate:false)
+		dashAllowed = new Dashboard(id: "allowed", name:"allowed", user: anotherUser).save(validate:false)
+		dashRestricted = new Dashboard(id: "restricted", name:"restricted", user: anotherUser).save(validate:false)
+		dashOwned = new Dashboard(id: "owned", name:"owned", user: me).save(validate:false)
+		dashOwned2 = new Dashboard(id: "owned2", name:"owned2", user: me).save(validate:false)
+		dashPublic = new Dashboard(id: "public", name:"public", user: anotherUser).save(validate:false)
 
 		new Canvas(user: anotherUser).save(validate: false)
 
 		// Set up the Permissions to the allowed resources
 		dashReadPermission = service.grant(anotherUser, dashAllowed, me)
+		dashOtherReadPermission = service.grant(me, dashOwned, anotherUser)
 		dashAnonymousReadPermission = service.grantAnonymousAccess(anotherUser, dashPublic)
-		service.grant(anotherUser, dashAllowed, anonymousKey)
-    }
+		dashAnonymousKeyReadPermission = service.grant(anotherUser, dashAllowed, anonymousKey)
+	}
 
 	void "test setup"() {
 		expect:
 		SecUser.count() == 3
 		Key.count() == 3
-		Dashboard.count() == 4
-		Permission.count() == 3
+		Dashboard.count() == 5
+		Permission.count() == 4
 
 		and: "anotherUser has an invitation"
 		invite.username == anotherUser.username
@@ -135,12 +137,19 @@ class PermissionServiceSpec extends Specification {
 		!service.canRead(myKey, null)
 	}
 
+	void "getPermissionsToClass returns all permissions for the given class"() {
+		setup:
+		def perm = service.getPermissionsToClass(Dashboard, anotherUser)
+		expect:
+		perm.size() == 2
+	}
+
 	void "getPermissionsTo returns all permissions for the given resource"() {
 		setup:
 		def perm = service.grant(me, dashOwned, stranger, Operation.READ)
 		expect:
-		service.getPermissionsTo(dashOwned).size() == 4
-		service.getPermissionsTo(dashOwned)[0] == perm
+		service.getPermissionsTo(dashOwned).size() == 5
+		service.getPermissionsTo(dashOwned)[1] == perm
 		service.getPermissionsTo(dashAllowed).size() == 5
 		service.getPermissionsTo(dashAllowed)[0] == dashReadPermission
 		service.getPermissionsTo(dashRestricted).size() == 3
@@ -150,7 +159,7 @@ class PermissionServiceSpec extends Specification {
 	void "getSingleUserPermissionsTo returns permissions for single user"() {
 		expect:
 		service.getPermissionsTo(dashOwned, me).size() == 3
-		service.getPermissionsTo(dashOwned, anotherUser) == []
+		service.getPermissionsTo(dashOwned, anotherUser) == [dashOtherReadPermission]
 		service.getPermissionsTo(dashOwned, stranger) == []
 		service.getPermissionsTo(dashOwned, null) == []
 		service.getPermissionsTo(dashAllowed, me)[0].operation == Operation.READ
@@ -170,7 +179,7 @@ class PermissionServiceSpec extends Specification {
 	void "getSingleUserPermissionsTo returns permissions for key"() {
 		expect:
 		service.getPermissionsTo(dashOwned, myKey).size() == 3
-		service.getPermissionsTo(dashOwned, anotherUserKey) == []
+		service.getPermissionsTo(dashOwned, anotherUserKey) == [dashOtherReadPermission]
 		service.getPermissionsTo(dashOwned, anonymousKey) == []
 		service.getPermissionsTo(dashAllowed, myKey)[0].operation == Operation.READ
 		service.getPermissionsTo(dashAllowed, anotherUserKey).size() == 3
@@ -185,35 +194,42 @@ class PermissionServiceSpec extends Specification {
 
 	void "retrieve all readable Dashboards correctly"() {
 		expect:
-		service.get(Dashboard, me) == [dashOwned, dashAllowed]
-		service.get(Dashboard, anotherUser) == [dashAllowed, dashRestricted, dashPublic]
+		service.get(Dashboard, me) == [dashOwned, dashOwned2, dashAllowed]
+		service.get(Dashboard, anotherUser) == [dashAllowed, dashRestricted, dashPublic, dashOwned]
 		service.get(Dashboard, stranger) == []
 	}
 
 	void "retrieve all readable Dashboards correctly with keys"() {
 		expect:
-		service.get(Dashboard, myKey) == [dashOwned, dashAllowed]
-		service.get(Dashboard, anotherUserKey) == [dashAllowed, dashRestricted, dashPublic]
+		service.get(Dashboard, myKey) == [dashOwned, dashOwned2, dashAllowed]
+		service.get(Dashboard, anotherUserKey) == [dashAllowed, dashRestricted, dashPublic, dashOwned]
 		service.get(Dashboard, anonymousKey) == [dashAllowed]
+	}
+
+	void "retrieve all readable Dashboards correctly with permissions"() {
+		expect:
+		service.get(Dashboard, myKey, {}, true)*.ownPermissions == [[], [], [dashReadPermission]]
+		service.get(Dashboard, anotherUserKey, {}, true)*.ownPermissions == [[], [], [], [dashOtherReadPermission]]
+		service.get(Dashboard, anonymousKey, {}, true)*.ownPermissions == [[dashAnonymousKeyReadPermission]]
 	}
 
 	void "getAll lists public resources"() {
 		expect:
-		service.getAll(Dashboard, me) == [dashOwned, dashPublic, dashAllowed]
-		service.getAll(Dashboard, anotherUser) == [dashAllowed, dashRestricted, dashPublic]
+		service.getAll(Dashboard, me) == [dashOwned, dashOwned2, dashPublic, dashAllowed]
+		service.getAll(Dashboard, anotherUser) == [dashAllowed, dashRestricted, dashPublic, dashOwned]
 		service.getAll(Dashboard, stranger) == [dashPublic]
 	}
 
 	void "getAll lists public resources with keys"() {
 		expect:
-		service.getAll(Dashboard, myKey) == [dashOwned, dashPublic, dashAllowed]
-		service.getAll(Dashboard, anotherUserKey) == [dashAllowed, dashRestricted, dashPublic]
+		service.getAll(Dashboard, myKey) == [dashOwned, dashOwned2, dashPublic, dashAllowed]
+		service.getAll(Dashboard, anotherUserKey) == [dashAllowed, dashRestricted, dashPublic, dashOwned]
 		service.getAll(Dashboard, anonymousKey) == [dashPublic, dashAllowed]
 	}
 
 	void "get throws IllegalArgumentException on invalid resource"() {
 		when:
-		service.get(java.lang.Object, me)
+		service.get(Object, me)
 		then:
 		thrown IllegalArgumentException
 
@@ -234,7 +250,7 @@ class PermissionServiceSpec extends Specification {
 	void "get closure filtering works as expected"() {
 		expect:
 		service.get(Dashboard, me) { like("name", "%ll%") } == [dashAllowed]
-		service.get(Dashboard, me, Operation.SHARE) == [dashOwned]
+		service.get(Dashboard, me, Operation.SHARE) == [dashOwned, dashOwned2]
 		service.get(Dashboard, me, Operation.SHARE) { like("name", "%ll%") } == []
 	}
 
@@ -306,29 +322,29 @@ class PermissionServiceSpec extends Specification {
 
 	void "sharing read rights to others"() {
 		when:
-		service.grant(me, dashOwned, stranger, Operation.READ)
-		service.grant(me, dashOwned, stranger, Operation.SHARE)
+		service.grant(me, dashOwned2, stranger, Operation.READ)
+		service.grant(me, dashOwned2, stranger, Operation.SHARE)
 		then:
-		service.get(Dashboard, stranger) == [dashOwned]
-		service.get(Dashboard, stranger, Operation.SHARE) == [dashOwned]
+		service.get(Dashboard, stranger) == [dashOwned2]
+		service.get(Dashboard, stranger, Operation.SHARE) == [dashOwned2]
 
 		expect:
-		!(dashOwned in service.get(Dashboard, anotherUser))
+		!(dashOwned2 in service.get(Dashboard, anotherUser))
 
 		when: "stranger shares read access"
-		service.grant(stranger, dashOwned, anotherUser)
+		service.grant(stranger, dashOwned2, anotherUser)
 		then:
-		dashOwned in service.get(Dashboard, anotherUser)
-		!(dashOwned in service.get(Dashboard, anotherUser, Operation.SHARE))
+		dashOwned2 in service.get(Dashboard, anotherUser)
+		!(dashOwned2 in service.get(Dashboard, anotherUser, Operation.SHARE))
 
 		when:
-		service.revoke(stranger, dashOwned, anotherUser)
+		service.revoke(stranger, dashOwned2, anotherUser)
 		then:
-		!(dashOwned in service.get(Dashboard, anotherUser))
+		!(dashOwned2 in service.get(Dashboard, anotherUser))
 
 		when: "of course, it's silly to revoke 'share' access since it might already been re-shared..."
-		service.revoke(me, dashOwned, stranger)
-		service.grant(stranger, dashOwned, anotherUser)
+		service.revoke(me, dashOwned2, stranger)
+		service.grant(stranger, dashOwned2, anotherUser)
 		then:
 		thrown AccessControlException
 	}
@@ -389,13 +405,13 @@ class PermissionServiceSpec extends Specification {
 
 	void "signup invitations are converted correctly"() {
 		expect:
-		!service.canRead(anotherUser, dashOwned)
+		!service.canRead(anotherUser, dashOwned2)
 
 		when: "pretend anotherUser was just created"
-		service.grant(me, dashOwned, invite)
+		service.grant(me, dashOwned2, invite)
 		service.transferInvitePermissionsTo(anotherUser)
 		then:
-		service.canRead(anotherUser, dashOwned)
+		service.canRead(anotherUser, dashOwned2)
 	}
 
 	void "stranger can read public resources with anonymous read access"() {

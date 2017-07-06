@@ -6,6 +6,7 @@ import com.unifina.domain.dashboard.Dashboard
 import com.unifina.domain.dashboard.DashboardItem
 import com.unifina.domain.security.Key
 import com.unifina.domain.security.Permission
+import com.unifina.domain.security.Permission.Operation
 import com.unifina.domain.security.SecUser
 import com.unifina.domain.signalpath.Canvas
 import com.unifina.filters.UnifinaCoreAPIFilters
@@ -95,7 +96,7 @@ class DashboardApiControllerSpec extends Specification {
 		then:
 		response.status == 200
 		response.json.size() == dashboards.size()
-		1 * controller.permissionService.get(Dashboard, me, Permission.Operation.READ, false, _) >> dashboards
+		1 * controller.permissionService.get(Dashboard, me, Permission.Operation.READ, false, _, _) >> dashboards
 	}
 
 	void "index() adds name param to filter criteria"() {
@@ -110,13 +111,44 @@ class DashboardApiControllerSpec extends Specification {
 		}
 
 		then:
-		1 * controller.permissionService.get(Dashboard, me, Permission.Operation.READ, false, _) >> { Class resource, SecUser u, Permission.Operation op, boolean pub, Closure criteria ->
+		1 * controller.permissionService.get(Dashboard, me, Permission.Operation.READ, false, _, _) >> { Class resource, SecUser u, Operation op, boolean pub, Closure criteria, boolean ip ->
 			criteria.delegate = criteriaBuilderMock
 			criteria()
 			return []
 		}
 		and:
 		1 * criteriaBuilderMock.eq("name", "Foo")
+	}
+
+	def search() {
+		setup:
+		controller.apiService = Mock(ApiService)
+		Dashboard db = new Dashboard(id: 666)
+
+		when:
+		params.search = "foo"
+		params.sort = "bar"
+		request.addHeader("Authorization", "Token myApiKey")
+		request.requestURI = "/api/v1/dashboards"
+
+		withFilters(action: "search") {
+			controller.search()
+		}
+
+		then:
+		1 * controller.apiService.createListCriteria([
+		        search: "foo",
+				sort: "bar"
+		], ["name"]) >> {}
+		2 * controller.permissionService.get(Dashboard, me, Permission.Operation.READ, false, _, false) >> {Class c, SecUser user, Operation op, boolean ia, Closure criteria, boolean ip ->
+			return [db]
+		}
+		response.json == [
+				totalCount: 1,
+				list: [
+				        id: 666
+				]
+		]
 	}
 
 	def "show() shows dashboard with 0 items"() {

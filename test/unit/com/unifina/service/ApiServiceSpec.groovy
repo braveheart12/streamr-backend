@@ -58,14 +58,27 @@ class ApiServiceSpec extends Specification {
 
 	void "createListCriteria() with sort desc"() {
 		when:
-		params.sort = "name"
-		params.order = "desc"
+		params.sort = "name:desc"
 		def c = service.createListCriteria(params, [], {})
 		c.delegate = builder
 		c()
 
 		then:
 		1 * builder.order("name", "desc")
+		0 * builder._
+	}
+
+	void "createListCriteria() with multiple sorts"() {
+		when:
+		params.sort = "name:desc,description,email:asc"
+		def c = service.createListCriteria(params, [], {})
+		c.delegate = builder
+		c()
+
+		then:
+		1 * builder.order("name", "desc")
+		1 * builder.order("description", "asc")
+		1 * builder.order("email", "asc")
 		0 * builder._
 	}
 
@@ -111,8 +124,7 @@ class ApiServiceSpec extends Specification {
 	void "createListCriteria() with various options"() {
 		when:
 		params.search = "foo"
-		params.sort = "name"
-		params.order = "desc"
+		params.sort = "name:desc"
 		params.max = "5"
 		params.offset = "10"
 		def c = service.createListCriteria(params, ["name", "desc"], {})

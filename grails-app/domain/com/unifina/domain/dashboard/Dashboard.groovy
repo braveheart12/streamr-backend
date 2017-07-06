@@ -34,20 +34,22 @@ class Dashboard {
 
 	@CompileStatic
 	Map toSummaryMap() {
+		// TODO: get away of repeat
 		DateFormat df = new SimpleDateFormat("YYYY-MM-dd HH:mm:ss zzz")
+		def lu = lastUpdated ? df.format(lastUpdated) : null
 		def perm = ownPermissions*.toMap()
 		return (perm != null && perm.size()) ? [
 				id         : id,
 				name       : name,
 				numOfItems : items == null ? 0 : items.size(),
-				lastUpdated: df.format(lastUpdated),
+				lastUpdated: lu,
 				user       : user.username,
 				ownPermissions: perm
 		] : [
 				id         : id,
 				name       : name,
 				numOfItems : items == null ? 0 : items.size(),
-				lastUpdated: df.format(lastUpdated),
+				lastUpdated: lu,
 				user       : user.username
 		]
 	}
