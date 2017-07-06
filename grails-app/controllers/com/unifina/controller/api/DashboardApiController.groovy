@@ -39,7 +39,15 @@ class DashboardApiController {
 		def criteria = apiService.createListCriteria(params, ["name"])
 		def dashboards = permissionService.get(Dashboard, request.apiUser, Permission.Operation.READ, apiService.isPublicFlagOn(params), criteria, apiService.isIncludeOwnPermissionsFlagOn(params))
 		dashboards = dashboards.collect { it.toSummaryMap() }
-		render(dashboards as JSON)
+		def dashboardCount = permissionService.get(Dashboard, request.apiUser, Permission.Operation.READ, apiService.isPublicFlagOn(params), {
+			projections {
+				count()
+			}
+		})
+		render([
+				totalCount: dashboardCount[0],
+		        list: dashboards
+		] as JSON)
 	}
 
 	@StreamrApi
