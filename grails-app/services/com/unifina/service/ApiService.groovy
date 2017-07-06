@@ -42,8 +42,15 @@ class ApiService {
 					}
 				}
 			}
-			if (params.sort) {
-				order params.sort, params.order ?: "asc"
+			if (params.order) {
+				String ord = params.order
+				def ords = ord.split(",")
+				ords.each {
+					def splitted = it.split(":")
+					def field = splitted[0]
+					def direction = splitted.length > 1 && splitted[1] ? splitted[1] : "asc"
+					order(field, direction)
+				}
 			}
 			if (params.max) {
 				maxResults Integer.parseInt(params.max)

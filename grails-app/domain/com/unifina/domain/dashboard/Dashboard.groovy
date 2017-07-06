@@ -4,6 +4,9 @@ import com.unifina.domain.security.Permission
 import com.unifina.domain.security.SecUser
 import groovy.transform.CompileStatic
 
+import java.text.DateFormat
+import java.text.SimpleDateFormat
+
 class Dashboard {
 
 	SecUser user
@@ -14,8 +17,6 @@ class Dashboard {
 	Date lastUpdated
 
 	SortedSet<DashboardItem> items
-
-	String layout = "{}" // JSON
 
 	ArrayList<Permission> ownPermissions
 
