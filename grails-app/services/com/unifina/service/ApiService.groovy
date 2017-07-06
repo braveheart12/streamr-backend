@@ -60,6 +60,10 @@ class ApiService {
 		return params.public != null && Boolean.parseBoolean(params.public)
 	}
 
+	boolean isIncludeOwnPermissionsFlagOn(params) {
+		return params.includeOwnPermissions != null && Boolean.parseBoolean(params.includeOwnPermissions)
+	}
+
 	@CompileStatic
 	Map post(String url, Map body, Key key) {
 		// TODO: Migrate to Streamr API Java client lib when such a thing is made

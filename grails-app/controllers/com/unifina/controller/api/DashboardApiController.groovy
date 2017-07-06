@@ -29,8 +29,19 @@ class DashboardApiController {
 				eq "name", params.name
 			}
 		})
-		def dashboards = permissionService.get(Dashboard, request.apiUser, Permission.Operation.READ, apiService.isPublicFlagOn(params), criteria)
-		render(dashboards*.toSummaryMap() as JSON)
+		def dashboards = permissionService.get(Dashboard, request.apiUser, Permission.Operation.READ, apiService.isPublicFlagOn(params), criteria, apiService.isIncludeOwnPermissionsFlagOn(params))
+		dashboards = dashboards.collect { it.toSummaryMap() }
+		render(dashboards as JSON)
+	}
+
+	@StreamrApi
+	def search() {
+		def criteria = apiService.createListCriteria(params, ["name"])
+		def sort = params.sort
+
+		def dashboards = permissionService.get(Dashboard, request.apiUser, Permission.Operation.READ, apiService.isPublicFlagOn(params), criteria, apiService.isIncludeOwnPermissionsFlagOn(params))
+		dashboards = dashboards.collect { it.toSummaryMap() }
+		render(dashboards as JSON)
 	}
 
 	@StreamrApi

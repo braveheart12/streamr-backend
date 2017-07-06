@@ -1,5 +1,6 @@
 package com.unifina.domain.dashboard
 
+import com.unifina.domain.security.Permission
 import com.unifina.domain.security.SecUser
 import groovy.transform.CompileStatic
 
@@ -14,6 +15,12 @@ class Dashboard {
 
 	SortedSet<DashboardItem> items
 
+	String layout = "{}" // JSON
+
+	ArrayList<Permission> ownPermissions
+
+	static transients = ['ownPermissions']
+
 	static hasMany = [items: DashboardItem]
 
 	static constraints = {
@@ -26,10 +33,21 @@ class Dashboard {
 
 	@CompileStatic
 	Map toSummaryMap() {
-		[
-			id: id,
-			name: name,
-			numOfItems: items == null ? 0 : items.size(),
+		DateFormat df = new SimpleDateFormat("YYYY-MM-dd HH:mm:ss zzz")
+		def perm = ownPermissions*.toMap()
+		return (perm != null && perm.size()) ? [
+				id         : id,
+				name       : name,
+				numOfItems : items == null ? 0 : items.size(),
+				lastUpdated: df.format(lastUpdated),
+				user       : user.username,
+				ownPermissions: perm
+		] : [
+				id         : id,
+				name       : name,
+				numOfItems : items == null ? 0 : items.size(),
+				lastUpdated: df.format(lastUpdated),
+				user       : user.username
 		]
 	}
 
