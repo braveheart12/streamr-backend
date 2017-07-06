@@ -42,8 +42,8 @@ class ApiService {
 					}
 				}
 			}
-			if (params.order) {
-				String ord = params.order
+			if (params.sort) {
+				String ord = params.sort
 				def ords = ord.split(",")
 				ords.each {
 					def splitted = it.split(":")
