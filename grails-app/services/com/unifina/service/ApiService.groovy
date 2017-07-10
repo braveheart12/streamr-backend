@@ -3,6 +3,7 @@ package com.unifina.service
 import com.mashape.unirest.http.HttpResponse
 import com.mashape.unirest.http.Unirest
 import com.unifina.api.ApiException
+import com.unifina.domain.dashboard.DashboardItem
 import com.unifina.domain.security.Key
 import com.unifina.domain.security.SecUser
 import com.unifina.exceptions.UnexpectedApiResponseException
@@ -11,6 +12,9 @@ import groovy.transform.CompileStatic
 import org.apache.log4j.Logger
 import org.codehaus.groovy.grails.web.converters.exceptions.ConverterException
 import org.codehaus.groovy.grails.web.json.JSONObject
+import org.hibernate.Criteria
+import org.hibernate.FetchMode
+import org.hibernate.criterion.CriteriaSpecification
 
 class ApiService {
 
@@ -33,7 +37,7 @@ class ApiService {
 	 * @param additionalCriteria Any additional criteria that will be added (AND-condition) to the criteria
 	 * @return
 	 */
-	Closure createListCriteria(params, List<String> searchFields, Closure additionalCriteria = {}) {
+	Closure createSearchCriteria(params, List<String> searchFields, Closure additionalCriteria = {}) {
 		def result = {
 			if (params.search) {
 				or {
@@ -61,6 +65,21 @@ class ApiService {
 		}
 
 		return result << additionalCriteria
+	}
+
+	Closure createJoinCriteria(params) {
+		def expanded = params.list("expand") ?: []
+		return {
+			// To filter out duplicates
+			resultTransformer Criteria.DISTINCT_ROOT_ENTITY
+//			expanded.each {
+			fetchMode "items", FetchMode.JOIN
+//			createAlias("items", "items", CriteriaSpecification.LEFT_JOIN)
+//			fetchMode "items", FetchMode.JOIN
+//			projections {
+//
+//			}
+		}
 	}
 
 	boolean isPublicFlagOn(params) {

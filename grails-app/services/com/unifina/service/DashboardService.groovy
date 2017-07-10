@@ -69,7 +69,7 @@ class DashboardService {
 		dashboard.name = validCommand.name
 		if (validCommand.items != null) {
 			def items = validCommand.items.clone()
-			dashboard.items.clear()
+			dashboard.items?.clear()
 			items.each { DashboardItem item ->
 				dashboard.addToItems(item)
 			}

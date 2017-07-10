@@ -136,7 +136,7 @@ class DashboardApiControllerSpec extends Specification {
 		}
 
 		then:
-		1 * controller.apiService.createListCriteria([
+		1 * controller.apiService.createSearchCriteria([
 		        search: "foo",
 				sort: "bar"
 		], ["name"]) >> {}

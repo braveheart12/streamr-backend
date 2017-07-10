@@ -17,7 +17,7 @@ class ApiServiceSpec extends Specification {
 
 	void "createListCriteria() with empty params"() {
 		when:
-		def c = service.createListCriteria(params, [], {})
+		def c = service.createSearchCriteria(params, [], {})
 		c.delegate = builder
 		c()
 
@@ -28,7 +28,7 @@ class ApiServiceSpec extends Specification {
 	void "createListCriteria() with search"() {
 		when:
 		params.search = "foo"
-		def c = service.createListCriteria(params, ["name", "description"], {})
+		def c = service.createSearchCriteria(params, ["name", "description"], {})
 		c.delegate = builder
 		c()
 
@@ -47,7 +47,7 @@ class ApiServiceSpec extends Specification {
 	void "createListCriteria() with sort"() {
 		when:
 		params.sort = "name"
-		def c = service.createListCriteria(params, [], {})
+		def c = service.createSearchCriteria(params, [], {})
 		c.delegate = builder
 		c()
 
@@ -59,7 +59,7 @@ class ApiServiceSpec extends Specification {
 	void "createListCriteria() with sort desc"() {
 		when:
 		params.sort = "name:desc"
-		def c = service.createListCriteria(params, [], {})
+		def c = service.createSearchCriteria(params, [], {})
 		c.delegate = builder
 		c()
 
@@ -71,7 +71,7 @@ class ApiServiceSpec extends Specification {
 	void "createListCriteria() with multiple sorts"() {
 		when:
 		params.sort = "name:desc,description,email:asc"
-		def c = service.createListCriteria(params, [], {})
+		def c = service.createSearchCriteria(params, [], {})
 		c.delegate = builder
 		c()
 
@@ -85,7 +85,7 @@ class ApiServiceSpec extends Specification {
 	void "createListCriteria() with max"() {
 		when:
 		params.max = "5"
-		def c = service.createListCriteria(params, [], {})
+		def c = service.createSearchCriteria(params, [], {})
 		c.delegate = builder
 		c()
 
@@ -97,7 +97,7 @@ class ApiServiceSpec extends Specification {
 	void "createListCriteria() with offset"() {
 		when:
 		params.offset = "10"
-		def c = service.createListCriteria(params, [], {})
+		def c = service.createSearchCriteria(params, [], {})
 		c.delegate = builder
 		c()
 
@@ -109,7 +109,7 @@ class ApiServiceSpec extends Specification {
 	void "createListCriteria() with additional custom criteria"() {
 		when:
 		params.max = "10"
-		def c = service.createListCriteria(params, [], {
+		def c = service.createSearchCriteria(params, [], {
 			eq("foo", "bar")
 		})
 		c.delegate = builder
@@ -127,7 +127,7 @@ class ApiServiceSpec extends Specification {
 		params.sort = "name:desc"
 		params.max = "5"
 		params.offset = "10"
-		def c = service.createListCriteria(params, ["name", "desc"], {})
+		def c = service.createSearchCriteria(params, ["name", "desc"], {})
 		c.delegate = builder
 		c()
 

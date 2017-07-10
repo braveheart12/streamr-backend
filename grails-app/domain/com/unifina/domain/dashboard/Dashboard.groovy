@@ -16,20 +16,20 @@ class Dashboard {
 	Date dateCreated
 	Date lastUpdated
 
-	SortedSet<DashboardItem> items
+	ArrayList<Permission> permissions
 
-	ArrayList<Permission> ownPermissions
+	static transients = ['permissions']
 
-	static transients = ['ownPermissions']
-
-	static hasMany = [items: DashboardItem]
+	static hasMany = [
+	        items: DashboardItem
+	]
 
 	static constraints = {
 		name(nullable:true)
 	}
 
 	static mapping = {
-		items cascade: 'all-delete-orphan'
+		items cascade: 'all-delete-orphan', fetch: 'join'
 	}
 
 	@CompileStatic
@@ -37,7 +37,7 @@ class Dashboard {
 		// TODO: get away of repeat
 		DateFormat df = new SimpleDateFormat("YYYY-MM-dd HH:mm:ss zzz")
 		def lu = lastUpdated ? df.format(lastUpdated) : null
-		def perm = ownPermissions*.toMap()
+		def perm = permissions*.toMap()
 		return (perm != null && perm.size()) ? [
 				id         : id,
 				name       : name,

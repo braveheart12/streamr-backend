@@ -214,7 +214,7 @@ class PermissionService {
 		}
 		boolean ownPermissionsExists = false
 		try {
-			resourceClass.getDeclaredField("ownPermissions")
+			resourceClass.getDeclaredField("permissions")
 			ownPermissionsExists = true
 		} catch (e) {}
 		if (includeOwnPermissions && ownPermissionsExists) {

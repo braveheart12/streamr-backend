@@ -6,16 +6,22 @@ import com.unifina.utils.IdGenerator
 class DashboardItem implements Comparable {
 
 	String title
-	Canvas canvas
 	Integer module
 	String webcomponent
 	Integer ord
 	String size
 	
-	static belongsTo = [dashboard: Dashboard, canvas: Canvas]
+	static belongsTo = [
+			dashboard: Dashboard,
+			canvas: Canvas
+	]
 
 	static constraints = {
 		title(nullable:true)
+	}
+
+	static mapping = {
+		dashboard fetch: 'join'
 	}
 
 	int compareTo(obj) {

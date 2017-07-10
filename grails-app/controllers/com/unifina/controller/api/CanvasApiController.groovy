@@ -24,7 +24,7 @@ class CanvasApiController {
 
 	@StreamrApi
 	def index() {
-		def criteria = apiService.createListCriteria(params, ["name"], {
+		def criteria = apiService.createSearchCriteria(params, ["name"], {
 			// Filter by exact name
 			if (params.name) {
 				eq "name", params.name

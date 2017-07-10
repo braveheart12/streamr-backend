@@ -208,9 +208,9 @@ class PermissionServiceSpec extends Specification {
 
 	void "retrieve all readable Dashboards correctly with permissions"() {
 		expect:
-		service.get(Dashboard, myKey, {}, true)*.ownPermissions == [[], [], [dashReadPermission]]
-		service.get(Dashboard, anotherUserKey, {}, true)*.ownPermissions == [[], [], [], [dashOtherReadPermission]]
-		service.get(Dashboard, anonymousKey, {}, true)*.ownPermissions == [[dashAnonymousKeyReadPermission]]
+		service.get(Dashboard, myKey, {}, true)*.permissions == [[], [], [dashReadPermission]]
+		service.get(Dashboard, anotherUserKey, {}, true)*.permissions == [[], [], [], [dashOtherReadPermission]]
+		service.get(Dashboard, anonymousKey, {}, true)*.permissions == [[dashAnonymousKeyReadPermission]]
 	}
 
 	void "getAll lists public resources"() {

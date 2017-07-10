@@ -23,7 +23,7 @@ class IntegrationKeyApiController {
 				throw new ApiException(400, "INVALID_SERVICE", "Invalid service: $request.JSON.service")
 			}
 		}
-		def criteria = apiService.createListCriteria(params, ["id"], {
+		def criteria = apiService.createSearchCriteria(params, ["id"], {
 			eq "user", request.apiUser
 
 			// Filter by exact id

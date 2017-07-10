@@ -1,14 +1,15 @@
 package com.unifina.controller.api
 
 import com.unifina.api.SaveDashboardCommand
-import com.unifina.api.StreamrApiHelper
 import com.unifina.api.ValidationException
 import com.unifina.domain.dashboard.Dashboard
 import com.unifina.domain.security.Permission
 import com.unifina.domain.security.SecUser
 import com.unifina.security.AuthLevel
 import com.unifina.security.StreamrApi
+import com.unifina.service.ApiService
 import com.unifina.service.DashboardService
+import com.unifina.service.PermissionService
 import com.unifina.service.SignalPathService
 import grails.converters.JSON
 import grails.plugin.springsecurity.annotation.Secured
@@ -18,36 +19,16 @@ class DashboardApiController {
 
 	DashboardService dashboardService
 	SignalPathService signalPathService
-	def permissionService
-	def apiService
+	PermissionService permissionService
+	ApiService apiService
 
 	@StreamrApi
 	def index() {
-		def criteria = apiService.createListCriteria(params, ["name"], {
-			// Filter by exact name
-			if (params.name) {
-				eq "name", params.name
-			}
-		})
+		def searchCriteria = apiService.createSearchCriteria(params, ["name"])
+		def joinCriteria = apiService.createJoinCriteria(params)
+		def criteria = searchCriteria << joinCriteria
 		def dashboards = permissionService.get(Dashboard, request.apiUser, Permission.Operation.READ, apiService.isPublicFlagOn(params), criteria, apiService.isIncludeOwnPermissionsFlagOn(params))
-		dashboards = dashboards.collect { it.toSummaryMap() }
 		render(dashboards as JSON)
-	}
-
-	@StreamrApi
-	def search() {
-		def criteria = apiService.createListCriteria(params, ["name"])
-		def dashboards = permissionService.get(Dashboard, request.apiUser, Permission.Operation.READ, apiService.isPublicFlagOn(params), criteria, apiService.isIncludeOwnPermissionsFlagOn(params))
-		dashboards = dashboards.collect { it.toSummaryMap() }
-		def dashboardCount = permissionService.get(Dashboard, request.apiUser, Permission.Operation.READ, apiService.isPublicFlagOn(params), {
-			projections {
-				count()
-			}
-		})
-		render([
-				totalCount: dashboardCount[0],
-		        list: dashboards
-		] as JSON)
 	}
 
 	@StreamrApi
