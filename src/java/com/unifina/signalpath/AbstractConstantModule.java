@@ -16,7 +16,7 @@ public abstract class AbstractConstantModule<ValueType> extends AbstractSignalPa
 
 	public AbstractConstantModule() {
 		super();
-		initPriority = 40;
+		setInitPriority(40);
 		constant = createConstantParameter();
 		out = createOutput();
 	}
@@ -27,15 +27,17 @@ public abstract class AbstractConstantModule<ValueType> extends AbstractSignalPa
 	@Override
 	public void init() {
 		super.init();
-		constant.canToggleDrivingInput = false;
+		constant.setCanToggleDrivingInput(false);
 		constant.setDrivingInput(true);
 	}
 
 	@Override
 	public void initialize() {
-		// Send out the value to any connected inputs to mark them ready.
-		// Otherwise the receiving module won't be able to activate.
-		out.send(constant.getValue());
+		if (!constant.isConnected() || constant.isReady()) {
+			// Send out the value to any connected inputs to mark them ready.
+			// Otherwise the receiving module won't be able to activate.
+			out.send(constant.getValue());
+		}
 	}
 
 	@Override

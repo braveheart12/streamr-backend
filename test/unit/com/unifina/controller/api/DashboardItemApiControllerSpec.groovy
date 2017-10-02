@@ -3,6 +3,7 @@ package com.unifina.controller.api
 import com.unifina.api.SaveDashboardItemCommand
 import com.unifina.domain.dashboard.Dashboard
 import com.unifina.domain.dashboard.DashboardItem
+import com.unifina.domain.security.Key
 import com.unifina.domain.security.SecUser
 import com.unifina.domain.signalpath.Canvas
 import com.unifina.filters.UnifinaCoreAPIFilters
@@ -17,7 +18,7 @@ import spock.lang.Specification
 
 @TestFor(DashboardItemApiController)
 @Mixin(FiltersUnitTestMixin)
-@Mock([Canvas, Dashboard, DashboardItem, SecUser, UnifinaCoreAPIFilters, UserService, SpringSecurityService])
+@Mock([Canvas, Dashboard, DashboardItem, Key, SecUser, UnifinaCoreAPIFilters, UserService, SpringSecurityService])
 class DashboardItemApiControllerSpec extends Specification {
 
 	DashboardService dashboardService
@@ -26,11 +27,15 @@ class DashboardItemApiControllerSpec extends Specification {
 
 	def setup() {
 		dashboardService = controller.dashboardService = Mock(DashboardService)
-		me = new SecUser(apiKey: "myApiKey").save(failOnError: true, validate: false)
+		me = new SecUser().save(failOnError: true, validate: false)
 		dashboards = DashboardApiControllerSpec.initDashboards(me)
 
+		Key key = new Key(name: "key", user: me)
+		key.id = "myApiKey"
+		key.save(failOnError: true, validate: true)
+
 		Canvas c = new Canvas(json: '{"modules": [{"hash": 1, "uiChannel": {"webcomponent": "streamr-chart"}}]}')
-		c.id = "canvasId"
+		c.id = "canvas"
 		c.save(failOnError: true, validate: false)
 	}
 
@@ -102,7 +107,7 @@ class DashboardItemApiControllerSpec extends Specification {
 		params.dashboardId = 3
 		request.JSON = [
 			title: "new-dashboard-item",
-			canvasId: "canvasId",
+			canvas: "canvas",
 			module: 1,
 			ord: 3,
 			size: "small",
@@ -120,7 +125,7 @@ class DashboardItemApiControllerSpec extends Specification {
 			dashboard: 3,
 			title: "new-dashboard-item",
 			ord: 3,
-			canvas: "canvasId",
+			canvas: "canvas",
 			module: 1,
 			webcomponent: "streamr-chart",
 			size: "small",
@@ -141,11 +146,11 @@ class DashboardItemApiControllerSpec extends Specification {
 		params.dashboardId = 2
 		params.id = 1
 		request.JSON = [
-			title      : "updated-dashboard-item",
-			canvasId   : "canvasId",
-			module     : 1,
-			ord        : 9,
-			size       : "large",
+			title	: "updated-dashboard-item",
+			canvas	: "canvas",
+			module	: 1,
+			ord		: 9,
+			size	: "large",
 		]
 		request.addHeader("Authorization", "Token myApiKey")
 		request.requestURI = "/api/v1/dashboards/3/items/1"
@@ -160,7 +165,7 @@ class DashboardItemApiControllerSpec extends Specification {
 			dashboard	 : 2,
 			title        : "updated-dashboard-item",
 			ord          : 9,
-			canvas       : "canvasId",
+			canvas       : "canvas",
 			module       : 1,
 			webcomponent : "streamr-chart",
 			size         : "large",

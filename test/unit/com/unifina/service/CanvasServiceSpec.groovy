@@ -1,12 +1,17 @@
 package com.unifina.service
 
-import com.unifina.api.*
+import com.unifina.api.InvalidStateException
+import com.unifina.api.NotFoundException
+import com.unifina.api.NotPermittedException
+import com.unifina.api.SaveCanvasCommand
+import com.unifina.api.ValidationException
 import com.unifina.domain.dashboard.Dashboard
 import com.unifina.domain.dashboard.DashboardItem
 import com.unifina.domain.security.Permission
 import com.unifina.domain.security.SecUser
 import com.unifina.domain.signalpath.Canvas
 import com.unifina.domain.signalpath.Module
+import com.unifina.domain.signalpath.Serialization
 import com.unifina.exceptions.CanvasUnreachableException
 import com.unifina.signalpath.UiChannelIterator
 import com.unifina.signalpath.charts.Heatmap
@@ -18,7 +23,7 @@ import groovy.json.JsonBuilder
 import spock.lang.Specification
 
 @TestFor(CanvasService)
-@Mock([SecUser, Canvas, Dashboard, DashboardItem, Module, ModuleService, SpringSecurityService, SignalPathService])
+@Mock([SecUser, Canvas, Module, ModuleService, SpringSecurityService, SignalPathService, PermissionService, Permission, Serialization, Dashboard, DashboardItem])
 class CanvasServiceSpec extends Specification {
 
 	SecUser me
@@ -34,7 +39,7 @@ class CanvasServiceSpec extends Specification {
 
 		moduleWithUi = new Module(implementingClass: Heatmap.name).save(validate: false)
 
-		me = new SecUser(username: "me@me.com", apiKey: "myKey").save(validate: false)
+		me = new SecUser(username: "me@me.com").save(validate: false)
 
 		myFirstCanvas = new Canvas(
 			name: "my_canvas_1",
@@ -98,7 +103,7 @@ class CanvasServiceSpec extends Specification {
 			state: Canvas.State.STOPPED
 		).save(failOnError: true)
 
-		someoneElse = new SecUser(username: "someone@someone.com", apiKey: "otherKey").save(validate: false)
+		someoneElse = new SecUser(username: "someone@someone.com").save(validate: false)
 
 		canvases << new Canvas(
 			name: "someoneElses_canvas_1",
@@ -113,27 +118,6 @@ class CanvasServiceSpec extends Specification {
 			user: someoneElse,
 			json: "{}",
 		).save(failOnError: true)
-	}
-
-	def "#findAllBy, by default, lists all Canvases of current user"() {
-		expect:
-		service.findAllBy(me, null, null, null)*.name == (1..6).collect { "my_canvas_" + it }
-	}
-
-	def "#findAllBy can filter by name"() {
-		expect:
-		service.findAllBy(me, "my_canvas_4", null, null)*.name == ["my_canvas_4"]
-	}
-
-	def "#findAllBy can filter by adhoc"() {
-		expect:
-		service.findAllBy(me, null, false, null)*.name == [1,2,3,6].collect { "my_canvas_" + it }
-		service.findAllBy(me, null, true, null)*.name == ["my_canvas_4", "my_canvas_5"]
-	}
-
-	def "#findAllBy can filter by state"() {
-		expect:
-		service.findAllBy(me, null, null, Canvas.State.RUNNING)*.name == ["my_canvas_3", "my_canvas_4"]
 	}
 
 	def "createNew() throws error when given null command object"() {
@@ -172,8 +156,7 @@ class CanvasServiceSpec extends Specification {
 		c.server == null
 		c.requestUrl == null
 		!c.adhoc
-		c.serialized == null
-		c.serializationTime == null
+		c.serialization == null
 
 		List uiChannelIds = uiChannelIdsFromMap(c.toMap())
 		uiChannelIds.size() == 1
@@ -199,7 +182,7 @@ class CanvasServiceSpec extends Specification {
 		)
 
 		when:
-		service.updateExisting(myFirstCanvas, command)
+		service.updateExisting(myFirstCanvas, command, me)
 		Canvas c = Canvas.findById(myFirstCanvas.id)
 
 		then:
@@ -236,7 +219,7 @@ class CanvasServiceSpec extends Specification {
 			name: "my_canvas_with_modules",
 			modules: newModules + modules
 		)
-		service.updateExisting(canvas, updateCommand)
+		service.updateExisting(canvas, updateCommand, me)
 		def updatedUiChannelIds = uiChannelIdsFromMap(canvas.toMap())
 
 		then:
@@ -246,8 +229,10 @@ class CanvasServiceSpec extends Specification {
 
 	def "updateExisting clears serialization"() {
 		setup:
-		myFirstCanvas.serialized = "{}"
-		myFirstCanvas.serializationTime = new Date()
+		myFirstCanvas.serialization = new Serialization(date: new Date(), bytes: new byte[12])
+		myFirstCanvas.save(failOnError: true)
+		def serializationId = myFirstCanvas.serialization.id
+		assert serializationId != null
 
 		when:
 		def command = new SaveCanvasCommand(
@@ -255,12 +240,15 @@ class CanvasServiceSpec extends Specification {
 			modules: [],
 			settings: ["a" : "b"]
 		)
-		service.updateExisting(myFirstCanvas, command)
+		service.updateExisting(myFirstCanvas, command, me)
 
 		then:
 		Canvas c = Canvas.findById(myFirstCanvas.id)
-		c.serialized == null
-		c.serializationTime == null
+		c.serialization == null
+
+		and:
+		Serialization s = Serialization.findById(serializationId)
+		s == null
 
 	}
 
@@ -274,7 +262,7 @@ class CanvasServiceSpec extends Specification {
 			modules: [],
 			settings: ["a" : "b"]
 		)
-		service.updateExisting(myFirstCanvas, command)
+		service.updateExisting(myFirstCanvas, command, me)
 
 		then:
 		thrown(InvalidStateException)
@@ -349,8 +337,7 @@ class CanvasServiceSpec extends Specification {
 	def "start() raises ApiException about serialization if deserializing canvas fails"() {
 		def signalPathService = Mock(SignalPathService)
 		service.signalPathService = signalPathService
-		myFirstCanvas.serialized = "serialized_content_be_here"
-		myFirstCanvas.serializationTime = new Date()
+		myFirstCanvas.serialization = new Serialization(date: new Date(), bytes: "invalid_content_be_here".bytes)
 		myFirstCanvas.save(failOnError: true)
 
 		when:

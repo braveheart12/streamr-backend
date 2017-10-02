@@ -12,7 +12,8 @@ import org.springframework.util.Assert
 @CompileStatic
 class SerializationService {
 
-	final static String INTERVAL_CONFIG_KEY = "unifina.serialization.intervalInMillis"
+	final static String INTERVAL_CONFIG_KEY = "streamr.serialization.intervalInMillis"
+	final static String MAX_BYTES_CONFIG_KEY = "streamr.serialization.maxBytes"
 
 	GrailsApplication grailsApplication
 	Serializer serializer = new SerializerImpl()
@@ -26,19 +27,25 @@ class SerializationService {
 
 	AbstractSignalPathModule deserialize(byte[] data) throws SerializationException {
 		AbstractSignalPathModule module = (AbstractSignalPathModule) serializer.deserializeFromByteArray(data)
-		module.afterDeserialization()
+		module.afterDeserialization(this)
 		return module
 	}
 
 	AbstractSignalPathModule deserialize(byte[] data, ClassLoader classLoader) throws SerializationException {
 		AbstractSignalPathModule module = (AbstractSignalPathModule) new SerializerImpl(classLoader).deserializeFromByteArray(data)
-		module.afterDeserialization()
+		module.afterDeserialization(this)
 		return module
 	}
 
-	public Long serializationIntervalInMillis() {
-		Long v = MapTraversal.getLong(grailsApplication.getConfig(), INTERVAL_CONFIG_KEY);
-		Assert.notNull(v, "Missing key \"" + INTERVAL_CONFIG_KEY + "\" from grailsApplication configuration");
-		return v;
+	Long serializationIntervalInMillis() {
+		Long v = MapTraversal.getLong(grailsApplication.getConfig(), INTERVAL_CONFIG_KEY)
+		Assert.notNull(v, "Missing key \"" + INTERVAL_CONFIG_KEY + "\" from grailsApplication configuration")
+		return v
+	}
+
+	int serializationMaxBytes() {
+		Integer v = MapTraversal.getLong(grailsApplication.getConfig(), MAX_BYTES_CONFIG_KEY)
+		Assert.notNull(v, "Missing key \"" + MAX_BYTES_CONFIG_KEY + "\" from grailsApplication configuration")
+		return v
 	}
 }

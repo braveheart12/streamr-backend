@@ -2,6 +2,7 @@ package com.unifina.controller.api
 
 import com.unifina.api.NotPermittedException
 import com.unifina.api.SaveCanvasCommand
+import com.unifina.domain.security.Key
 import com.unifina.domain.security.Permission
 import com.unifina.domain.security.Permission.Operation
 import com.unifina.domain.security.SecUser
@@ -13,6 +14,7 @@ import com.unifina.service.CanvasService
 import com.unifina.service.PermissionService
 import com.unifina.service.SignalPathService
 import com.unifina.service.UserService
+import com.unifina.signalpath.RuntimeRequest
 import grails.converters.JSON
 import grails.orm.HibernateCriteriaBuilder
 import grails.plugin.springsecurity.SpringSecurityService
@@ -24,7 +26,7 @@ import spock.lang.Specification
 
 @TestFor(CanvasApiController)
 @Mixin(FiltersUnitTestMixin)
-@Mock([SecUser, Permission, Canvas, UnifinaCoreAPIFilters, UserService, SpringSecurityService, ApiService])
+@Mock([SecUser, Permission, Canvas, Key, UnifinaCoreAPIFilters, UserService, SpringSecurityService, ApiService])
 class CanvasApiControllerSpec extends Specification {
 
 	CanvasService canvasService
@@ -39,8 +41,16 @@ class CanvasApiControllerSpec extends Specification {
 		controller.permissionService = Mock(PermissionService)
 		controller.apiService = mainContext.getBean(ApiService)
 
-		me = new SecUser(id: 1, apiKey: "myApiKey").save(validate: false)
-		SecUser other = new SecUser(id: 2, apiKey: "otherApiKey").save(validate: false)
+		me = new SecUser(id: 1).save(validate: false)
+		SecUser other = new SecUser(id: 2).save(validate: false)
+
+		def k1 = new Key(name: "k1", user: me)
+		k1.id = "myApiKey"
+		k1.save(failOnError: true, validate: true)
+
+		def k2 = new Key(name: "k2", user: other)
+		k2.id = "otherApiKey"
+		k2.save(failOnError: true, validate: true)
 
 		canvas1 = new Canvas(
 			user: me,
@@ -74,7 +84,7 @@ class CanvasApiControllerSpec extends Specification {
 
 	void "index() renders authorized canvases as a list"() {
 		when:
-		request.addHeader("Authorization", "Token $me.apiKey")
+		request.addHeader("Authorization", "Token myApiKey")
 		request.requestURI = "/api/v1/canvases"
 		withFilters(action: "index") {
 			controller.index()
@@ -152,7 +162,7 @@ class CanvasApiControllerSpec extends Specification {
 	void "show() authorizes, reconstructs and renders the canvas as json"() {
 		when:
 		params.id = "1"
-		request.addHeader("Authorization", "Token $me.apiKey")
+		request.addHeader("Authorization", "Token myApiKey")
 		request.requestURI = "/api/v1/canvases/$params.id"
 		withFilters(action: "show") {
 			controller.show()
@@ -163,14 +173,32 @@ class CanvasApiControllerSpec extends Specification {
 		response.json?.size() > 0
 
 		1 * canvasService.authorizedGetById("1", me, Permission.Operation.READ) >> canvas1
-		1 * canvasService.reconstruct(canvas1) >> { Canvas c -> JSON.parse(c.json) }
+		1 * canvasService.reconstruct(canvas1, me) >> { Canvas c, SecUser user -> JSON.parse(c.json) }
+	}
+
+	void "show() supports runtime parameter"() {
+		when:
+		params.id = canvas1.id
+		params.runtime = true
+		request.addHeader("Authorization", "Token myApiKey")
+		request.requestURI = "/api/v1/canvases/$params.id"
+		withFilters(action: "show") {
+			controller.show()
+		}
+
+		then:
+		response.status == 200
+		response.json?.size() > 0
+
+		1 * canvasService.authorizedGetById("1", me, Permission.Operation.READ) >> canvas1
+		1 * controller.signalPathService.runtimeRequest(_, false) >> [success:true, json:JSON.parse(canvas1.json)]
 	}
 
 	void "save() creates a new canvas and renders it as json"() {
 		def newCanvasId
 
 		when:
-		request.addHeader("Authorization", "Token $me.apiKey")
+		request.addHeader("Authorization", "Token myApiKey")
 		request.JSON = [
 			name: "brand new Canvas",
 			modules: [],
@@ -195,7 +223,7 @@ class CanvasApiControllerSpec extends Specification {
 
 	void "update() authorizes, updates and renders the canvas as json"() {
 		when:
-		request.addHeader("Authorization", "Token $me.apiKey")
+		request.addHeader("Authorization", "Token myApiKey")
 		params.id = "1"
 		request.JSON = [
 			name: "updated, new name",
@@ -211,7 +239,7 @@ class CanvasApiControllerSpec extends Specification {
 		response.status == 200
 		response.json?.size() > 0
 		1 * canvasService.authorizedGetById("1", me, Permission.Operation.WRITE) >> canvas1
-		1 * canvasService.updateExisting(canvas1, _) >> { Canvas canvas, SaveCanvasCommand command ->
+		1 * canvasService.updateExisting(canvas1, _, me) >> { Canvas canvas, SaveCanvasCommand command, SecUser user ->
 			assert command.name == "updated, new name"
 			assert command.modules == []
 		}
@@ -221,7 +249,7 @@ class CanvasApiControllerSpec extends Specification {
 		Map originalProperties = canvas2.properties
 
 		when:
-		request.addHeader("Authorization", "Token $me.apiKey")
+		request.addHeader("Authorization", "Token myApiKey")
 		params.id = canvas2.id
 		request.JSON = [
 			name: "me me me",
@@ -243,7 +271,7 @@ class CanvasApiControllerSpec extends Specification {
 
 	void "delete() must authorize and delete the canvas"() {
 		when:
-		request.addHeader("Authorization", "Token $me.apiKey")
+		request.addHeader("Authorization", "Token myApiKey")
 		params.id = "1"
 		request.method = "DELETE"
 		request.requestURI = "/api/v1/canvases/$params.id"
@@ -254,12 +282,12 @@ class CanvasApiControllerSpec extends Specification {
 		then:
 		response.status == 204
 		1 * canvasService.authorizedGetById("1", me, Permission.Operation.WRITE) >> canvas1
-		Canvas.get("1") == null
+		1 * canvasService.deleteCanvas(canvas1, me)
 	}
 
 	void "delete() must not delete the canvas if authorization fails"() {
 		when:
-		request.addHeader("Authorization", "Token $me.apiKey")
+		request.addHeader("Authorization", "Token myApiKey")
 		params.id = "2"
 		request.method = "DELETE"
 		request.requestURI = "/api/v1/canvases/$params.id"
@@ -275,7 +303,7 @@ class CanvasApiControllerSpec extends Specification {
 
 	void "start() must authorize and start a canvas"() {
 		when:
-		request.addHeader("Authorization", "Token $me.apiKey")
+		request.addHeader("Authorization", "Token myApiKey")
 		params.id = "1"
 		request.method = "POST"
 		request.requestURI = "/api/v1/canvases/$params.id/start"
@@ -292,7 +320,7 @@ class CanvasApiControllerSpec extends Specification {
 
 	void "start() must authorize and be able to start a Canvas with clearing enabled"() {
 		when:
-		request.addHeader("Authorization", "Token $me.apiKey")
+		request.addHeader("Authorization", "Token myApiKey")
 		params.id = "1"
 		request.JSON = [clearState: true]
 		request.method = "POST"
@@ -312,7 +340,7 @@ class CanvasApiControllerSpec extends Specification {
 		Map originalProperties = canvas2.properties
 
 		when:
-		request.addHeader("Authorization", "Token $me.apiKey")
+		request.addHeader("Authorization", "Token myApiKey")
 		params.id = canvas2.id
 		request.method = "POST"
 		request.requestURI = "/api/v1/canvases/$params.id/start"
@@ -330,7 +358,7 @@ class CanvasApiControllerSpec extends Specification {
 
 	void "stop() must authorize and stop a canvas"() {
 		when:
-		request.addHeader("Authorization", "Token $me.apiKey")
+		request.addHeader("Authorization", "Token myApiKey")
 		params.id = "1"
 		request.method = "POST"
 		request.requestURI = "/api/v1/canvases/$params.id/stop"
@@ -349,7 +377,7 @@ class CanvasApiControllerSpec extends Specification {
 		canvas1.adhoc = true
 
 		when:
-		request.addHeader("Authorization", "Token $me.apiKey")
+		request.addHeader("Authorization", "Token myApiKey")
 		params.id = "1"
 		request.method = "POST"
 		request.requestURI = "/api/v1/canvases/$params.id/stop"
@@ -367,7 +395,7 @@ class CanvasApiControllerSpec extends Specification {
 		Map originalProperties = canvas2.properties
 
 		when:
-		request.addHeader("Authorization", "Token $me.apiKey")
+		request.addHeader("Authorization", "Token myApiKey")
 		params.id = canvas2.id
 		request.method = "POST"
 		request.requestURI = "/api/v1/canvases/$params.id/stop"
@@ -385,7 +413,7 @@ class CanvasApiControllerSpec extends Specification {
 
 	void "stop() must throw an exception if the canvas can't be reached"() {
 		when:
-		request.addHeader("Authorization", "Token $me.apiKey")
+		request.addHeader("Authorization", "Token myApiKey")
 		params.id = "1"
 		request.method = "POST"
 		request.requestURI = "/api/v1/canvases/$params.id/stop"
@@ -404,7 +432,7 @@ class CanvasApiControllerSpec extends Specification {
 		def result = JSON.parse(canvas1.json).modules.find {it.hash == 1}
 
 		when:
-		request.addHeader("Authorization", "Token $me.apiKey")
+		request.addHeader("Authorization", "Token myApiKey")
 		params.canvasId = "1"
 		params.moduleId = 1
 		params.dashboard = 2
@@ -420,127 +448,67 @@ class CanvasApiControllerSpec extends Specification {
 		1 * canvasService.authorizedGetModuleOnCanvas("1", 1, 2, me, Permission.Operation.READ) >> result
 	}
 
-	void "request() must authorize and send a runtime request to the canvas"() {
+	void "module() supports runtime parameter"() {
+		def result = JSON.parse(canvas1.json).modules.find {it.hash == 1}
+
+		when:
+		request.addHeader("Authorization", "Token myApiKey")
+		params.canvasId = "1"
+		params.moduleId = 1
+		params.dashboard = 2
+		params.runtime = true
+		request.method = "GET"
+		request.requestURI = "/api/v1/canvases/$params.id/modules/$params.moduleId"
+		withFilters(action: "module") {
+			controller.module()
+		}
+
+		then:
+		response.status == 200
+		response.json == result
+		1 * controller.signalPathService.runtimeRequest(_, false) >> [success:true, json:result]
+	}
+
+	void "runtimeRequest() must build and send a runtime request to the canvas"() {
 		def runtimeResponse = [foo: 'bar']
 
 		when:
-		request.addHeader("Authorization", "Token $me.apiKey")
-		params.id = "1"
+		request.addHeader("Authorization", "Token myApiKey")
+		params.id = canvas1.id
+		params.path = canvas1.id
 		request.JSON = [bar: 'foo']
 		request.method = "POST"
 		request.requestURI = "/api/v1/canvases/$params.id/request"
-		withFilters(action: "request") {
-			controller.request()
+		withFilters(action: "runtimeRequest") {
+			controller.runtimeRequest()
 		}
 
 		then:
 		response.status == 200
 		response.json == runtimeResponse
-		1 * canvasService.authorizedGetById("1", me, Permission.Operation.READ) >> canvas1
-		1 * controller.signalPathService.runtimeRequest([bar: 'foo'], canvas1, null, me, false) >> runtimeResponse
-		0 * controller.signalPathService.runtimeRequest(_, _, _, _, _)
+		1 * controller.signalPathService.buildRuntimeRequest([bar: 'foo'], "canvases/$canvas1.id", me)
+		1 * controller.signalPathService.runtimeRequest(_, false) >> runtimeResponse
 	}
 
-	void "request() must not send a runtime request to the canvas if authorization fails"() {
-		when:
-		request.addHeader("Authorization", "Token $me.apiKey")
-		params.id = "1"
-		request.JSON = [bar: 'foo']
-		request.method = "POST"
-		request.requestURI = "/api/v1/canvases/$params.id/request"
-		withFilters(action: "request") {
-			controller.request()
-		}
-
-		then:
-		thrown(NotPermittedException)
-		1 * canvasService.authorizedGetById("1", me, Permission.Operation.READ) >> { throw new NotPermittedException("mock")}
-	}
-
-	void "request() must force a local request if params.local is true"() {
+	void "runtimeRequest() must force a local request if params.local is true"() {
 		def runtimeResponse = [foo: 'bar']
 
 		when:
-		request.addHeader("Authorization", "Token $me.apiKey")
-		params.id = "1"
+		request.addHeader("Authorization", "Token myApiKey")
+		params.id = canvas1.id
+		params.path = canvas1.id
 		params.local = "true"
 		request.JSON = [bar: 'foo']
 		request.method = "POST"
 		request.requestURI = "/api/v1/canvases/$params.id/request"
-		withFilters(action: "request") {
-			controller.request()
+		withFilters(action: "runtimeRequest") {
+			controller.runtimeRequest()
 		}
 
 		then:
 		response.status == 200
 		response.json == runtimeResponse
-		1 * canvasService.authorizedGetById("1", me, Permission.Operation.READ) >> canvas1
-		1 * controller.signalPathService.runtimeRequest([bar: 'foo'], canvas1, null, me, true) >> runtimeResponse
+		1 * controller.signalPathService.runtimeRequest(_, true) >> runtimeResponse
 	}
 
-	void "moduleRequest() must authorize and send a runtime request to the module"() {
-		def module = JSON.parse(canvas1.json).modules.find {it.hash == 1}
-		def runtimeResponse = [foo: 'bar']
-
-		when:
-		request.addHeader("Authorization", "Token $me.apiKey")
-		params.canvasId = "1"
-		params.moduleId = 1
-		params.dashboard = 2
-		request.JSON = [bar: 'foo']
-		request.method = "POST"
-		request.requestURI = "/api/v1/canvases/$params.canvasId/modules/$params.moduleId/request"
-		withFilters(action: "moduleRequest") {
-			controller.moduleRequest()
-		}
-
-		then:
-		response.status == 200
-		response.json == runtimeResponse
-		1 * canvasService.authorizedGetModuleOnCanvas("1", 1, 2, me, Permission.Operation.READ) >> module
-		1 * controller.signalPathService.runtimeRequest([bar: 'foo'], canvas1, 1, me, false) >> runtimeResponse
-	}
-
-	void "moduleRequest() must not send a runtime request to the canvas if authorization fails"() {
-		when:
-		request.addHeader("Authorization", "Token $me.apiKey")
-		params.canvasId = "1"
-		params.moduleId = 1
-		params.dashboard = 2
-		request.JSON = [bar: 'foo']
-		request.method = "POST"
-		request.requestURI = "/api/v1/canvases/$params.canvasId/modules/$params.moduleId/request"
-		withFilters(action: "moduleRequest") {
-			controller.moduleRequest()
-		}
-
-		then:
-		thrown(NotPermittedException)
-		1 * canvasService.authorizedGetModuleOnCanvas("1", 1, 2, me, Permission.Operation.READ) >> {throw new NotPermittedException("mock")}
-		0 * controller.signalPathService._
-	}
-
-	void "moduleRequest() must send a local request if params.local is true"() {
-		def module = JSON.parse(canvas1.json).modules.find {it.hash == 1}
-		def runtimeResponse = [foo: 'bar']
-
-		when:
-		request.addHeader("Authorization", "Token $me.apiKey")
-		params.canvasId = "1"
-		params.moduleId = 1
-		params.dashboard = 2
-		params.local = "true"
-		request.JSON = [bar: 'foo']
-		request.method = "POST"
-		request.requestURI = "/api/v1/canvases/$params.canvasId/modules/$params.moduleId/request"
-		withFilters(action: "moduleRequest") {
-			controller.moduleRequest()
-		}
-
-		then:
-		response.status == 200
-		response.json == runtimeResponse
-		1 * canvasService.authorizedGetModuleOnCanvas("1", 1, 2, me, Permission.Operation.READ) >> module
-		1 * controller.signalPathService.runtimeRequest([bar: 'foo'], canvas1, 1, me, true) >> runtimeResponse
-	}
 }

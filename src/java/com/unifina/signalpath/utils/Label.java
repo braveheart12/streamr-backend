@@ -5,7 +5,6 @@ import java.util.Map;
 
 import com.unifina.signalpath.Input;
 import com.unifina.signalpath.ModuleWithUI;
-import com.unifina.signalpath.StringParameter;
 
 public class Label extends ModuleWithUI {
 
@@ -15,18 +14,19 @@ public class Label extends ModuleWithUI {
 	public void init() {
 		addInput(label);
 		label.setDrivingInput(true);
-		label.canToggleDrivingInput = false;
+		label.setCanToggleDrivingInput(false);
 		
 		canClearState = false;
+
+		resendAll = false;
+		resendLast = 1;
 	}
 
 	@Override
 	public void sendOutput() {
-		if (globals.getUiChannel()!=null) {
-			Map<String,Object> msg = new HashMap<>();
-			msg.put("value", label.getValue().toString());
-			globals.getUiChannel().push(msg, uiChannelId);
-		}
+		Map<String,Object> msg = new HashMap<>();
+		msg.put("value", label.getValue().toString());
+		pushToUiChannel(msg);
 	}
 
 	@Override

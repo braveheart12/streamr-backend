@@ -6,8 +6,10 @@ import com.unifina.data.FeedEvent;
 import com.unifina.data.IEventQueue;
 import com.unifina.feed.MasterClock;
 import com.unifina.signalpath.AbstractSignalPathModule;
+import com.unifina.signalpath.StopRequest;
 import com.unifina.utils.Globals;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 
 public abstract class DataSourceEventQueue implements IEventQueue {
 
@@ -89,7 +91,7 @@ public abstract class DataSourceEventQueue implements IEventQueue {
 		int initialQueueSize = queue.size();
 
 		if (nextDay == null) {
-			DateTime now = new DateTime(lastReportedSec);
+			DateTime now = new DateTime(lastReportedSec, DateTimeZone.UTC);
 			nextDay = now.minusMillis(now.getMillisOfDay()).plusDays(1);
 		}
 
@@ -100,13 +102,6 @@ public abstract class DataSourceEventQueue implements IEventQueue {
 
 			if (lastReportedSec > nextDay.getMillis()) {
 				dlCount = dayListeners.size();
-
-				// TODO: remove this hack. The point is that all modules must be cleared before calling onDay(d)
-				for (i = 0; i < dlCount; i++) {
-					if (dayListeners.get(i) instanceof AbstractSignalPathModule) {
-						((AbstractSignalPathModule) dayListeners.get(i)).clear();
-					}
-				}
 
 				// Report the new day
 				for (i = 0; i < dlCount; i++) {

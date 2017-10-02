@@ -1,81 +1,73 @@
 package com.unifina.signalpath;
 
+import com.unifina.data.FeedEvent;
+import com.unifina.data.IEventRecipient;
+import com.unifina.datasource.IDayListener;
+import com.unifina.domain.signalpath.Module;
+import com.unifina.security.permission.ConnectionTraversalPermission;
+import com.unifina.security.permission.UserPermission;
+import com.unifina.service.PermissionService;
+import com.unifina.service.SerializationService;
+import com.unifina.utils.Globals;
+import com.unifina.utils.HibernateHelper;
+import com.unifina.utils.MapTraversal;
+import grails.util.Holders;
+import org.apache.log4j.Logger;
+import org.codehaus.groovy.runtime.InvokerHelper;
+
 import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.security.AccessControlException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
-
-import com.unifina.utils.HibernateHelper;
-import org.apache.log4j.Logger;
-
-import com.unifina.data.FeedEvent;
-import com.unifina.data.IEventRecipient;
-import com.unifina.datasource.IDayListener;
-import com.unifina.domain.signalpath.Module;
-import com.unifina.utils.Globals;
-import com.unifina.utils.MapTraversal;
 
 /**
  * The usual init procedure:
  * - Construct the module
  * - Call module.init()
+ * - Call module.setGlobals(globals)
  * - Call module.setName()
  * - Call module.setConfiguration()
- * - Call module.connectionsReady()
+ * - Call module.connectionsReady() -> module.initialize()
  */
 public abstract class AbstractSignalPathModule implements IEventRecipient, IDayListener, Serializable {
 
-	private Map<String, Object> json;
+	private SignalPath parentSignalPath;
+	private Integer initPriority = 50;
 
-	protected SignalPath parentSignalPath;
-	transient private SignalPath cachedTopParentSignalPath;
-	protected Integer initPriority = 50;
+	private ArrayList<Input> inputs = new ArrayList<Input>();
+	private Map<String, Input> inputsByName = new HashMap<String, Input>();
 
-	protected ArrayList<Input> inputs = new ArrayList<Input>();
-	protected Map<String, Input> inputsByName = new HashMap<String, Input>();
-
-	protected ArrayList<Output> outputs = new ArrayList<Output>();
-	protected Map<String, Output> outputsByName = new HashMap<String, Output>();
+	private ArrayList<Output> outputs = new ArrayList<Output>();
+	private Map<String, Output> outputsByName = new HashMap<String, Output>();
 
 	private boolean wasReady = false;
 
-	private int readyInputs = 0;
-	private int inputCount = 0;
+	private Set<Input> readyInputs = new HashSet<>();
 
-	boolean sendPending = false;
+	private boolean sendPending = false;
 
 	// If this is set to true, this module will be a leaf in all Propagator trees
-	protected boolean propagationSink = false;
+	private boolean propagationSink = false;
 
-	Module domainObject;
+	private Module domainObject;
 
-	protected HashSet<Input> drivingInputs = new HashSet<Input>();
+	private HashSet<Input> drivingInputs = new HashSet<Input>();
 
-	Date lastCleared = null;
-
-	/**
-	 * Module params
-	 */
-	protected boolean canClearState = true;
-	boolean clearState = false;
-
+	// Controls whether the refresh button is shown in the UI. Clicking it recreates the module.
 	protected boolean canRefresh = false;
+	// Sets if the module supports state clearing. If canClearState is false, calling clear() does nothing.
+	protected boolean canClearState = true;
 
-	protected String name;
+	private String name;
+	private String displayName;
 	protected Integer hash;
+	protected Map<String, Object> layout;
 
-	transient public Globals globals;
+	private transient Globals globals;
 
 	private boolean initialized;
 
@@ -87,7 +79,7 @@ public abstract class AbstractSignalPathModule implements IEventRecipient, IDayL
 	 * a Parameter is marked as driving and then the Parameter is changed
 	 * at runtime.
 	 */
-	transient protected Propagator uiEventPropagator = null;
+	transient private Propagator uiEventPropagator = null;
 
 	public AbstractSignalPathModule() {
 
@@ -165,6 +157,12 @@ public abstract class AbstractSignalPathModule implements IEventRecipient, IDayL
 		addInput(input, input.getName());
 	}
 
+	public void addInputs(Input... inputs) {
+		for (Input input : inputs) {
+			addInput(input);
+		}
+	}
+
 	protected void addInput(Input input, String name) {
 		if (inputs.contains(input)) {
 			inputs.remove(input);
@@ -177,10 +175,9 @@ public abstract class AbstractSignalPathModule implements IEventRecipient, IDayL
 			inputsByName.put(alias.toString(), input);
 		}
 
-		inputCount = inputs.size();
-
-		// re-count because inputs already contained in the counters might be added
-		checkDirtyAndReadyCounters();
+		if (input.isReady()) {
+			readyInputs.add(input);
+		}
 	}
 
 	public void removeInput(Input input) {
@@ -195,10 +192,7 @@ public abstract class AbstractSignalPathModule implements IEventRecipient, IDayL
 			inputsByName.remove(alias.toString());
 		}
 
-		inputCount = inputs.size();
-
-		// re-count because inputs already contained in the counters might be removed
-		checkDirtyAndReadyCounters();
+		readyInputs.remove(input);
 	}
 
 	public void addOutput(Output output) {
@@ -218,9 +212,15 @@ public abstract class AbstractSignalPathModule implements IEventRecipient, IDayL
 		}
 	}
 
+	public void addOutputs(Output... outputs) {
+		for (Output output : outputs) {
+			addOutput(output);
+		}
+	}
+
 	public void removeOutput(Output output) {
 		if (!outputs.contains(output)) {
-			throw new IllegalArgumentException("Unable to remove output: output not foudn: "+output);
+			throw new IllegalArgumentException("Unable to remove output: output not found: "+output);
 		}
 
 		outputs.remove(output);
@@ -247,45 +247,42 @@ public abstract class AbstractSignalPathModule implements IEventRecipient, IDayL
 		return outputsByName.get(name);
 	}
 
-	public void markReady(Input input) {
-		readyInputs++;
+	void markReady(Input input) {
+		readyInputs.add(input);
 	}
 
-	public void cancelReady(Input input) {
-		readyInputs--;
+	void cancelReady(Input input) {
+		readyInputs.remove(input);
 	}
 
 	public boolean allInputsReady() {
-		return readyInputs == inputCount;
+		return readyInputs.size() == inputs.size();
 	}
 
 	public abstract void sendOutput();
 
 	public void clear() {
-		if (clearState && (lastCleared == null || lastCleared.before(globals.time))) {
-			lastCleared = globals.time;
+		if (canClearState) {
 			clearState();
 
 			for (Output o : getOutputs()) {
-				o.doClear();
+				o.clear();
 			}
 			for (Input i : getInputs()) {
-				i.doClear();
+				i.clear();
 			}
 
-			checkDirtyAndReadyCounters();
+			// Rebuild
+			readyInputs.clear();
+			for (Input i : getInputs()) {
+				if (i.isReady()) {
+					readyInputs.add(i);
+				}
+			}
 		}
 	}
 
 	public abstract void clearState();
-
-	public boolean isClearState() {
-		return clearState;
-	}
-
-	public void setClearState(boolean clearState) {
-		this.clearState = clearState;
-	}
 
 	public String getName() {
 		return name;
@@ -321,89 +318,7 @@ public abstract class AbstractSignalPathModule implements IEventRecipient, IDayL
 
 		// Only report the initialization of this module once
 		if (!initialized) {
-			globals.onModuleInitialized(this);
 			initialized = true;
-		}
-	}
-
-	/**
-	 * By default creates one Propagator containing all outputs of the module.
-	 */
-	protected Output[][] getSpecialPropagatorDefinitions() {
-		return new Output[][]{};
-	}
-
-	private void findFeedbackConnections() {
-		ArrayList<AbstractSignalPathModule> traversedModules = new ArrayList<AbstractSignalPathModule>();
-		ArrayList<Input> traversedInputs = new ArrayList<Input>();
-		traversedModules.add(this);
-		for (Output o : getOutputs()) {
-			recurseFeedbackConnections(o, traversedModules, traversedInputs);
-		}
-	}
-
-	private void recurseFeedbackConnections(Output output,
-											ArrayList<AbstractSignalPathModule> traversedModules, ArrayList<Input> traversedInputs) {
-
-		Input[] inputs = output.getTargets();
-		HashSet<AbstractSignalPathModule> newModules = new HashSet<AbstractSignalPathModule>();
-		for (Input i : inputs) {
-			// Never traverse feedback connections any further
-			if (i.isFeedbackConnection()) {
-				continue;
-			}
-
-			AbstractSignalPathModule module = i.getOwner();
-			// Mark as feedback if traversed contains the input owner
-			if (traversedModules.contains(module)) {
-				i.setFeedbackConnection(true);
-				System.out.println("Found feedback connection: " + traversedModules + " -> " + output + " -> " + i);
-
-				// TODO: remove this exception if an automatic algorithm can be made to work
-				throw new IllegalStateException("Infinite cycle found! You must mark some input(s) as feedback! " + traversedModules + " -> " + output + " -> " + i);
-
-				// TODO: The previous one was not a sufficient algorithm. One possibility is to keep track of
-				// the whole traversal tree and mark as feedback connections all connections that connect
-				// to any ancestor element. Another possibility is that no unambiguous solution exists
-				// and the fb connections must be marked by hand.
-
-//				int pos = traversedInputs.size()-1;
-//				
-//				while (pos>=0) {
-//					Input parentInput = traversedInputs.get(pos);
-//					int count = 0;
-//					for (Input potential : parentInput.getOwner().getInputs()) {
-//						// Depends on starting point?
-//						if (potential.dependsOn(traversedModules.get(0)))
-//							count++;
-//					}
-//					if (count > 1) {
-//						parentInput.setFeedbackConnection(true);
-//						System.out.println("Found dependant feedback connection: "+parentInput.getSource() + " -> " + parentInput);
-//						pos--;
-//					}
-//					else break;
-//				}
-			} else {
-				// Collect modules traversed in this step. Several of these inputs could be in the same module.
-				boolean notYetTraversed = newModules.add(module);
-				if (notYetTraversed) {
-					for (Output o : module.getOutputs()) {
-						// Make a copy of traversed
-						ArrayList<AbstractSignalPathModule> newTraversedModules = new ArrayList<AbstractSignalPathModule>();
-						newTraversedModules.addAll(traversedModules);
-						// Add this module to the set
-						newTraversedModules.add(module);
-
-						ArrayList<Input> newTraversedInputs = new ArrayList<Input>();
-						newTraversedInputs.addAll(traversedInputs);
-						newTraversedInputs.add(i);
-
-						recurseFeedbackConnections(o, newTraversedModules, newTraversedInputs);
-					}
-				}
-			}
-
 		}
 	}
 
@@ -418,42 +333,66 @@ public abstract class AbstractSignalPathModule implements IEventRecipient, IDayL
 
 	@Override
 	public String toString() {
-		return name;
+		return getName();
 	}
 
+	/**
+	 * Writes this module's configuration to a Map.
+     */
 	@SuppressWarnings("rawtypes")
 	public Map<String, Object> getConfiguration() {
-		Map<String, Object> map = (json != null ? json : new HashMap<String, Object>());
+		Map<String, Object> map = new LinkedHashMap<>();
+		map.putAll(getIOConfiguration());
 
-		List<Map> params = new ArrayList<Map>();
-		List<Map> ins = new ArrayList<Map>();
-		List<Map> outs = new ArrayList<Map>();
-		for (Input i : getInputs()) {
-			if (i instanceof Parameter) {
-				params.add(i.getConfiguration());
-			} else {
-				ins.add(i.getConfiguration());
-			}
+		if (getDomainObject() != null) {
+			map.put("id", getDomainObject().getId());
+			map.put("jsModule", getDomainObject().getJsModule());
+			map.put("type", getDomainObject().getType());
 		}
-
-		for (Output o : getOutputs()) {
-			outs.add(o.getConfiguration());
-		}
-
-		map.put("params", params);
-		map.put("inputs", ins);
-		map.put("outputs", outs);
 
 		map.put("name", name);
-
 		map.put("canClearState", canClearState);
-		map.put("clearState", clearState);
+		map.put("canRefresh", canRefresh);
 
-		if (canRefresh) {
-			map.put("canRefresh", canRefresh);
+		// Avoid writing null keys for efficiency
+		if (hash != null) {
+			map.put("hash", hash);
+		}
+		if (displayName != null) {
+			map.put("displayName", displayName);
+		}
+		if (layout != null) {
+			map.put("layout", layout);
 		}
 
 		return map;
+	}
+
+	/**
+	 * Reads this module's configuration from a Map.
+     */
+	private void setConfiguration(Map<String, Object> config) {
+		// Only load the domain object from config if it's unset.
+		if (config.containsKey("id") && getDomainObject() == null) {
+			// Module.load(id) may return an uninitialized Hibernate proxy. Watch out.
+			Module domain = (Module) InvokerHelper.invokeMethod(Module.class, "load", MapTraversal.getLong(config, "id"));
+			setDomainObject(domain);
+		}
+
+		if (config.containsKey("name")) {
+			name = MapTraversal.getString(config, "name");
+		}
+		if (config.containsKey("hash")) {
+			hash = MapTraversal.getInt(config, "hash");
+		}
+		// skip canClearState: read-only
+		// skip canRefresh: read-only
+		if (config.containsKey("displayName")) {
+			displayName = MapTraversal.getString(config, "displayName");
+		}
+		if (config.containsKey("layout")) {
+			layout = MapTraversal.getMap(config, "layout");
+		}
 	}
 
 	/**
@@ -483,7 +422,39 @@ public abstract class AbstractSignalPathModule implements IEventRecipient, IDayL
 
 	}
 
+	/**
+	 * Writes configuration for inputs and outputs to a Map.
+	 */
+	private Map<String, Object> getIOConfiguration() {
+		Map<String, Object> map = new LinkedHashMap<>();
 
+		List<Map> params = new ArrayList<>();
+		List<Map> ins = new ArrayList<>();
+		List<Map> outs = new ArrayList<>();
+		for (Input i : getInputs()) {
+			if (i instanceof Parameter) {
+				params.add(i.getConfiguration());
+			} else {
+				ins.add(i.getConfiguration());
+			}
+		}
+
+		for (Output o : getOutputs()) {
+			outs.add(o.getConfiguration());
+		}
+
+		map.put("params", params);
+		map.put("inputs", ins);
+		map.put("outputs", outs);
+
+		return map;
+	}
+
+	/**
+	 * Reads configuration for inputs and outputs from the given Map.
+	 * @param config
+	 * @param ignoreNotFound
+     */
 	private void setIOConfiguration(Map<String, Object> config, boolean ignoreNotFound) {
 		// Set IO config automatically
 		if (config.get("params") != null) {
@@ -529,29 +500,21 @@ public abstract class AbstractSignalPathModule implements IEventRecipient, IDayL
 		}
 	}
 
-	private void setConfiguration(Map<String, Object> config) {
-		json = config;
-
-		if (config.containsKey("clearState")) {
-			clearState = Boolean.parseBoolean(config.get("clearState").toString());
-		}
-
-		if (config.containsKey("hash")) {
-			hash = Integer.parseInt(config.get("hash").toString());
-		}
-
-		// Embedded modules inherit the hash-id of their parents
-		if (parentSignalPath != null && parentSignalPath.getHash() != null) {
-			hash = parentSignalPath.getHash();
-		}
-	}
-
 	public Module getDomainObject() {
+		if (System.getSecurityManager() != null) { // Ensure cannot be accessed by CustomModule
+			AccessController.checkPermission(new ConnectionTraversalPermission());
+		}
 		return domainObject;
 	}
 
 	public void setDomainObject(Module domainObject) {
+		if (System.getSecurityManager() != null) { // Ensure cannot be accessed by CustomModule
+			AccessController.checkPermission(new ConnectionTraversalPermission());
+		}
 		this.domainObject = domainObject;
+		if (name==null) {
+			setName(domainObject.getName());
+		}
 	}
 
 	public Integer getHash() {
@@ -569,35 +532,38 @@ public abstract class AbstractSignalPathModule implements IEventRecipient, IDayL
 
 	}
 
-	public SignalPath getTopParentSignalPath() {
-		if (parentSignalPath == null) {
+	/**
+	 * Returns the topmost SignalPath in the hierarchy where this module is contained.
+     */
+	public SignalPath getRootSignalPath() {
+		SignalPath parentSignalPath = getParentSignalPath();
+		if (parentSignalPath != null) {
+			return parentSignalPath.getRootSignalPath();
+		} else {
 			return null;
-		}
-		// Return cached value
-		else if (cachedTopParentSignalPath != null) {
-			return cachedTopParentSignalPath;
-		}
-		// Establish cached value
-		else {
-			cachedTopParentSignalPath = parentSignalPath;
-			while (cachedTopParentSignalPath.getParentSignalPath() != null) {
-				cachedTopParentSignalPath = cachedTopParentSignalPath.getParentSignalPath();
-			}
-
-			return cachedTopParentSignalPath;
 		}
 	}
 
 	public SignalPath getParentSignalPath() {
+		if (System.getSecurityManager() != null) { // Ensure cannot be accessed by CustomModule
+			AccessController.checkPermission(new ConnectionTraversalPermission());
+		}
 		return parentSignalPath;
 	}
 
 	public void setParentSignalPath(SignalPath parentSignalPath) {
+		if (System.getSecurityManager() != null) { // Ensure cannot be accessed by CustomModule
+			AccessController.checkPermission(new ConnectionTraversalPermission());
+		}
 		this.parentSignalPath = parentSignalPath;
 	}
 
-	public Integer getInitPriority() {
+	protected Integer getInitPriority() {
 		return initPriority;
+	}
+
+	protected void setInitPriority(Integer initPriority) {
+		this.initPriority = initPriority;
 	}
 
 	/**
@@ -611,18 +577,20 @@ public abstract class AbstractSignalPathModule implements IEventRecipient, IDayL
 	 *
 	 * @param request The RuntimeRequest, which should contain at least the key "type", holding a String and indicating the type of request
 	 */
-	public Future<RuntimeResponse> onRequest(final RuntimeRequest request) {
+	public Future<RuntimeResponse> onRequest(final RuntimeRequest request, RuntimeRequest.PathReader path) {
 		// Add event to message queue, don't do it right away 
-		FeedEvent<RuntimeRequest, AbstractSignalPathModule> fe = new FeedEvent<>(request, globals.isRealtime() ? request.getTimestamp() : globals.time, this);
+		FeedEvent<RuntimeRequest, AbstractSignalPathModule> fe = new FeedEvent<>(request, getGlobals().isRealtime() ? request.getTimestamp() : getGlobals().time, this);
 
 		final RuntimeResponse response = new RuntimeResponse();
 		response.put("request", request);
+
+		final AbstractSignalPathModule recipient = resolveRuntimeRequestRecipient(request, path);
 
 		FutureTask<RuntimeResponse> future = new FutureTask<>(new Runnable() {
 			@Override
 			public void run() {
 				try {
-					handleRequest(request, response);
+					recipient.handleRequest(request, response);
 				} catch (AccessControlException e) {
 					String error = "Unauthenticated request! Type: " + request.getType() + ", Msg: " + e.getMessage();
 					log.error(error);
@@ -633,8 +601,34 @@ public abstract class AbstractSignalPathModule implements IEventRecipient, IDayL
 		}, response);
 		request.setFuture(future);
 
-		globals.getDataSource().getEventQueue().enqueue(fe);
+		getGlobals().getDataSource().getEventQueue().enqueue(fe);
 		return future;
+	}
+
+	/**
+	 * Can be overridden to dig RuntimeRequest recipients from within this module. The default implementation returns "this".
+     */
+	public AbstractSignalPathModule resolveRuntimeRequestRecipient(RuntimeRequest request, RuntimeRequest.PathReader path) {
+		return this;
+	}
+
+	/**
+	 * Returns the runtime path that can be used to address this module by eg. RuntimeRequests.
+	 * The default implementation appends /modules/:hash to the parent SignalPath's path.
+	 * If the parent SignalPath is null, null is returned.
+	 *
+	 * The implementation should be in sync with resolveRuntimeRequestRecipient.
+     */
+	public String getRuntimePath() {
+		return getRuntimePath(new RuntimeRequest.PathWriter()).toString();
+	}
+
+	protected RuntimeRequest.PathWriter getRuntimePath(RuntimeRequest.PathWriter writer) {
+		if (parentSignalPath!=null) {
+			return parentSignalPath.getRuntimePath(writer).writeModuleId(getHash());
+		} else {
+			return writer;
+		}
 	}
 
 	@Override
@@ -661,8 +655,11 @@ public abstract class AbstractSignalPathModule implements IEventRecipient, IDayL
 	 * @param request
 	 */
 	protected void handleRequest(RuntimeRequest request, RuntimeResponse response) {
-		// By default all modules support runtime parameter changes
-		if (request.getType().equals("paramChange")) {
+		// By default all modules support runtime parameter changes, ping requests and json requests
+		if (request.getType().equals("ping")) {
+			response.setSuccess(true);
+		}
+		else if (request.getType().equals("paramChange")) {
 
 			Parameter param = (Parameter) getInput(request.get("param").toString());
 			try {
@@ -671,13 +668,17 @@ public abstract class AbstractSignalPathModule implements IEventRecipient, IDayL
 					throw new AccessControlException("Unauthenticated parameter change request!");
 				}
 
+				PermissionService permissionService = Holders.getApplicationContext().getBean(PermissionService.class);
+				if (!permissionService.canWrite(request.getUser(), request.getCanvas())) {
+					throw new AccessControlException("Unauthenticated parameter change request. Cannot write!");
+				}
+
 				Object value = param.parseValue(request.get("value").toString());
 				param.receive(value);
 
 				if (isSendPending()) {
 					if (uiEventPropagator == null) {
-						uiEventPropagator = new Propagator();
-						uiEventPropagator.addModule(this);
+						uiEventPropagator = new Propagator(this);
 					}
 					trySendOutput();
 					if (wasReady) {
@@ -688,21 +689,13 @@ public abstract class AbstractSignalPathModule implements IEventRecipient, IDayL
 				response.setSuccess(true);
 			} catch (Exception e) {
 				log.error("Error making runtime parameter change!", e);
-				globals.getUiChannel().push(new ErrorMessage("Parameter change failed!"), parentSignalPath.getUiChannelId());
+				getParentSignalPath().pushToUiChannel(new ErrorMessage("Parameter change failed!"));
 			}
 		}
-	}
-
-	public void checkDirtyAndReadyCounters() {
-		// Set the quick dirty/ready counters
-		int readyCount = 0;
-		for (Input i : getInputs()) {
-			if (i.isReady()) {
-				readyCount++;
-			}
+		else if (request.getType().equals("json")) {
+			response.put("json", this.getConfiguration());
+			response.setSuccess(true);
 		}
-
-		readyInputs = readyCount;
 	}
 
 	@Override
@@ -746,6 +739,88 @@ public abstract class AbstractSignalPathModule implements IEventRecipient, IDayL
 	/**
 	 * Override to handle steps after deserialization
 	 */
-	public void afterDeserialization() {
+	public void afterDeserialization(SerializationService serializationService) {
+	}
+
+	public Globals getGlobals() {
+		return globals;
+	}
+
+	public void setGlobals(Globals globals) {
+		this.globals = globals;
+	}
+
+	public String getDisplayName() {
+		return displayName;
+	}
+
+	public void setDisplayName(String displayName) {
+		this.displayName = displayName;
+	}
+
+	public String getEffectiveName() {
+		return getDisplayName() != null ? getDisplayName() : getName();
+	}
+
+	protected void setInputs(ArrayList<Input> inputs) {
+		this.inputs = inputs;
+	}
+
+	protected Map<String, Input> getInputsByName() {
+		return inputsByName;
+	}
+
+	protected void setInputsByName(Map<String, Input> inputsByName) {
+		this.inputsByName = inputsByName;
+	}
+
+	protected void setOutputs(ArrayList<Output> outputs) {
+		this.outputs = outputs;
+	}
+
+	protected Map<String, Output> getOutputsByName() {
+		return outputsByName;
+	}
+
+	protected void setOutputsByName(Map<String, Output> outputsByName) {
+		this.outputsByName = outputsByName;
+	}
+
+	protected Set<Input> getReadyInputs() {
+		return readyInputs;
+	}
+
+	protected void setReadyInputs(Set<Input> readyInputs) {
+		this.readyInputs = readyInputs;
+	}
+
+	public HashSet<Input> getDrivingInputs() {
+		return drivingInputs;
+	}
+
+	public void setDrivingInputs(HashSet<Input> drivingInputs) {
+		this.drivingInputs = drivingInputs;
+	}
+
+	protected Propagator getUiEventPropagator() {
+		if (System.getSecurityManager() != null) { // Ensure cannot be accessed by CustomModule
+			AccessController.checkPermission(new ConnectionTraversalPermission());
+		}
+		return uiEventPropagator;
+	}
+
+	protected void setUiEventPropagator(Propagator uiEventPropagator) {
+		if (System.getSecurityManager() != null) { // Ensure cannot be accessed by CustomModule
+			AccessController.checkPermission(new ConnectionTraversalPermission());
+		}
+		this.uiEventPropagator = uiEventPropagator;
+	}
+
+	public boolean isPropagationSink() {
+		return propagationSink;
+	}
+
+	protected void setPropagationSink(boolean propagationSink) {
+		this.propagationSink = propagationSink;
 	}
 }

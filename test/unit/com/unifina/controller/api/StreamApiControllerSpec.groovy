@@ -5,14 +5,18 @@ import com.unifina.api.NotPermittedException
 import com.unifina.api.ValidationException
 import com.unifina.domain.data.Feed
 import com.unifina.domain.data.Stream
+import com.unifina.domain.security.Key
 import com.unifina.domain.security.Permission
 import com.unifina.domain.security.SecUser
 import com.unifina.feed.NoOpStreamListener
 import com.unifina.filters.UnifinaCoreAPIFilters
 import com.unifina.service.ApiService
+import com.unifina.service.DashboardService
+import com.unifina.service.StreamService
 import com.unifina.service.PermissionService
 import com.unifina.service.StreamService
 import com.unifina.service.UserService
+import grails.orm.HibernateCriteriaBuilder
 import grails.plugin.springsecurity.SpringSecurityService
 import grails.test.mixin.Mock
 import grails.test.mixin.TestFor
@@ -21,7 +25,7 @@ import spock.lang.Specification
 
 @TestFor(StreamApiController)
 @Mixin(FiltersUnitTestMixin)
-@Mock([SecUser, Stream, Permission, Feed, UnifinaCoreAPIFilters, UserService, PermissionService, SpringSecurityService, StreamService, ApiService])
+@Mock([SecUser, Stream, Key, Permission, Feed, UnifinaCoreAPIFilters, UserService, PermissionService, SpringSecurityService, StreamService, ApiService, DashboardService])
 class StreamApiControllerSpec extends Specification {
 
 	Feed feed
@@ -36,29 +40,35 @@ class StreamApiControllerSpec extends Specification {
 	def streamFourId
 
 	def setup() {
-		streamService = mainContext.getBean(StreamService)
 		permissionService = mainContext.getBean(PermissionService)
 
-		controller.streamService = streamService
 		controller.permissionService = permissionService
 		controller.apiService = mainContext.getBean(ApiService)
 
-		user = new SecUser(username: "me", password: "foo", apiKey: "apiKey")
+		user = new SecUser(username: "me", password: "foo")
 		user.save(validate: false)
 
-		feed = new Feed(streamListenerClass: NoOpStreamListener.name).save(validate: false)
+		Key key = new Key(name: "key", user: user)
+		key.id = "apiKey"
+		key.save(failOnError: true, validate: true)
 
-		def otherUser = new SecUser(username: "other", password: "bar", apiKey: "otherApiKey").save(validate: false)
+		feed = new Feed(streamListenerClass: NoOpStreamListener.name, id: 7).save(validate: false)
 
+		def otherUser = new SecUser(username: "other", password: "bar").save(validate: false)
+
+		// First use real streamService to create the streams
+		streamService = mainContext.getBean(StreamService)
 		streamOneId = streamService.createStream([name: "stream", description: "description", feed: feed], user).id
 		streamTwoId = streamService.createStream([name: "ztream", feed: feed], user).id
 		streamThreeId = streamService.createStream([name: "atream", feed: feed], user).id
 		streamFourId = streamService.createStream([name: "otherUserStream", feed: feed], otherUser).id
+
+		controller.streamService = streamService
 	}
 
 	void "find all streams of logged in user"() {
 		when:
-		request.addHeader("Authorization", "Token ${user.apiKey}")
+		request.addHeader("Authorization", "Token apiKey")
 		request.method = "GET"
 		request.requestURI = "/api/v1/stream"
 		withFilters([action: 'index']) {
@@ -71,7 +81,7 @@ class StreamApiControllerSpec extends Specification {
 
 	void "find streams by name of logged in user"() {
 		when:
-		request.addHeader("Authorization", "Token ${user.apiKey}")
+		request.addHeader("Authorization", "Token apiKey")
 		params.name = "stream"
 		request.method = "GET"
 		request.requestURI = "/api/v1/stream"
@@ -82,7 +92,6 @@ class StreamApiControllerSpec extends Specification {
 		then:
 		response.json.length() == 1
 		response.json[0].id.length() == 22
-		response.json[0].apiKey.length() == 22
 		response.json[0].name == "stream"
 		response.json[0].config == [
 			fields: []
@@ -104,59 +113,18 @@ class StreamApiControllerSpec extends Specification {
 		response.json[0].name == name
 	}
 
-	void "create a new stream for currently logged in user"() {
+	void "index() adds name param to filter criteria"() {
 		when:
-		request.addHeader("Authorization", "Token ${user.apiKey}")
-		request.json = [name: "Test stream", description: "Test stream", feed: feed]
-		request.method = 'POST'
-		request.requestURI = '/api/v1/stream/create' // UnifinaCoreAPIFilters has URI-based matcher
-		withFilters([action:'save']) {
-			controller.save()
+		def name = Stream.get(streamTwoId).name
+		params.name = name
+		request.addHeader("Authorization", "Token apiKey")
+		request.requestURI = "/api/v1/streams"
+		withFilters(action: "index") {
+			controller.index()
 		}
-		then:
-		response.json.id.length() == 22
-		response.json.apiKey.length() == 22
-		response.json.name == "Test stream"
-		response.json.config == [
-			fields: []
-		]
-		response.json.description == "Test stream"
-		Stream.count() == 5
-		Stream.findById(response.json.id).user == user
-	}
 
-	void "create a new stream (with fields) for currently logged in user"() {
-		when:
-		request.addHeader("Authorization", "Token ${user.apiKey}")
-		request.json = [
-			name: "Test stream",
-			description: "Test stream",
-			feed: feed,
-			config: [
-				fields: [
-					[name: "profit", type: "number"],
-					[name: "keyword", type: "string"]
-				]
-			]
-		]
-		request.method = 'POST'
-		request.requestURI = '/api/v1/stream/create' // UnifinaCoreAPIFilters has URI-based matcher
-		withFilters([action:'save']) {
-			controller.save()
-		}
 		then:
-		response.json.id.length() == 22
-		response.json.apiKey.length() == 22
-		response.json.name == "Test stream"
-		response.json.config == [
-			fields: [
-				[name: "profit", type: "number"],
-				[name: "keyword", type: "string"]
-			]
-		]
-		response.json.description == "Test stream"
-		Stream.count() == 5
-		Stream.findById(response.json.id).user == user
+		response.json[0].name == name
 	}
 
 	void "creating stream fails given invalid token"() {
@@ -172,21 +140,29 @@ class StreamApiControllerSpec extends Specification {
 		response.status == 401
 	}
 
-	void "creating stream fails when required parameters are missing"() {
+	void "save() calls StreamService.createStream() and returns it.toMap()"() {
+		setup:
+		controller.streamService = streamService = Mock(StreamService)
+		def stream = new Stream(feed: new Feed())
+		stream.id = "test-stream"
+
+
 		when:
-		request.addHeader("Authorization", "Token ${user.apiKey}")
+		request.addHeader("Authorization", "Token apiKey")
+		request.json = [test: "test"]
 		request.method = 'POST'
 		request.requestURI = '/api/v1/stream/create'
 		withFilters([action:'save']) {
 			controller.save()
 		}
 		then:
-		thrown ValidationException
+		1 * streamService.createStream([test: "test"], user) >> { stream }
+		response.json.id == stream.toMap().id
 	}
 
 	void "show a Stream of logged in user"() {
 		when:
-		request.addHeader("Authorization", "Token ${user.apiKey}")
+		request.addHeader("Authorization", "Token apiKey")
 		params.id = streamOneId
 		request.method = "GET"
 		request.requestURI = "/api/v1/stream"
@@ -201,7 +177,7 @@ class StreamApiControllerSpec extends Specification {
 
 	void "cannot shown non-existent Stream"() {
 		when:
-		request.addHeader("Authorization", "Token ${user.apiKey}")
+		request.addHeader("Authorization", "Token apiKey")
 		params.id = "666-666-666"
 		request.method = "GET"
 		request.requestURI = "/api/v1/stream"
@@ -215,8 +191,46 @@ class StreamApiControllerSpec extends Specification {
 
 	void "cannot show other user's Stream"() {
 		when:
-		request.addHeader("Authorization", "Token ${user.apiKey}")
+		request.addHeader("Authorization", "Token apiKey")
 		params.id = streamFourId
+		request.method = "GET"
+		request.requestURI = "/api/v1/stream"
+		withFilters([action: "show"]) {
+			controller.show()
+		}
+
+		then:
+		thrown NotPermittedException
+	}
+
+	void "shows a Stream of logged in Key"() {
+		Key key = new Key(name: "anonymous key")
+		key.id = "anonymousKeyKey"
+		key.save(failOnError: true)
+		permissionService.systemGrant(key, Stream.get(streamOneId), Permission.Operation.READ)
+
+		when:
+		request.addHeader("Authorization", "Token anonymousKeyKey")
+		params.id = streamOneId
+		request.method = "GET"
+		request.requestURI = "/api/v1/stream"
+		withFilters([action: "show"]) {
+			controller.show()
+		}
+
+		then:
+		response.status == 200
+		response.json.name == "stream"
+	}
+
+	void "does not show Stream if key not permitted"() {
+		Key key = new Key(name: "anonymous key")
+		key.id = "anonymousKeyKey"
+		key.save(failOnError: true)
+
+		when:
+		request.addHeader("Authorization", "Token anonymousKeyKey")
+		params.id = streamOneId
 		request.method = "GET"
 		request.requestURI = "/api/v1/stream"
 		withFilters([action: "show"]) {
@@ -229,7 +243,7 @@ class StreamApiControllerSpec extends Specification {
 
 	void "update a Stream of logged in user"() {
 		when:
-		request.addHeader("Authorization", "Token ${user.apiKey}")
+		request.addHeader("Authorization", "Token apiKey")
 		params.id = streamOneId
 		request.method = "PUT"
 		request.json = '{name: "newName", description: "newDescription"}'
@@ -250,7 +264,7 @@ class StreamApiControllerSpec extends Specification {
 
 	void "updating Stream with invalid mongodb settings raises validation error"() {
 		when:
-		request.addHeader("Authorization", "Token ${user.apiKey}")
+		request.addHeader("Authorization", "Token apiKey")
 		params.id = streamOneId
 		request.method = "PUT"
 		request.json = '{name: "newName", description: "newDescription", config: {mongodb: {host: null}}}'
@@ -265,7 +279,7 @@ class StreamApiControllerSpec extends Specification {
 
 	void "cannot update non-existent Stream"() {
 		when:
-		request.addHeader("Authorization", "Token ${user.apiKey}")
+		request.addHeader("Authorization", "Token apiKey")
 		params.id = "666-666-666"
 		request.method = "PUT"
 		request.json = '{name: "newName", description: "newDescription"}'
@@ -280,7 +294,7 @@ class StreamApiControllerSpec extends Specification {
 
 	void "cannot update other user's Stream"() {
 		when:
-		request.addHeader("Authorization", "Token ${user.apiKey}")
+		request.addHeader("Authorization", "Token apiKey")
 		params.id = streamFourId
 		request.method = "PUT"
 		request.json = '{name: "newName", description: "newDescription"}'
@@ -295,7 +309,7 @@ class StreamApiControllerSpec extends Specification {
 
 	void "delete a Stream of logged in user"() {
 		when:
-		request.addHeader("Authorization", "Token ${user.apiKey}")
+		request.addHeader("Authorization", "Token apiKey")
 		params.id = streamOneId
 		request.method = "DELETE"
 		request.requestURI = "/api/v1/stream"
@@ -309,7 +323,7 @@ class StreamApiControllerSpec extends Specification {
 
 	void "cannot delete non-existent Stream"() {
 		when:
-		request.addHeader("Authorization", "Token ${user.apiKey}")
+		request.addHeader("Authorization", "Token apiKey")
 		params.id = "666-666-666"
 		request.method = "DELETE"
 		request.requestURI = "/api/v1/stream"
@@ -323,7 +337,7 @@ class StreamApiControllerSpec extends Specification {
 
 	void "cannot delete other user's Stream"() {
 		when:
-		request.addHeader("Authorization", "Token ${user.apiKey}")
+		request.addHeader("Authorization", "Token apiKey")
 		params.id = streamFourId
 		request.method = "DELETE"
 		request.requestURI = "/api/v1/stream"

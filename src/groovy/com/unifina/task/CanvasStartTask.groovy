@@ -36,6 +36,9 @@ public class CanvasStartTask extends AbstractTask {
 		try {
 			Canvas.withTransaction {
 				canvas = Canvas.get(config.id)
+				if (!canvas) {
+					throw new RuntimeException("Canvas "+config.id+" could not be found anymore!")
+				}
 				canvasService.start(canvas, config.forceReset)
 			}
 		} catch (Exception e) {
@@ -57,7 +60,7 @@ public class CanvasStartTask extends AbstractTask {
 	public void onComplete(boolean taskGroupComplete) {
 		
 	}
-	
+
 	public static Map<String,Object> getConfig(Canvas canvas, boolean forceReset, boolean resetOnFail) {
 		return [id:canvas.id, resetOnFail: resetOnFail, forceReset: forceReset]
 	}

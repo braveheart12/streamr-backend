@@ -38,29 +38,29 @@ public class Barify extends AbstractSignalPathModule implements ITimeListener {
 			currentBar.sum += value;
 			currentBar.count++;
 		} else {
-			currentBar = new Bar(globals.time, input.value, input.value, input.value, input.value, value, 1);
+			currentBar = new Bar(getGlobals().time, input.value, input.value, input.value, input.value, value, 1);
 		}
 	}
 	
 	@Override
 	public void init() {
-		propagationSink = true;
+		setPropagationSink(true);
 		
 		addInput(barLength);
 		
 		addInput(input);
 		
-		open.noRepeat = false;
+		open.setNoRepeat(false);
 		addOutput(open);
-		high.noRepeat = false;
+		high.setNoRepeat(false);
 		addOutput(high);
-		low.noRepeat = false;
+		low.setNoRepeat(false);
 		addOutput(low);
-		close.noRepeat = false;
+		close.setNoRepeat(false);
 		addOutput(close);
-		avg.noRepeat = false;
+		avg.setNoRepeat(false);
 		addOutput(avg);
-		sum.noRepeat = false;
+		sum.setNoRepeat(false);
 		addOutput(sum);
 	}
 	

@@ -1,13 +1,17 @@
 package com.unifina.signalpath;
 
+import com.unifina.domain.data.Stream;
+import com.unifina.domain.signalpath.Module;
+import com.unifina.utils.StreamrColor;
+
 import java.util.*;
 
 public class ModuleOption extends LinkedHashMap<String, Object> {
-
 	public static final String OPTION_STRING = "string";
 	public static final String OPTION_INTEGER = "int";
 	public static final String OPTION_BOOLEAN = "boolean";
 	public static final String OPTION_DOUBLE = "double";
+	public static final String OPTION_COLOR = "color";
 
 	private String key;
 
@@ -25,7 +29,7 @@ public class ModuleOption extends LinkedHashMap<String, Object> {
 	@SuppressWarnings("unused")
 	public ModuleOption() {}
 	
-	ModuleOption(String key, Map<String, Object> map) {
+	private ModuleOption(String key, Map<String, Object> map) {
 		this.key = key;
 		this.putAll(map);
 	}
@@ -41,7 +45,7 @@ public class ModuleOption extends LinkedHashMap<String, Object> {
 	 * @param description shown to user
 	 * @param value written into canvas JSON and sent back from UI
      */
-	public void addPossibleValue(String description, String value) {
+	public ModuleOption addPossibleValue(String description, String value) {
 		List<Map<String, String>> choices = (List<Map<String, String>>)this.get("possibleValues");
 		if (choices == null) {
 			choices = new LinkedList<>();
@@ -51,10 +55,7 @@ public class ModuleOption extends LinkedHashMap<String, Object> {
 		choice.put("text", description);
 		choice.put("value", value);
 		choices.add(choice);
-	}
-
-	public void addTo(Map<String,Object> options) {
-		options.put(key, this);
+		return this;
 	}
 	
 	public String getKey() {
@@ -85,6 +86,11 @@ public class ModuleOption extends LinkedHashMap<String, Object> {
 		return (o instanceof Boolean) ? (Boolean) o : Boolean.parseBoolean(getString());
 	}
 
+	public StreamrColor getColor() {
+		Object o = getValue();
+		return (o instanceof StreamrColor) ? (StreamrColor) o : StreamrColor.parseRGBString(getString());
+	}
+
 	public static ModuleOption createBoolean(String key, Boolean value) {
 		return new ModuleOption(key, value, OPTION_BOOLEAN);
 	}
@@ -93,7 +99,15 @@ public class ModuleOption extends LinkedHashMap<String, Object> {
 		return new ModuleOption(key, value, OPTION_INTEGER);
 	}
 
+	public static ModuleOption createDouble(String key, Double value) {
+		return new ModuleOption(key, value, OPTION_DOUBLE);
+	}
+
 	public static ModuleOption createString(String key, String value) {
 		return new ModuleOption(key, value, OPTION_STRING);
+	}
+
+	public static ModuleOption createColor(String key, StreamrColor value) {
+		return new ModuleOption(key, value.toString(), OPTION_COLOR);
 	}
 }

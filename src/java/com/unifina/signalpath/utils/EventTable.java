@@ -1,6 +1,5 @@
 package com.unifina.signalpath.utils;
 
-import com.unifina.push.PushChannel;
 import com.unifina.signalpath.*;
 
 import java.util.ArrayList;
@@ -15,8 +14,7 @@ public class EventTable extends ModuleWithUI {
 	
 	public EventTable() {
 		super();
-		canClearState = false;
-		
+
 		// More sensible defaults, in line with default maxRows
 		resendAll = false;
 		resendLast = 20;
@@ -26,36 +24,27 @@ public class EventTable extends ModuleWithUI {
 	public void initialize() {
 		super.initialize();
 
-		PushChannel rc = null;
-
-		if (globals.getUiChannel()!=null && !globals.getSignalPathContext().containsKey("csv")) {
-			rc = globals.getUiChannel();
-		}
-		
-		if (rc!=null) {
-			Map<String,Object> hdrMsg = new HashMap<String,Object>();
+		if (getGlobals().isRunContext()) {
+			Map<String, Object> hdrMsg = new HashMap<String, Object>();
 			hdrMsg.put("hdr", getHeaderDefinition());
-			globals.getUiChannel().push(hdrMsg, uiChannelId);
+			pushToUiChannel(hdrMsg);
 		}
 	}
 
 	@Override
 	public void sendOutput() {
-		PushChannel rc = globals.getUiChannel();
-		if (rc != null) {
-			HashMap<String, Object> msg = new HashMap<String, Object>();
-			ArrayList<Object> nr = new ArrayList<>(2);
-			msg.put("nr", nr);
-			nr.add(globals.dateTimeFormat.format(globals.time));
+		HashMap<String, Object> msg = new HashMap<String, Object>();
+		ArrayList<Object> nr = new ArrayList<>(2);
+		msg.put("nr", nr);
+		nr.add(getGlobals().formatDateTime(getGlobals().time));
 
-			for (Input i : getInputs()) {
-				if (i.hasValue())
-					nr.add(i.getValue().toString());
-				else nr.add(null);
-			}
-
-			rc.push(msg, uiChannelId);
+		for (Input i : getInputs()) {
+			if (i.hasValue())
+				nr.add(i.getValue().toString());
+			else nr.add(null);
 		}
+
+		pushToUiChannel(msg);
 	}
 
 	@Override
@@ -67,9 +56,8 @@ public class EventTable extends ModuleWithUI {
 		Input<Object> conn = new Input<Object>(this,name,"Object");
 
 		conn.setDrivingInput(true);
-		conn.canToggleDrivingInput = false;
-		conn.canBeFeedback = false;
-		conn.requiresConnection = false;
+		conn.setCanToggleDrivingInput(false);
+		conn.setRequiresConnection(false);
 		
 		// Add the input
 		if (getInput(name)==null)

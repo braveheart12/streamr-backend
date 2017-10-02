@@ -2,7 +2,9 @@ package com.unifina.signalpath;
 
 import com.unifina.domain.data.Feed;
 import com.unifina.domain.data.Stream;
+import com.unifina.feed.StreamNotFoundException;
 import com.unifina.service.FeedService;
+import grails.util.Holders;
 
 import java.util.Map;
 
@@ -14,7 +16,7 @@ public class StreamParameter extends Parameter<Stream> {
 
 	public StreamParameter(AbstractSignalPathModule owner, String name) {
 		super(owner, name, null, "Stream");
-		this.canToggleDrivingInput = false;
+		this.setCanToggleDrivingInput(false);
 	}
 
 	@Override
@@ -63,10 +65,19 @@ public class StreamParameter extends Parameter<Stream> {
 		return getStreamById(s);
 	}
 
+	@Override
+	public Object formatValue(Stream value) {
+		return value == null ? null : value.getId(); // Controls how value and defaultValue are turned to config
+	}
+
 	private Stream getStreamById(Object id) {
 		if (id instanceof String) {
 			FeedService fs = getFeedService();
-			return fs.getStream((String) id);
+			try {
+				return fs.getStream((String) id);
+			} catch (StreamNotFoundException e) {
+				throw new ModuleCreationFailedException(e);
+			}
 		} else if (id instanceof Number) {
 			throw new RuntimeException("Numeric stream ids no longer supported");
 		}
@@ -74,7 +85,7 @@ public class StreamParameter extends Parameter<Stream> {
 	}
 
 	private FeedService getFeedService() {
-		return getOwner().globals.getBean(FeedService.class);
+		return Holders.getApplicationContext().getBean(FeedService.class);
 	}
 
 	public boolean getCheckModuleId() {

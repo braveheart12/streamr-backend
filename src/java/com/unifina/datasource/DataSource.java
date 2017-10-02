@@ -2,6 +2,7 @@ package com.unifina.datasource;
 
 import java.util.*;
 
+import com.unifina.domain.signalpath.Canvas;
 import org.apache.log4j.Logger;
 
 import com.unifina.data.IFeedRequirement;
@@ -23,14 +24,10 @@ import com.unifina.utils.Globals;
 public abstract class DataSource {
 
 	private Set<SignalPath> signalPaths = new HashSet<>();
-	
-//	public static long eventStartNanos;
-	
+
 	protected DataSourceEventQueue eventQueue;
 	
-	HashMap<String,AbstractFeed> feedByClass = new HashMap<>();
-//	protected List<ITimeListener> timeListeners = []
-//	protected List<IDayListener> dateListeners = []
+	private HashMap<Long, AbstractFeed> feedById = new HashMap<>();
 	protected List<IStartListener> startListeners = new ArrayList<>();
 	protected List<IStopListener> stopListeners = new ArrayList<>();
 	protected boolean isHistoricalFeed = true;
@@ -46,6 +43,7 @@ public abstract class DataSource {
 	protected abstract DataSourceEventQueue initEventQueue();
 	
 	private static final Logger log = Logger.getLogger(DataSource.class);
+	private boolean started = false;
 	
 	public DataSourceEventQueue getEventQueue() {
 		return eventQueue;
@@ -54,7 +52,7 @@ public abstract class DataSource {
 	/**
 	 * Checks if the DataSource understands what to do with the object.
 	 * If true is returned, a subsequent call to register(object) must succeed.
-	 * @param object
+	 * @param o
 	 * @return
 	 */
 	public boolean canRegister(Object o) {
@@ -63,7 +61,7 @@ public abstract class DataSource {
 	
 	/**
 	 * Registers an object with this DataSource. Must succeed if canRegister has returned true.
-	 * @param object
+	 * @param o
 	 */
 	public void register(Object o) {
 		if (o instanceof IStreamRequirement) {
@@ -93,9 +91,17 @@ public abstract class DataSource {
 		}
 		return feed;
 	}
-	
+
+	/**
+	 * Adds an IStartListener to this DataSource. Its onStart() method will be called just before
+	 * starting the data flow. If the DataSource is already started, the listener will be called
+	 * immediately.
+     */
 	public void addStartListener(IStartListener startListener) {
 		startListeners.add(startListener);
+		if (isStarted()) {
+			startListener.onStart();
+		}
 	}
 	
 	public void addStopListener(IStopListener stopListener) {
@@ -106,39 +112,37 @@ public abstract class DataSource {
 		FeedService feedService = (FeedService) globals.getGrailsApplication().getMainContext().getBean("feedService");
 		if (feedService == null)
 			feedService = new FeedService();
-		
-		// Create the feed implementation
-		String feedClass = feedService.getFeedClass(domain, isHistoricalFeed);
-		
-		// Feed already created?
-		AbstractFeed feed = feedByClass.get(feedClass);
-		
-		// Should we instantiate a new feed?
+
+		// Feed implementation already instantiated?
+		AbstractFeed feed = feedById.get(domain.getId());
 		if (feed==null) {
-			log.debug("createFeed: Instatiating new feed "+feedClass);
+			// Create the instance
+			log.debug("createFeed: Instantiating new feed described by domain object "+domain+(isHistoricalFeed ? " in historical mode" : " in realtime mode"));
 			feed = feedService.instantiateFeed(domain, isHistoricalFeed, globals);
 			feed.setEventQueue(getEventQueue());
-			feedByClass.put(feedClass, feed);
+			feedById.put(domain.getId(), feed);
 		}
 		else {
-			log.debug("createFeed: Feed "+feedClass+" exists, using that instance.");
+			log.debug("createFeed: Feed "+feed+" exists, using that instance.");
 		}
 		
 		return feed;
 	}
-	
+
+	public AbstractFeed getFeedById(Long id) {
+		return feedById.get(id);
+	}
+
 	public Collection<AbstractFeed> getFeeds() {
-		return feedByClass.values();
+		return feedById.values();
 	}
 	
 	public void startFeed() {
 		for (int i=0;i<startListeners.size();i++)
 			startListeners.get(i).onStart();
-		// Possible ConcurrentModificationException
-//		for (IStartListener it : startListeners)
-//			it.onStart(); 
 
 		try {
+			started = true;
 			doStartFeed();
 		} catch (Exception e) {
 			log.error("Exception thrown while running feed",e);
@@ -149,19 +153,34 @@ public abstract class DataSource {
 	protected abstract void doStartFeed() throws Exception;
 	
 	public void stopFeed() {
+		// re-throw if exception happened, but only after all listeners have had chance to clean up
+		Exception stopException = null;
 		try {
 			doStopFeed();
 		} catch (Exception e) {
-			log.error("Exception thrown while stopping feed",e);
-			throw new RuntimeException("Error while stopping feed",e);
+			log.error("Exception thrown while stopping feed", e);
+			stopException = e;
 		}
-		
-		for (IStopListener it : stopListeners)
-			it.onStop();
+		for (IStopListener it : stopListeners) {
+			try {
+				it.onStop();
+			} catch (Exception e) {
+				log.error("Exception thrown while stopping feed", e);
+				stopException = e;
+			}
+		}
+
+		if (stopException != null) {
+			throw new RuntimeException("Error while stopping feed", stopException);
+		}
 	}
 	
 	protected abstract void doStopFeed() throws Exception;
-	
+
+	public boolean isStarted() {
+		return started;
+	}
+
 	/**
 	 * Connects a SignalPath to this DataSource. This means connecting to
 	 * all the feeds required by the Modules in the SignalPath and registering
@@ -176,7 +195,15 @@ public abstract class DataSource {
 		}
 	}
 
-	protected Iterable<SignalPath> getSignalPaths() {
-		return signalPaths;
+	protected Iterable<SignalPath> getSerializableSignalPaths() {
+		List<SignalPath> serializableSps = new ArrayList<>();
+		for (SignalPath sp : signalPaths) {
+			Canvas canvas = sp.getCanvas();
+			if (canvas != null && !canvas.getAdhoc()) {
+				serializableSps.add(sp);
+			}
+		}
+		return serializableSps;
 	}
+
 }

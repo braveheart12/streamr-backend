@@ -9,10 +9,13 @@ import java.util.Queue;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import com.unifina.data.IEventRecipient;
 import com.unifina.domain.signalpath.Canvas;
 import com.unifina.serialization.SerializationRequest;
 import com.unifina.service.SerializationService;
 import com.unifina.signalpath.SignalPath;
+import com.unifina.signalpath.StopRequest;
+import grails.util.Holders;
 import org.apache.log4j.Logger;
 
 import com.unifina.data.FeedEvent;
@@ -46,7 +49,7 @@ public class RealtimeDataSource extends DataSource {
 		// Check catchup
 		List<ICatchupFeed> catchupFeeds = new ArrayList<>();
 
-		for (AbstractFeed it : feedByClass.values()) {
+		for (AbstractFeed it : getFeeds()) {
 			if (it instanceof ICatchupFeed && ((ICatchupFeed) it).startCatchup()) {
 				catchupFeeds.add((ICatchupFeed) it);
 			}
@@ -65,7 +68,7 @@ public class RealtimeDataSource extends DataSource {
 		// Let all catchup feeds know that catchup has ended,
 		// even if their startCatchup() returned false and thus
 		// they are not in catchupFeeds
-		for (AbstractFeed it : feedByClass.values()) {
+		for (AbstractFeed it : getFeeds()) {
 			if (it instanceof ICatchupFeed) {
 				((ICatchupFeed) it).endCatchup();
 			}
@@ -78,7 +81,7 @@ public class RealtimeDataSource extends DataSource {
 		}
 
 		if (!abort) {
-			for (AbstractFeed it : feedByClass.values()) {
+			for (AbstractFeed it : getFeeds()) {
 				it.startFeed();
 			}
 
@@ -97,22 +100,16 @@ public class RealtimeDataSource extends DataSource {
 				1000);   // Repeat every second
 
 			// Serialization
-			SerializationService serializationService = globals.getBean(SerializationService.class);
+			SerializationService serializationService = Holders.getApplicationContext().getBean(SerializationService.class);
 
-			for (final SignalPath signalPath : getSignalPaths()) {
-				Canvas canvas = signalPath.getCanvas();
-
-				if (canvas != null) {
-					if (canvas.getAdhoc()) {
-						log.info("Canvas " + canvas.getId() + " is adhoc and thus won't be serialized.");
-					} else {
-						secTimer.scheduleAtFixedRate(new TimerTask() {
-							@Override
-							public void run() {
-								eventQueue.enqueue(SerializationRequest.makeFeedEvent(signalPath));
-							}
-						}, 0, serializationService.serializationIntervalInMillis());
-					}
+			if (serializationService.serializationIntervalInMillis() > 0) {
+				for (final SignalPath signalPath : getSerializableSignalPaths()) {
+					secTimer.scheduleAtFixedRate(new TimerTask() {
+						@Override
+						public void run() {
+							eventQueue.enqueue(SerializationRequest.makeFeedEvent(signalPath));
+						}
+					}, serializationService.serializationIntervalInMillis(), serializationService.serializationIntervalInMillis());
 				}
 			}
 
@@ -130,8 +127,6 @@ public class RealtimeDataSource extends DataSource {
 			FeedEvent[] events = feed.getNextEvents();
 			if (events != null) {
 				for (FeedEvent it : events) {
-//					it.queueTicket = catchupQueueTicket++
-//					catchupQueue.add(it)
 					eventQueue.enqueue(it);
 				}
 			}
@@ -146,11 +141,7 @@ public class RealtimeDataSource extends DataSource {
 				if (events != null) {
 					for (FeedEvent it : events) {
 						eventQueue.enqueue(it);
-//						it.queueTicket = catchupQueueTicket++
-//						catchupQueue.add(it) 
 					}
-				} else {
-//					log.debug("Catchup feed "+event.feed+" depleted.");
 				}
 			}
 		}
@@ -163,14 +154,22 @@ public class RealtimeDataSource extends DataSource {
 		secTimer.cancel();
 		secTimer.purge();
 
-		for (AbstractFeed it : feedByClass.values()) {
+		for (AbstractFeed it : getFeeds()) {
 			try {
 				it.stopFeed();
 			} catch (Exception e) {
 				log.error(e);
 			}
 		}
-		eventQueue.abort();
+
+		// Final serialization requests
+		for (SignalPath signalPath : getSerializableSignalPaths()) {
+			eventQueue.enqueue(SerializationRequest.makeFeedEvent(signalPath));
+		}
+
+		// Stop request
+		Date date = new Date();
+		eventQueue.enqueue(new FeedEvent(new StopRequest(date), date, (RealtimeEventQueue) eventQueue));
 	}
 
 

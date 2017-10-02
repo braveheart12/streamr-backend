@@ -1,11 +1,15 @@
 package com.unifina.controller.data
 
+import com.unifina.domain.security.Key
+import com.unifina.domain.security.Permission
 import com.unifina.domain.security.Permission.Operation
 import com.unifina.api.ApiException
 import com.unifina.feed.DataRange
 import com.unifina.feed.mongodb.MongoDbConfig
+import com.unifina.feed.twitter.TwitterStreamConfig
 import grails.converters.JSON
 import grails.plugin.springsecurity.annotation.Secured
+import groovy.transform.CompileStatic
 import org.apache.commons.lang.exception.ExceptionUtils
 
 import java.text.SimpleDateFormat
@@ -35,17 +39,17 @@ class StreamController {
 	static defaultAction = "list"
 	
 	def permissionService
-	def feedFileService
-	def kafkaService
 	def streamService
 
 	def list() {
 		SecUser user = springSecurityService.currentUser
 		List<Stream> streams = permissionService.get(Stream, user, {
+			eq("uiChannel", false) // filter out UI channel Streams
 			order("lastUpdated", "desc")
 		})
-		List<Stream> shareable = permissionService.get(Stream, user, Operation.SHARE)
-		[streams:streams, shareable:shareable]
+		Set<Stream> shareable = permissionService.get(Stream, user, Operation.SHARE).toSet()
+		Set<Stream> writable = permissionService.get(Stream, user, Operation.WRITE).toSet()
+		[streams:streams, shareable:shareable, writable:writable, user:user]
 	}
 
 	def search() {
@@ -87,7 +91,9 @@ class StreamController {
 
 	def show() {
 		getAuthorizedStream(params.id) { stream, user ->
-			[stream: stream, writable: permissionService.canWrite(user, stream), shareable: permissionService.canShare(user, stream)]
+			boolean writetable = permissionService.canWrite(user, stream)
+			boolean shareable = permissionService.canShare(user, stream)
+			[stream: stream, writable: writetable, shareable: shareable]
 		}
 	}
 
@@ -123,6 +129,33 @@ class StreamController {
 	def configureMongo() {
 		getAuthorizedStream(params.id, Operation.WRITE) { stream, user ->
 			[stream: stream, mongo: MongoDbConfig.readFromStreamOrElseEmptyObject(stream)]
+		}
+	}
+
+	// also callback from Sign in with Twitter
+	def configureTwitterStream() {
+		getAuthorizedStream(params.id, Operation.WRITE) { stream, user ->
+			TwitterStreamConfig twitter = TwitterStreamConfig.forStream(stream, session)
+			if (!twitter.accessToken && "oauth_verifier" in params) {
+				twitter.setOAuthVerifier(params.oauth_verifier)
+			}
+
+			if (twitter.accessToken && twitter.accessTokenSecret) {
+				return [stream: stream]
+			} else {
+				flash.message = "Twitter sign-in needs to be done before Twitter stream can be used!"
+				redirect(action: "show")
+			}
+		}
+	}
+
+	// form action from configureTwitterStream
+	def saveTwitterStream() {
+		getAuthorizedStream(params.id, Operation.WRITE) { stream, user ->
+			TwitterStreamConfig twitter = TwitterStreamConfig.forStream(stream, session)
+			twitter.setKeywords(params.keywords as String)
+			twitter.save()
+			redirect(action: "show", id: stream.id)
 		}
 	}
 
@@ -176,7 +209,6 @@ class StreamController {
 
 				Map config = (stream.config ? JSON.parse(stream.config) : [:])
 				List fields = config.fields ? config.fields : []
-				def a = springSecurityService.currentUser
 				CSVImporter csv = new CSVImporter(temp, fields, null, null, springSecurityService.currentUser.timezone)
 				if (csv.getSchema().timestampColumnIndex == null) {
 					deleteFile = false
@@ -184,7 +216,9 @@ class StreamController {
 					response.status = 500
 					render([success: false, redirect: createLink(action: 'confirm', params: [id: params.id, file: temp.getCanonicalPath()])] as JSON)
 				} else {
-					importCsv(csv, stream)
+					Map updatedConfig = streamService.importCsv(csv, stream)
+					stream.config = (updatedConfig as JSON)
+					stream.save()
 					render([success: true] as JSON)
 				}
 			} catch (Exception e) {
@@ -224,8 +258,10 @@ class StreamController {
 			def format = params.customFormat ?: params.format
 			try {
 				CSVImporter csv = new CSVImporter(file, fields, index, format)
-				importCsv(csv, stream)
-			} catch (Exception e) {
+				Map config = streamService.importCsv(csv, stream)
+				stream.config = (config as JSON)
+				stream.save()
+			} catch (Throwable e) {
 				e = ExceptionUtils.getRootCause(e)
 				flash.error = e.message
 			}
@@ -233,39 +269,11 @@ class StreamController {
 		}
 	}
 
-	private void importCsv(CSVImporter csv, Stream stream) {
-		kafkaService.createFeedFilesFromCsv(csv, stream)
-		
-		// Autocreate the stream config based on fields in the csv schema
-		Map config = (stream.config ? JSON.parse(stream.config) : [:])
-
-		List fields = []
-
-		// The primary timestamp column is implicit, so don't include it in streamConfig
-		for (int i=0;i<csv.schema.entries.length;i++) {
-			if (i!=csv.getSchema().timestampColumnIndex) {
-				CSVImporter.SchemaEntry e = csv.getSchema().entries[i]
-				if (e!=null)
-					fields << [name:e.name, type:e.type]
-			}
-		}
-
-		config.fields = fields
-		stream.config = (config as JSON)
-	}
-	
-	def deleteFeedFilesUpTo() {
-		getAuthorizedStream(params.id, Operation.WRITE) { stream, user ->
-			def date = new SimpleDateFormat(message(code: "default.dateOnly.format")).parse(params.date) + 1
-			FeedFile.findAllByStreamAndEndDateLessThan(stream, date).each {
-				feedFileService.deleteFile(it)
-			}
-			def deletedCount = FeedFile.executeUpdate("delete from FeedFile ff where ff.stream = :stream and ff.endDate < :date", [stream: stream, date: date])
-			if (deletedCount > 0) {
-				flash.message = "All data up to " + params.date + " successfully deleted"
-			} else {
-				flash.error = "Something went wrong with deleting files"
-			}
+	def deleteDataUpTo() {
+		getAuthorizedStream(params.id, Operation.WRITE) { Stream stream, SecUser user ->
+			Date date = new SimpleDateFormat(message(code: "default.dateOnly.format")).parse(params.date) + 1
+			streamService.deleteDataUpTo(stream, date)
+			flash.message = "All data up to " + params.date + " successfully deleted"
 			redirect(action: "show", params: [id: params.id])
 		}
 	}

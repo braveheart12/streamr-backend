@@ -1,13 +1,15 @@
 package com.unifina.signalpath.remote;
+import com.google.gson.Gson;
 import com.unifina.signalpath.*;
 
-import org.apache.commons.collections.list.UnmodifiableList;
-import org.apache.commons.collections.map.UnmodifiableMap;
+import com.unifina.signalpath.text.JsonParser;
 import org.apache.http.Header;
+import org.apache.http.HttpEntity;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.*;
 import org.apache.http.client.utils.URLEncodedUtils;
+import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
@@ -15,7 +17,6 @@ import org.apache.http.util.EntityUtils;
 import org.codehaus.groovy.grails.web.json.JSONArray;
 import org.codehaus.groovy.grails.web.json.JSONException;
 import org.codehaus.groovy.grails.web.json.JSONObject;
-import org.codehaus.groovy.grails.web.json.JSONTokener;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -59,12 +60,12 @@ public class Http extends AbstractHttpModule {
 
 	/** For bodyless verbs, "body" is only a "trigger" */
 	@Override
-	public void onConfiguration(Map<String, Object> config) {
+	protected void onConfiguration(Map<String, Object> config) {
 		super.onConfiguration(config);
 
 		if (config.containsKey("inputs")) {
 			// body.setDisplayName won't cut it; it will be re-read from config afterwards
-			for (Map i : (List<Map>) config.get("inputs")) {
+			for (Map i : (List<Map>)config.get("inputs")) {
 				if (i.get("name").equals("body")) {
 					i.put("displayName", verb.hasBody() ? "body" : "trigger");
 				}
@@ -72,7 +73,7 @@ public class Http extends AbstractHttpModule {
 
 			// trigger should be driving and non-togglable
 			if (!verb.hasBody()) { body.setDrivingInput(true); }
-			body.canToggleDrivingInput = verb.hasBody();
+			body.setCanToggleDrivingInput(verb.hasBody());
 		}
 	}
 
@@ -105,9 +106,7 @@ public class Http extends AbstractHttpModule {
 				switch (bodyContentType) {
 					case BODY_FORMAT_JSON:
 						Object b = body.getValue();
-						String bodyString = b instanceof Map ? new JSONObject((Map) b).toString() :
-											b instanceof List ? new JSONArray((List) b).toString() :
-											b.toString();
+						String bodyString = new Gson().toJson(b);
 						((HttpEntityEnclosingRequestBase) request).setEntity(new StringEntity(bodyString));
 						break;
 					case BODY_FORMAT_FORMDATA:
@@ -138,18 +137,19 @@ public class Http extends AbstractHttpModule {
 	protected void sendOutput(HttpTransaction call) {
 		if (call.response != null) {
 			try {
-				String responseString = EntityUtils.toString(call.response.getEntity(), "UTF-8");
-				if (responseString.isEmpty()) {
-					call.errors.add("Empty response from server");
-				} else {
-					JSONTokener parser = new JSONTokener(responseString);
-					Object jsonObject = parser.nextValue();    // parser returns Map, List, or String
-					if (jsonObject instanceof Map) {
-						jsonObject = UnmodifiableMap.decorate((Map)jsonObject);
-					} else if (jsonObject instanceof List) {
-						jsonObject = UnmodifiableList.decorate((List)jsonObject);
+				// entity is null for bodyless response 204, and that's not an error
+				HttpEntity entity = call.response.getEntity();
+				if (entity != null) {
+					if (isOctetStream(entity)) {
+						responseData.send(EntityUtils.toByteArray(entity));
+					} else {
+						String responseString = EntityUtils.toString(entity, "UTF-8");
+						if (responseString.isEmpty()) {
+							call.errors.add("Empty response from server");
+						} else {
+							responseData.send(JsonParser.jsonStringToOutputObject(responseString));
+						}
 					}
-					responseData.send(jsonObject);
 				}
 
 				Map<String, String> headerMap = new HashMap<>();
@@ -164,6 +164,14 @@ public class Http extends AbstractHttpModule {
 		}
 
 		roundtripMillis.send(call.responseTime);
-		errors.send(call.errors);
+
+		if (call.errors.size() > 0) {
+			errors.send(call.errors);
+		}
+	}
+
+	private static boolean isOctetStream(HttpEntity entity) {
+		ContentType contentType = ContentType.get(entity);
+		return contentType != null && contentType.getMimeType().equals(ContentType.APPLICATION_OCTET_STREAM.getMimeType());
 	}
 }

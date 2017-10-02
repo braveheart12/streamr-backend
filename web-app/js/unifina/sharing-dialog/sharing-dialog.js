@@ -51,19 +51,21 @@
     })
 
     var accessTemplate = _.template(
-        '<div class="form-inline access-row">' +
-            '<div class="form-group user-label"><%= user %></div>' +
-            '<div class="form-group permission-dropdown btn-group">' +
-                '<button type="button" class="btn dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">' +
-                    '<span class="access-description"><%= state %></span> <span class="caret"></span>' +
+        '<div class="access-row col-xs-12">' +
+            '<span class="user-label col-xs-6">{{ user }}</span>' +
+            '<div class="col-xs-6 access-button-row">' +
+                '<button class="form-group user-delete-button btn btn-danger pull-right">' +
+                    '<span class="icon fa fa-trash-o"></span>' +
                 '</button>' +
-                '<ul class="dropdown-menu">' +
+                '<button type="button" class="btn btn-default dropdown-toggle permission-dropdown-toggle pull-right" data-toggle="dropdown">' +
+                    '<span class="state">{{ state }}</span> <span class="caret"></span>' +
+                '</button>' +
+                '<ul class="permission-dropdown-menu dropdown-menu">' +
                     '<li data-opt="read"><a href="#">make read-only</a></li>' +
                     '<li data-opt="write"><a href="#">make editable</a></li>' +
                     '<li data-opt="share"><a href="#">make shareable</a></li>' +
                 '</ul>' +
-            '</div>' +
-            '<button class="form-group user-delete-button btn btn-danger"><span class="icon fa fa-trash-o"></span></button>' +
+            '</div>'+
         '</div>'
     )
 
@@ -76,20 +78,22 @@
         initialize: function() {
             var self = this
 
-            this.$el.html(accessTemplate({
+            this.$el = $(accessTemplate({
                 user: "",
                 state: self.model.options.read.description
             }))
+            this.el = this.$el[0]
             this.$userLabel = this.$(".user-label")
-            this.$accessDescription = this.$(".access-description")
+            this.$stateLabel = this.$el.find(".state")
 
-            this.$(".user-delete-button").on("click", function() {
+            this.$el.find(".user-delete-button").on("click", function() {
                 self.model.destroy()
             })
 
-            this.$("li[data-opt]").on("click", function(e) {
+            this.$el.find("li[data-opt]").on("click", function(e) {
                 var selection = e.currentTarget.dataset.opt
                 self.model.setAccess(selection)
+                self.$stateLabel.text(self.model.getAccessDescription())
             });
 
             this.listenTo(self.model, 'change', self.render)
@@ -98,7 +102,7 @@
 
         render: function() {
             this.$userLabel.text(this.model.get("user"))
-            this.$accessDescription.text(this.model.getAccessDescription())
+            this.$stateLabel.text(this.model.getAccessDescription())
             return this
         },
     })
@@ -110,16 +114,25 @@
     var accessList = new AccessList()
 
     var accessListTemplate = _.template(
-        '<div class="owner-row">' +
-            '<span>Owner: </span>' +
-            '<span class="owner-label"><%= owner %></span>' +
-            '<input type="checkbox" class="anonymous-switcher" <%= checked ? "checked" : "" %>>' +
-            '<div class="publish-label"> Allow anonymous read access </div>' +
-        '</div>' +
-        '<div class="access-list"></div>' +
-        '<div class="form-inline new-user-row">' +
-            '<input type="text" class="new-user-field form-control" placeholder="Enter email address" autofocus>' +
-            '<button class="new-user-button btn btn-default" type="button"><span class="icon fa fa-plus"></span></button>' +
+        '<div class="row">' +
+            '<div class="owner-row col-xs-12">' +
+                '<span class="col-xs-12 col-sm-5">Owner: <strong>{{ owner }}</strong></span>' +
+                '<div class="col-xs-12 col-sm-7">' +
+                    '<div class="pull-right switcher-container">' +
+                        '<input type="checkbox" class="anonymous-switcher pull-right" {{ checked ? "checked" : "" }} >' +
+                    '</div>' +
+                    '<div class="publish-label pull-right"> Public read access </div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="access-list col-xs-12"></div>' +
+            '<div class="new-user-row col-xs-12">' +
+                '<div class="input-group">' +
+                    '<input type="text" class="new-user-field form-control" placeholder="Enter email address" autofocus>' +
+                    '<span class="input-group-btn">' +
+                        '<button class="new-user-button btn btn-default pull-right" type="button"><span class="icon fa fa-plus"></span></button>' +
+                    '</span>' +
+                '</div>' +
+            '</div>' +
         '</div>'
     )
 
@@ -232,11 +245,8 @@
 
         var originalPermissionList = []
         $.getJSON(resourceUrl + "/permissions").success(function(data) {
-            originalOwner = _.chain(data)
-                .filter(function(p) { return p.operation === "share" && !p.id })
-                .pluck("user")
-                .first().value()
-            originalPermissionList = _(data).filter(function(p) { return !!p.id })
+            originalOwner = _(data).filter(function(p) { return p.operation === "share" && !p.id }).first().user
+            originalPermissionList = _.filter(data, "id")
         }).always(function() {
             sharingDialog = bootbox.dialog({
                 title: "Share <span class='resource-name-label'></span>",
@@ -263,7 +273,7 @@
             originalPermissions = {}
             var initialAccessMap = {}
             originalAnonPermission = undefined;
-            _(originalPermissionList).each(function(p) {
+            originalPermissionList.forEach(function(p) {
                 if (!p || !p.operation) { return }      // continue
                 if (p.anonymous) {
                     originalAnonPermission = p;
@@ -298,7 +308,7 @@
 
     var pendingRequests = []
     function savingChanges() {
-        pendingRequests = _(pendingRequests).filter(function(deferred) { return deferred.state() === "pending" })
+        pendingRequests = _.filter(pendingRequests, function(deferred) { return deferred.state() === "pending" })
         return pendingRequests.length > 0
     }
 
@@ -325,7 +335,7 @@
             testedUsers[user] = true;
         })
         // completely removed users don't show up in accessList, need to be tested separately
-        _(originalPermissions).each(function (before, user) {
+        _.each(originalPermissions, function (before, user) {
             if (user in testedUsers) { return }    // continue
             if (before.read)  { removedPermissions.push(before.read) }
             if (before.write) { removedPermissions.push(before.write) }
@@ -342,7 +352,7 @@
         var revokedFrom = {}
         var errorMessages = []
         if (addedPermissions.length > 0 || removedPermissions.length > 0) {
-            _(addedPermissions).each(function(permission) {
+            addedPermissions.forEach(function(permission) {
                 started += 1
                 pendingRequests.push($.ajax({
                     url: resourceUrl + "/permissions",
@@ -359,7 +369,7 @@
                     }
                 }))
             })
-            _(removedPermissions).each(function(p) {
+            removedPermissions.forEach(function(p) {
                 started += 1
                 pendingRequests.push($.ajax({
                     url: resourceUrl + "/permissions/" + p.id,
@@ -436,14 +446,20 @@
     }
 
     exports.sharePopup.closeAndSaveChanges = function() {
-        if (!dialogIsOpen()) { console.error("Cannot close sharePopup, try opening it first!"); return }
+        if (!dialogIsOpen()) {
+            console.error("Cannot close sharePopup, try opening it first!");
+            return
+        }
         if (saveChanges()) {
             sharingDialog.modal("hide")
         }
     }
 
     exports.sharePopup.closeAndDiscardChanges = function() {
-        if (!dialogIsOpen()) { console.error("Cannot close sharePopup, try opening it first!"); return }
+        if (!dialogIsOpen()) {
+            console.error("Cannot close sharePopup, try opening it first!");
+            return
+        }
         sharingDialog.modal("hide")
     }
 

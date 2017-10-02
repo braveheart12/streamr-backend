@@ -40,9 +40,10 @@ describe('dashboard-editor', function() {
 		$("body").append(templates)
 		db = require('../../dashboard/dashboard-editor')
 
-		global.Toolbar = function(options) {
+		global.ConfirmButton = function(options) {
 			return options
 		}
+		
 	})
 
 	beforeEach(function() {
@@ -74,7 +75,6 @@ describe('dashboard-editor', function() {
 				{hash: 1, uiChannel: {name: "uiChannel-5", checked: false, id: "uiChannel-id-5", webcomponent: "streamr-chart"}}
 				]}
 		]
-
 		dashboard = new db.Dashboard(dashboardJson)
 		dashboard.urlRoot = "nourl"
 
@@ -82,40 +82,108 @@ describe('dashboard-editor', function() {
 			model: dashboard,
 			el: $("#dashboard-view")
 		})
+
 		sidebar = new db.SidebarView({
 			el: $("#sidebar-view"),
-			dashboard: dashboard, 
+			dashboard: dashboard,
 			canvases: canvases,
-			menuToggle: $("#main-menu-toggle")
+			menuToggle: $("#main-menu-toggle"),
+			baseUrl: "/"
 		})
 	})
 
-	describe("Dashboard", function() {
+	afterEach(function() {
+		dashboard = undefined
+		$("body").empty()
+	})
 
-		beforeEach(function() {
-			
-		})
+	after(function(){
+		global.$ = undefined
+		global._ = undefined
+		global.window = undefined
+		global.document = undefined
+		global.Backbone = undefined
+		Backbone.$ = undefined
+		global.jQuery = undefined
+		global.Streamr = undefined
+		global.Event = undefined
 
-		it('should return the same JSON representation it was initialized with', function() {
-			assert.deepEqual(dashboard.toJSON(), dashboardJson)
+		templates = undefined
+		db = undefined
+
+		global.Toolbar = undefined
+	})
+
+	describe('with all permissions', function() {
+		var super_toJSON
+		before(function() {
+			super_toJSON = global.$.toJSON
 		})
+		beforeEach(function () {
+			global.$.getJSON = function(url, cb) {
+				// Does not contain permission/me
+				if (url.indexOf("permissions/me") < 0) {
+					super_getJSON(url, cb)
+				} else {
+					cb([{
+						operation: "read"
+					},{
+						operation: "write"
+					},{
+						operation: "share"
+					}])
+				}
+			}
+			dashboard = new db.Dashboard(dashboardJson)
+			dashboard.urlRoot = "nourl"
+
+			dashboardView = new db.DashboardView({
+				model: dashboard,
+				el: $("#dashboard-view"),
+				baseUrl: "/"
+			})
+
+			sidebar = new db.SidebarView({
+				el: $("#sidebar-view"),
+				dashboard: dashboard,
+				canvases: canvases,
+				menuToggle: $("#main-menu-toggle"),
+				baseUrl: "/"
+			})
+		})
+		describe("Dashboard", function() {
+			it('should return the same JSON representation it was initialized with', function () {
+				assert.deepEqual(dashboard.toJSON(), dashboardJson)
+			})
 
 		it('should throw error when trying to create module without webcomponent', function () {
 			assert.throws(
-				function() {
-					dashboard.get("items").push({title: "Item3", canvas: 'canvas-2', module:1, webcomponent: undefined, size:"medium"})
+				function () {
+					dashboard.get("items").push({
+						title: "Item3",
+						canvas: 'canvas-2',
+						module: 1,
+						webcomponent: undefined,
+						size: "medium"
+					})
 				}, Error);
 		})
 
-		it('should render the amount of dashboardItems correctly when items are added', function (){
+		it('should render the amount of dashboardItems correctly when items are added', function () {
 			assert.equal($(".streamr-widget").length, 2)
 			assert.equal(dashboardView.$el.children().length, 2)
-			dashboard.get("items").push({title: "Item3", canvas: "canvas-2", module: 1, webcomponent:"streamr-chart", size:"medium"})
+			dashboard.get("items").push({
+				title: "Item3",
+				canvas: "canvas-2",
+				module: 1,
+				webcomponent: "streamr-chart",
+				size: "medium"
+			})
 			assert.equal($(".streamr-widget").length, 3)
 			assert.equal(dashboardView.$el.children().length, 3)
 		})
 
-		it('must remove a dashboarditem when clicked delete', function (){
+		it('must remove a dashboarditem when clicked delete', function () {
 			assert.equal(dashboardView.$el.children().length, 2)
 			$(dashboardView.$el.children()[0]).find(".btn.delete-btn").click()
 			assert.equal(dashboardView.$el.children().length, 1)
@@ -150,12 +218,12 @@ describe('dashboard-editor', function() {
 		it('must change the name of a dashboarditem from input', function () {
 			//dashboarditem doesn't have class'editing' (titlebar-edit shouldn't be visible)
 			assert(!($(dashboardView.$el.children()[0]).hasClass("editing")))
-			
+
 			$(dashboardView.$el.children()[0]).find(".btn.edit-btn").click()
-			
+
 			//dashboarditem has class 'editing' (titlebar-edit should turn visible)
-			assert($(dashboardView.$el.children()[0]).hasClass("editing"))			
-			
+			assert($(dashboardView.$el.children()[0]).hasClass("editing"))
+
 			$(dashboardView.$el.children()[0]).find(".name-input").val("test-name")
 			$(dashboardView.$el.children()[0]).find(".btn.close-edit").click()
 			//should change the dashboarditem's title
@@ -165,12 +233,12 @@ describe('dashboard-editor', function() {
 		it('must also edit the title by clicking titlebar and blurring', function () {
 			//dashboarditem doesn't have class'editing' (titlebar-edit shouldn't be visible)
 			assert(!($(dashboardView.$el.children()[0]).hasClass("editing")))
-			
+
 			$(dashboardView.$el.children()[0]).find(".titlebar-clickable").click()
-			
+
 			//dashboarditem has class 'editing' (titlebar-edit should turn visible)
-			assert($(dashboardView.$el.children()[0]).hasClass("editing"))			
-			
+			assert($(dashboardView.$el.children()[0]).hasClass("editing"))
+
 			$(dashboardView.$el.children()[0]).find(".name-input").val("test-name")
 			$($(dashboardView.$el.children()[0]).find(".name-input")).trigger("focusout")
 			assert(!($(dashboardView.$el.children()[0]).hasClass("editing")))
@@ -214,9 +282,7 @@ describe('dashboard-editor', function() {
 			assert($(dashboardView.$el.children()[0]).hasClass("medium-size"))
 		})
 	})
-
 	describe("Sidebar", function() {
-
 		it('must render runningsignalpath-elements', function() {
 			assert.equal($("#sidebar-view").find(".canvas").length, 4)
 		})
@@ -305,17 +371,6 @@ describe('dashboard-editor', function() {
 			assert(unchecked)
 		})
 
-		it('must change the name of the dashboard by name-input with clicking save', function () {
-			assert.equal(dashboard.get("name"), "Test")
-			$("input.dashboard-name").val("changed-name")
-
-			//click save button
-			$("#sidebar-view .save-button").click()
-
-			//Dashboard name should have changed
-			assert.equal(dashboard.get("name"), "changed-name")
-		})
-
 		it('must trigger "resize"-event for all dashboarditems when menuToggle is clicked', function (done) {
 			assert.equal($(".streamr-widget").length, 2)
 			assert.equal(dashboardView.$el.children().length, 2)
@@ -327,7 +382,7 @@ describe('dashboard-editor', function() {
 				if (counter===2)
 					done()
 			})
-			
+
 			sidebar.menuToggle.click()
 		})
 
@@ -338,6 +393,7 @@ describe('dashboard-editor', function() {
 			assert($($("#sidebar-view").find(".canvas")[2]).hasClass("stopped"))
 			assert(!($($("#sidebar-view").find(".canvas")[4]).hasClass("stopped")))
 		})
+
 	})
 
 	describe("save button", function() {
@@ -346,27 +402,90 @@ describe('dashboard-editor', function() {
 				done()
 			}
 			$("#sidebar-view .save-button").click()
+		describe("save button", function() {
+			it("must call backbone model save function", function(done) {
+				dashboard.save = function() {
+					done()
+				}
+				$("#sidebar-view .save-button").click()
+			})
 		})
 	})
 
-	afterEach(function(){
-		$("body").empty()
-	})
+	describe('with limited permissions', function() {
+		var super_toJSON
+		before(function() {
+			super_toJSON = global.$.toJSON
+		})
+		afterEach(function() {
+			global.$.toJSON = super_toJSON
+		})
+		describe('Sidebar', function() {
 
-	after(function(){
-		global.$ = undefined
-		global._ = undefined
-		global.window = undefined
-		global.document = undefined
-		global.Backbone = undefined
-		Backbone.$ = undefined
-		global.jQuery = undefined
-		global.Streamr = undefined
-		global.Event = undefined
+			it('must not enable shareButton without share-permission', function(done) {
+				global.$.getJSON = function(url, cb) {
+					// Does not contain permission/me
+					if (url.indexOf("permissions/me") < 0) {
+						super_getJSON(url, cb)
+					} else {
+						cb([{
+							operation: "read"
+						},{
+							operation: "write"
+						}])
+						assert($("#share-button").attr("disabled"))
+						done()
+					}
+				}
+				dashboard = new db.Dashboard(dashboardJson)
+				dashboard.urlRoot = "nourl"
 
-		templates = undefined
-		db = undefined
+				dashboardView = new db.DashboardView({
+					model: dashboard,
+					el: $("#dashboard-view"),
+					baseUrl: "/"
+				})
 
-		global.Toolbar = undefined
+				sidebar = new db.SidebarView({
+					el: $("#sidebar-view"),
+					dashboard: dashboard,
+					canvases: canvases,
+					menuToggle: $("#main-menu-toggle"),
+					baseUrl: "/"
+				})
+			})
+
+			it('must not enable saveButton and deleteButton without write-permission', function(done) {
+				global.$.getJSON = function(url, cb) {
+					// Does not contain permission/me
+					if (url.indexOf("permissions/me") < 0) {
+						super_getJSON(url, cb)
+					} else {
+						cb([{
+							operation: "read"
+						}])
+						assert($("#saveButton").attr("disabled"))
+						assert($("#deleteDashboardButton").attr("disabled"))
+						done()
+					}
+				}
+				dashboard = new db.Dashboard(dashboardJson)
+				dashboard.urlRoot = "nourl"
+
+				dashboardView = new db.DashboardView({
+					model: dashboard,
+					el: $("#dashboard-view"),
+					baseUrl: "/"
+				})
+
+				sidebar = new db.SidebarView({
+					el: $("#sidebar-view"),
+					dashboard: dashboard,
+					canvases: canvases,
+					menuToggle: $("#main-menu-toggle"),
+					baseUrl: "/"
+				})
+			})
+		})
 	})
 })

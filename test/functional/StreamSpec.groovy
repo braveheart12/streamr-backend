@@ -1,20 +1,14 @@
+import com.unifina.domain.data.Stream
 import com.unifina.feed.mongodb.MongoDbConfig
-import core.pages.ConfigureMongoPage
+import com.unifina.service.StreamService
+import core.LoginTester1Spec
+import core.mixins.ConfirmationMixin
+import core.mixins.StreamMixin
+import core.pages.*
 import org.bson.Document
 import spock.lang.Shared
 
 import java.nio.file.Paths
-
-import com.unifina.kafkaclient.UnifinaKafkaProducer
-
-import core.LoginTester1Spec
-import core.mixins.ConfirmationMixin;
-import core.mixins.StreamMixin
-import core.pages.StreamConfigurePage
-import core.pages.StreamCreatePage
-import core.pages.StreamListPage
-import core.pages.StreamShowPage
-
 
 class StreamSpec extends LoginTester1Spec {
 
@@ -27,10 +21,14 @@ class StreamSpec extends LoginTester1Spec {
 		timestampType: MongoDbConfig.TimestampType.DATETIME
 	])
 
+	@Shared StreamService streamService
+
 	def setupSpec() {
 		// @Mixin is buggy, don't use it
 		StreamSpec.metaClass.mixin(StreamMixin)
 		StreamSpec.metaClass.mixin(ConfirmationMixin)
+
+		streamService = createStreamService()
 
 		def client = mongoDbConfig.createMongoClient()
 		mongoDbConfig.openCollection().drop()
@@ -40,6 +38,7 @@ class StreamSpec extends LoginTester1Spec {
 
 	def cleanupSpec() {
 		mongoDbConfig.openCollection().drop()
+		cleanupStreamService(streamService)
 	}
 	
 	private File getFile(String filename) {
@@ -113,8 +112,10 @@ class StreamSpec extends LoginTester1Spec {
 			waitFor { at StreamConfigurePage }
 
 		when: "Produce an event into the stream and click autodetect button"
-			UnifinaKafkaProducer kafka = new UnifinaKafkaProducer("192.168.10.21:9092", "192.168.10.21:2181")
-			kafka.sendJSON(streamId, "", System.currentTimeMillis(), '{"foo":"bar","xyz":45.5}')
+			Stream testStream = new Stream()
+			testStream.id = streamId
+			streamService.sendMessage(testStream, [foo: "bar", "xyz": 45.5], 30)
+			sleep(1000)
 			autodetectButton.click()
 		then: "The fields in the stream must appear and be of correct type"
 			waitFor {
@@ -146,7 +147,6 @@ class StreamSpec extends LoginTester1Spec {
 			acceptConfirmation()
 		then: "must navigate to list page and show message"
 			waitFor { at StreamListPage }
-			$(".alert-info").displayed
 	}
 
 	void "creating a mongo stream and autodetecting its fields work"() {
@@ -227,7 +227,6 @@ class StreamSpec extends LoginTester1Spec {
 		waitFor { $(".modal-dialog").displayed }
 		$(".modal-dialog .btn-primary").click()
 		waitFor { at StreamListPage }
-		$(".alert-info").text().contains("deleted")
 	}
 	
 }

@@ -2,6 +2,7 @@ package com.unifina.signalpath.utils;
 
 import com.unifina.signalpath.TimeSeriesInput;
 
+@Deprecated
 public class Filter extends PassThrough {
 
 	TimeSeriesInput pass = new TimeSeriesInput(this,"pass");
@@ -10,10 +11,10 @@ public class Filter extends PassThrough {
 	public void init() {
 		addInput(pass);
 		pass.setDrivingInput(false);
-		pass.canToggleDrivingInput = false;
+		pass.setCanToggleDrivingInput(false);
 		addInput(input);
 		input.setDrivingInput(true);
-		pass.canToggleDrivingInput = true;
+		pass.setCanToggleDrivingInput(true);
 		addOutput(output);
 	}
 	

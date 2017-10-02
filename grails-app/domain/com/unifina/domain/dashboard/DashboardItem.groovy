@@ -1,9 +1,10 @@
 package com.unifina.domain.dashboard
 
 import com.unifina.domain.signalpath.Canvas
+import com.unifina.utils.IdGenerator
 
 class DashboardItem implements Comparable {
-	
+
 	String title
 	Canvas canvas
 	Integer module
@@ -11,12 +12,12 @@ class DashboardItem implements Comparable {
 	Integer ord
 	String size
 	
-	static belongsTo = [dashboard: Dashboard]
-	
+	static belongsTo = [dashboard: Dashboard, canvas: Canvas]
+
 	static constraints = {
 		title(nullable:true)
 	}
-	
+
 	int compareTo(obj) {
 		int cmp = ord.compareTo(obj.ord)
 		return cmp != 0 ? cmp :

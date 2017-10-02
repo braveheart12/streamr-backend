@@ -1,16 +1,10 @@
 package com.unifina.signalpath.messaging
 
+import com.unifina.signalpath.*
+
 import java.text.SimpleDateFormat
 
-import com.unifina.signalpath.AbstractSignalPathModule
-import com.unifina.signalpath.Input
-import com.unifina.signalpath.ModuleOption
-import com.unifina.signalpath.ModuleOptions
-import com.unifina.signalpath.NotificationMessage
-import com.unifina.signalpath.Parameter
-import com.unifina.signalpath.StringParameter
-
-class EmailModule extends AbstractSignalPathModule {
+class EmailModule extends ModuleWithSideEffects {
 
 	StringParameter sub = new StringParameter(this, "subject", "")
 	StringParameter message = new StringParameter(this, "message", "")
@@ -21,11 +15,10 @@ class EmailModule extends AbstractSignalPathModule {
 
 	transient SimpleDateFormat df
 
-	Long prevTime = 0
-	Long prevWarnNotif
-
-	Long emailIntervall = 60000
+	Long prevTime
+	Long emailInterval = 60000
 	boolean emailSent
+	boolean lastEmailBlocked
 
 	@Override
 	public void init() {
@@ -37,70 +30,61 @@ class EmailModule extends AbstractSignalPathModule {
 	}
 
 	@Override
-	public void sendOutput() {
+	public void activateWithSideEffects() {
+		if (isNotTooOften(emailInterval, globals.time.getTime(), prevTime)) {
+			prevTime = globals.time.getTime()
+			emailSent = true
+			String messageTo = globals.getUser().getUsername()
+			def mailService = globals.grailsApplication.getMainContext().getBean("mailService")
+			String messageBody = getMessageBody()
+			mailService.sendMail {
+				from sender
+				to messageTo
+				subject sub.getValue()
+				body messageBody
+			}
+			lastEmailBlocked = false
+		} else if (emailSent) {
+			lastEmailBlocked = true
+			parentSignalPath.pushToUiChannel(new NotificationMessage("Tried to send emails too often"))
+			emailSent = false
+		}
+	}
+
+	@Override
+	public void activateWithoutSideEffects() {
+		// Show email contents as notifications in the UI
+		parentSignalPath?.showNotification(getMessageBody())
+	}
+
+	private String getMessageBody() {
 		initDf()
-		//		Create String with the input values
+
+		// Create String with the input values
 		String inputValues = ""
-		for(Input i : super.getInputs()){
-			if(!(i instanceof Parameter)){
+		for (Input i : super.getInputs()){
+			if (!(i instanceof Parameter)){
 				inputValues += "${i.getDisplayName() ?: i.getName()}: ${i.getValue()}\n"
 			}
 		}
 
-		//		Check that the subject is not empty
-		String messageSubject
-		if(sub.getValue() == ""){
-			messageSubject = "no subject"
-		} else {
-			messageSubject = sub.getValue()
-		}
+		// Create body for the email
+		String messageBody = ("\n" +
+				"Message:\n" +
+				"${message.getValue()}\n\n" +
+				"Event Timestamp:\n" +
+				"${df.format(globals.time)}\n\n" +
+				"Input Values:\n" +
+				"${inputValues}\n" +
+				(lastEmailBlocked ? "\nWARNING: Some emails between this and the last mail have not been sent because of trying to send too frequently.\n" : "") +
+				"")
 
-		//		Create body for the email
-		String messageBody = """
-Message:
-${message.getValue()}
-
-Event Timestamp:
-${df.format(globals.time)}
-
-Input Values:
-$inputValues
-"""
-
-		//		Check that the module is running in current time. If not, do not send email, make just a notification
-
-		if (globals.isRealtime()) {
-			if (isNotTooOften(emailIntervall, getTime(), prevTime)) {
-				emailSent = true
-				String messageTo = globals.getUser().getUsername()
-				def mailService = globals.grailsApplication.getMainContext().getBean("mailService")
-				mailService.sendMail {
-					from sender
-					to messageTo
-					subject messageSubject
-					body messageBody
-				}
-			} else {
-				if (emailSent) {
-					globals.uiChannel?.push(new NotificationMessage("Tried to send emails too often"), parentSignalPath.uiChannelId)
-					emailSent = false
-				}
-			}
-		}
-		else {
-			globals.uiChannel?.push(new NotificationMessage(messageBody), parentSignalPath.uiChannelId)
-		}
-
-
-	}
-	
-	public long getTime(){
-		return System.currentTimeMillis()
+		return messageBody
 	}
 
-	public Input<Object> createAndAddInput(String name) {
+	private Input<Object> createAndAddInput(String name) {
 
-		Input<Object> conn = new Input<Object>(this,name,"Object");
+		Input<Object> conn = new Input<Object>(this,name, "Object");
 
 		conn.setDrivingInput(true);
 
@@ -118,7 +102,7 @@ $inputValues
 
 		// Module options
 		ModuleOptions options = ModuleOptions.get(config);
-		options.add(new ModuleOption("inputs", emailInputCount, "int"));
+		options.addIfMissing(new ModuleOption("inputs", emailInputCount, "int"));
 
 		return config;
 	}
@@ -137,12 +121,16 @@ $inputValues
 		}
 	}
 
-	public boolean isNotTooOften(intervall, time1, time2){
-		return Math.abs(time1 - time2) > intervall
+	private static boolean isNotTooOften(interval, newTime, prevTime){
+		return prevTime == null || newTime - prevTime > interval
 	}
 
 	@Override
 	public void clearState() {
+		prevTime = null
+		emailSent = false
+		emailInputCount = 1
+		lastEmailBlocked = false
 	}
 
 	private def initDf() {
@@ -153,4 +141,8 @@ $inputValues
 		}
 	}
 
+	@Override
+	protected boolean allowSideEffectsInHistoricalMode() {
+		return false
+	}
 }

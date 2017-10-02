@@ -8,12 +8,14 @@ SignalPath.Input = function(json, parentDiv, module, type, pub) {
 
 		div.bind("spConnect", (function(me) {
 			return function(event, output) {
+				me.source = output
 				me.json.sourceId = output.getId();
 			}
 		})(pub));
 		
 		div.bind("spDisconnect", (function(me) {
 			return function(event, output) {
+				delete me.source
 				delete me.json.sourceId;
 			}
 		})(pub));
@@ -26,7 +28,11 @@ SignalPath.Input = function(json, parentDiv, module, type, pub) {
 		// No warning if has initialvalue
 		return (pub.getInitialValue()===null || pub.getInitialValue()===undefined) && super_hasWarning()
 	}
-	
+
+	function displayInitialValue(value) {
+		pub.updateState(value ? "(" + value + ")" : "")
+	}
+
 	var super_createSettings = pub.createSettings;
 	pub.createSettings = function(div,data) {
 		super_createSettings(div,data);
@@ -35,58 +41,55 @@ SignalPath.Input = function(json, parentDiv, module, type, pub) {
 		
 		var switchDiv = $("<div class='switchContainer showOnFocus'></div>");
 		div.append(switchDiv);
-		
-		if (data.canToggleDrivingInput==null || data.canToggleDrivingInput) {
-			var driving = new SignalPath.IOSwitch(switchDiv, "ioSwitch drivingInput", {
-				getValue: (function(d){
-					return function() { return d.drivingInput; };
-				})(data),
-				setValue: (function(d){
-					return function(value) { return d.drivingInput = value; };
-				})(data),
-				buttonText: function() { return "DR"; },
-				tooltip: 'Driving input'
-			});
+
+		// The flags must be appended in reverse order
+
+		if (data.canConnect === false) {
+			return;
 		}
-		
+
 		// Initial value. Default null/off. Only valid for TimeSeries type
-		if (data.type=="Double" && (data.canHaveInitialValue==null || data.canHaveInitialValue)) {
+		if (data.canHaveInitialValue) {
 			var iv = new SignalPath.IOSwitch(switchDiv, "ioSwitch initialValue", {
 				getValue: (function(d){
 					return function() { return d.initialValue; };
 				})(data),
 				setValue: (function(d){
-					return function(value) { return d.initialValue = value; };
+					return function(value) {
+						displayInitialValue(value)
+						return d.initialValue = value;
+					};
 				})(data),
-				buttonText: function(currentValue) { return "IV" },
+				buttonText: function() { return "IV" },
 				tooltip: 'Initial value',
 				isActiveValue: function(currentValue) {
 					return currentValue != null;
 				}
 			});
-			
+
+			displayInitialValue(iv.getValue())
+
 			// Override click handler
 			iv.click = function() {
 				if (iv.getValue()==null) {
 					bootbox.prompt({
-						title: "Initial Value:", 
-						callback: function(result) {                
-							if (result != null) {                                             
-								iv.setValue(parseFloat(result))
+						title: "Initial Value:",
+						callback: function(result) {
+							if (result != null) {
+								iv.setValue(result);
 								iv.update();
 								iv.div.html(iv.buttonText());
 							}
 						},
 						className: 'initial-value-dialog'
 					})
-				}
-				else {
-					iv.setValue(null);
+				} else {
+					iv.setValue(undefined);
 					iv.update();
 					iv.div.html(iv.buttonText());
 				}
 			}
-			
+
 			// Remove requiresConnection class on update if input has initial value
 			if (pub.json.requiresConnection) {
 				$(iv).on("updated", function(e) {
@@ -97,20 +100,18 @@ SignalPath.Input = function(json, parentDiv, module, type, pub) {
 				})
 				iv.update()
 			}
-		} 
-		
-		// Feedback connection. Default false. Switchable for TimeSeries types.
-		
-		if (data.type=="Double" && (data.canBeFeedback==null || data.canBeFeedback)) {
-			var feedback = new SignalPath.IOSwitch(switchDiv, "ioSwitch feedback", {
+		}
+
+		if (data.canToggleDrivingInput==null || data.canToggleDrivingInput) {
+			var driving = new SignalPath.IOSwitch(switchDiv, "ioSwitch drivingInput", {
 				getValue: (function(d){
-					return function() { return d.feedback; };
+					return function() { return d.drivingInput; };
 				})(data),
 				setValue: (function(d){
-					return function(value) { return d.feedback = value; };
+					return function(value) { return d.drivingInput = value; };
 				})(data),
-				buttonText: function() { return "FB"; },
-				tooltip: 'Feedback connection'
+				buttonText: function() { return "DR"; },
+				tooltip: 'Driving input'
 			});
 		}
 	}
@@ -135,6 +136,13 @@ SignalPath.Input = function(json, parentDiv, module, type, pub) {
 	pub.connect = function(endpoint) {
 		jsPlumb.connect({source: pub.jsPlumbEndpoint, target:endpoint.jsPlumbEndpoint});
 	}
+
+	pub.disconnect = function() {
+		var connections = jsPlumb.getConnections({source:pub.getId(), scope:"*"});
+		$(connections).each(function(j,connection) {
+			jsPlumb.detach(connection)
+		});
+	}
 	
 	pub.getConnectedEndpoints = function() {
 		var result = [];
@@ -158,6 +166,10 @@ SignalPath.Input = function(json, parentDiv, module, type, pub) {
 				console.log("Warning: input "+pub.getId()+" should be connected to "+pub.json.sourceId+", but is connected to "+connectedEndpoints[0].getId()+" instead!");
 			}
 		}
+	}
+
+	pub.getSource = function() {
+		return pub.source
 	}
 	
 	return pub;

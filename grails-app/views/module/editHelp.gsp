@@ -23,7 +23,7 @@
 			$("#message").html("Loading module help texts..");
         	$.ajax({
 			    type: 'GET',
-			    url: Streamr.createLink({uri: 'api/v1/modules/'+moduleJson.id+'/help',
+			    url: Streamr.createLink({uri: 'api/v1/modules/'+moduleJson.id+'/help'}),
 			    dataType: 'json',
 			    success: function(data) { 
 			    	helpJson = data;
@@ -128,7 +128,7 @@
         });
         </r:script>
     </head>
-    <body>
+    <body class="help-page">
         <div class="body">
             <h1>Module help editor: ${module.name} (Package: ${module.modulePackage.name})</h1>
             

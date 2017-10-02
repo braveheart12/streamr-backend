@@ -1,6 +1,6 @@
 SignalPath.ChartModule = function(data,canvas,prot) {
 	prot = prot || {};
-	var pub = SignalPath.GenericModule(data,canvas,prot)
+	var pub = SignalPath.UIChannelModule(data,canvas,prot)
 
 	prot.enableIONameChange = false;	
 		
@@ -15,15 +15,21 @@ SignalPath.ChartModule = function(data,canvas,prot) {
 		if (!prot.jsonData.disableAxisSelection) {
 			prot.div.find("div.input.Double").removeClass("default-context-menu").addClass("chart-context-menu");
 		}
-
+        
+		prot.content = $("<div/>", {
+            class: "content"
+        })
+        prot.body.append(prot.content)
+		
 		initChart()
 		
 		prot.initResizable({
-			minWidth: parseInt(prot.div.css("min-width").replace("px","")),
-			minHeight: parseInt(prot.div.css("min-height").replace("px","")),
+			minWidth: 350,
+			minHeight: 250,
 			stop: function(event,ui) {
-				if (prot.chart)
-					prot.chart.resize(ui.size.width, ui.size.height);
+				//if (prot.chart)
+				//	prot.chart.resize(ui.size.width, ui.size.height);
+                prot.body.trigger("resize")
 			}
 		});
 	}
@@ -72,12 +78,8 @@ SignalPath.ChartModule = function(data,canvas,prot) {
 	prot.getChart = getChart;
 
 	function initChart() {
-		prot.body.find(".ioTable").css("width","0px");
-		prot.chart = new StreamrChart(prot.body, SignalPath.defaultChartOptions)
-		prot.chart.resize(prot.div.outerWidth(), prot.div.outerHeight())
-		$(prot.chart).on('destroyed', function() {
-			prot.body.find("div.csvDownload").remove()
-		})
+		prot.chart = new StreamrChart(prot.content, prot.jsonData.options)
+        prot.chart.$area.addClass("drag-exclude")
 	}
 	
 	function destroyChart() {
@@ -86,32 +88,8 @@ SignalPath.ChartModule = function(data,canvas,prot) {
 		}
 	}
 	
-	pub.receiveResponse = function(d) {
+	prot.receiveResponse = function(d) {
 		prot.chart.handleMessage(d)
-		// Show csv download link
-		if (d.type==="csv") {
-			var div = $("<span class='csvDownload'></span>");
-			var link = $("<a href='"+d.link+"'></a>");
-			link.append("<i class='fa fa-download'></i>&nbsp;"+d.filename);
-			div.append(link);
-			prot.body.append(div);
-			div.effect("highlight",{},2000);
-			
-			link.click(function(event) {
-				event.preventDefault();
-				$.getJSON(Streamr.createLink("canvas", "existsCsv"), {filename:d.filename}, (function(div) {
-					return function(resp) {
-						if (resp.success) {
-							$(div).remove();
-							var elemIF = document.createElement("iframe"); 
-							elemIF.src = "downloadCsv?filename="+resp.filename; 
-							elemIF.style.display = "none"; 
-							document.body.appendChild(elemIF);
-						}
-						else alert("The file is already gone from the server. Please re-run your canvas!")
-					}})(div));
-			});
-		}
 	}
 
 	var startFunction = function(e, canvas) {
@@ -160,7 +138,7 @@ SignalPath.ChartModule = function(data,canvas,prot) {
 
 	function sendInitRequest() {
 		if (SignalPath.isRunning()) {
-			SignalPath.sendRequest(prot.hash, {type: 'initRequest'}, function (response, err) {
+			SignalPath.runtimeRequest(pub.getRuntimeRequestURL(), {type: 'initRequest'}, function (response, err) {
 				if (err)
 					console.error("Failed initRequest for ChartModule: %o", err)
 				else

@@ -13,6 +13,12 @@ public abstract class InputModule extends ModuleWithUI {
 
 	protected boolean uiEventSendPending = false;
 
+	public InputModule() {
+		super();
+		resendAll = false;
+		resendLast = 1;
+	}
+
 	@Override
 	protected void handleRequest(RuntimeRequest request, RuntimeResponse response) {
 		super.handleRequest(request, response);
@@ -20,14 +26,13 @@ public abstract class InputModule extends ModuleWithUI {
 			onInput(request, response);
 			setSendPending(true);
 			uiEventSendPending = true;
-			if (uiEventPropagator==null) {
-				uiEventPropagator = new Propagator();
-				uiEventPropagator.addModule(this);
-				uiEventPropagator.initialize();
+			if (getUiEventPropagator()==null) {
+				setUiEventPropagator(new Propagator(this));
+				getUiEventPropagator().initialize();
 			}
 			trySendOutput();
 			if (wasReady()) {
-				uiEventPropagator.propagate();
+				getUiEventPropagator().propagate();
 				uiEventSendPending = false;
 			}
 			response.setSuccess(true);

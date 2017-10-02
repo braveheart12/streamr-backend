@@ -18,17 +18,18 @@ public class MapTraversal {
 	public static Object getProperty(Map map, String name) {
 		if (name == null) { throw new IllegalArgumentException("Name can not be null!"); }
 
+		// split with -1 limit also returns trailing empty strings (so that malformed names won't accidentally work)
 		Object i = map;
-		for (String prop : name.split("\\.")) {
+		for (String prop : name.split("\\.", -1)) {
 			if (!(i instanceof Map)) {
-				if (i instanceof List && (prop.equalsIgnoreCase("count") || prop.equalsIgnoreCase("length"))) {
+				if (i instanceof List && (prop.equalsIgnoreCase("count") || prop.equalsIgnoreCase("length") || prop.equalsIgnoreCase("size"))) {
 					return new Integer(((List)i).size());
 				}
 				return null;
 			}
 			// iterate through (possibly nested) List property, e.g. "inputs[3]"
 			// Note: if prop isn't a List, then simply listParts[0] == prop, and loop is skipped
-			String[] listParts = prop.split("\\[");
+			String[] listParts = prop.split("\\[", -1);
 			i = ((Map)i).get(listParts[0]);
 			for (int j = 1; j < listParts.length; j++) {
 				if (!(i instanceof List)) { return null; }
@@ -39,7 +40,7 @@ public class MapTraversal {
 				try {
 					int index = Integer.parseInt(listParts[j].substring(0, len - 1));
 					i = ((List)i).get(index);
-				} catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+				} catch (Exception e) {
 					return null;
 				}
 			}
@@ -71,8 +72,8 @@ public class MapTraversal {
      */
 	public static int getInt(Map map, String name) throws NumberFormatException, NullPointerException {
 		Object raw = getProperty(map, name);
-		if (raw instanceof Integer) {
-			return ((Integer)raw).intValue();
+		if (raw instanceof Number) {
+			return ((Number)raw).intValue();
 		} else {
 			return Integer.parseInt(raw.toString());
 		}
@@ -89,25 +90,32 @@ public class MapTraversal {
 	public static Long getLong(Map map, String name) {
 		Object raw = getProperty(map,name);
 		if (raw==null) return null;
-		else if (raw instanceof Long)
-			return (Long) raw;
+		else if (raw instanceof Number)
+			return ((Number) raw).longValue();
 		else return Long.parseLong(raw.toString());
 	}
 	
 	public static Double getDouble(Map map, String name) {
 		Object raw = getProperty(map,name);
 		if (raw==null) return null;
-		else if (raw instanceof Double)
-			return (Double) raw;
+		else if (raw instanceof Number)
+			return ((Number) raw).doubleValue();
 		else return Double.parseDouble(raw.toString());
 	}
-	
-	public static Boolean getBoolean(Map map, String name) {
+
+	public static Boolean getBoolean(Map map, String name, boolean defaultValue) {
 		Object raw = getProperty(map,name);
-		if (raw==null) return false;
-		else if (raw instanceof Boolean)
+		if (raw == null) {
+			return defaultValue;
+		} else if (raw instanceof Boolean) {
 			return (Boolean) raw;
-		else return Boolean.parseBoolean(raw.toString());
+		} else {
+			return Boolean.parseBoolean(raw.toString());
+		}
+	}
+
+	public static Boolean getBoolean(Map map, String name) {
+		return getBoolean(map, name, false);
 	}
 	
 	public static Date getDate(Map map, String name, SimpleDateFormat df) {

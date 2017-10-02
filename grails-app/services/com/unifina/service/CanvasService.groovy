@@ -1,72 +1,50 @@
 package com.unifina.service
 
-import com.unifina.api.ApiException
-import com.unifina.api.InvalidStateException
-import com.unifina.api.NotFoundException
-import com.unifina.api.NotPermittedException
-import com.unifina.api.SaveCanvasCommand
-import com.unifina.api.ValidationException
+import com.unifina.api.*
 import com.unifina.domain.dashboard.Dashboard
 import com.unifina.domain.dashboard.DashboardItem
+import com.unifina.domain.data.Stream
 import com.unifina.domain.security.Permission
 import com.unifina.domain.security.SecUser
 import com.unifina.domain.signalpath.Canvas
 import com.unifina.exceptions.CanvasUnreachableException
 import com.unifina.serialization.SerializationException
+import com.unifina.signalpath.SignalPath
 import com.unifina.signalpath.UiChannelIterator
+import com.unifina.task.CanvasDeleteTask
 import com.unifina.task.CanvasStartTask
 import com.unifina.utils.Globals
 import com.unifina.utils.GlobalsFactory
-import com.unifina.utils.IdGenerator
 import grails.converters.JSON
 import grails.transaction.Transactional
-import groovy.json.JsonBuilder
 import groovy.transform.CompileStatic
+import org.codehaus.groovy.grails.commons.GrailsApplication
+import org.codehaus.groovy.grails.web.json.JSONObject
 
 class CanvasService {
 
-	def grailsApplication
-	def signalPathService
-	def taskService
+	GrailsApplication grailsApplication
+	SignalPathService signalPathService
+	TaskService taskService
 	PermissionService permissionService
 	DashboardService dashboardService
+	StreamService streamService
 
-	public List<Canvas> findAllBy(SecUser currentUser, String nameFilter, Boolean adhocFilter, Canvas.State stateFilter, String sort = "dateCreated", String order = "asc") {
-		def query = Canvas.where { user == currentUser }
-
-		if (nameFilter) {
-			query = query.where {
-				name == nameFilter
-			}
-		}
-		if (adhocFilter != null) {
-			query = query.where {
-				adhoc == adhocFilter
-			}
-		}
-		if (stateFilter) {
-			query = query.where {
-				state == stateFilter
-			}
-		}
-
-		return query.order(sort, order).findAll()
-	}
-
-
-	public Map reconstruct(Canvas canvas) {
-		Map signalPathMap = JSON.parse(canvas.json)
-		return reconstructFrom(signalPathMap)
+	@CompileStatic
+	public Map reconstruct(Canvas canvas, SecUser user) {
+		Map signalPathMap = (JSONObject) JSON.parse(canvas.json)
+		return reconstructFrom(signalPathMap, user)
 	}
 
 	@CompileStatic
 	public Canvas createNew(SaveCanvasCommand command, SecUser user) {
 		Canvas canvas = new Canvas(user: user)
-		updateExisting(canvas, command, true)
+		updateExisting(canvas, command, user, true)
 		return canvas
 	}
 
-	public void updateExisting(Canvas canvas, SaveCanvasCommand command, boolean resetUi = false) {
+	@CompileStatic
+	public void updateExisting(Canvas canvas, SaveCanvasCommand command, SecUser user, boolean resetUi = false) {
 		if (!command.validate()) {
 			throw new ValidationException(command.errors)
 		}
@@ -74,19 +52,35 @@ class CanvasService {
 			throw new InvalidStateException("Cannot update canvas with state " + canvas.state)
 		}
 
-		Map newSignalPathMap = constructNewSignalPathMap(canvas, command, resetUi)
+		Map newSignalPathMap = constructNewSignalPathMap(canvas, command, user, resetUi)
 
 		canvas.name = newSignalPathMap.name
 		canvas.hasExports = newSignalPathMap.hasExports
-		canvas.json = new JsonBuilder(newSignalPathMap).toString()
+		canvas.json = newSignalPathMap as JSON
 		canvas.state = Canvas.State.STOPPED
 		canvas.adhoc = command.isAdhoc()
 
 		// clear serialization
-		canvas.serialized = null
-		canvas.serializationTime = null
-
+		canvas.serialization?.delete()
+		canvas.serialization = null
 		canvas.save(flush: true, failOnError: true)
+	}
+
+	/**
+	 * Deletes a Canvas along with any resources (DashboardItems, Streams) pointing to it.
+	 * It can be deleted after a delay to allow resource consumers to finish up.
+     */
+	@Transactional
+	public void deleteCanvas(Canvas canvas, SecUser user, boolean delayed = false) {
+		if (delayed) {
+			taskService.createTask(CanvasDeleteTask, CanvasDeleteTask.getConfig(canvas), "delete-canvas", user, 30 * 60 * 1000)
+		} else {
+			Collection<Stream> uiChannels = Stream.findAllByUiChannelCanvas(canvas)
+			uiChannels.each {
+				streamService.deleteStream(it)
+			}
+			canvas.delete(flush: true)
+		}
 	}
 
 	public void start(Canvas canvas, boolean clearSerialization) {
@@ -98,16 +92,19 @@ class CanvasService {
 			signalPathService.clearState(canvas)
 		}
 
+		Map signalPathContext = canvas.toMap().settings
+
 		try {
-			signalPathService.startLocal(canvas, canvas.toMap().settings)
+			signalPathService.startLocal(canvas, signalPathContext)
 		} catch (SerializationException ex) {
+			log.error("De-serialization failure caused by (BELOW)", ex.cause)
 			String msg = "Could not load (deserialize) previous state of canvas $canvas.id."
 			throw new ApiException(500, "LOADING_PREVIOUS_STATE_FAILED", msg)
 		}
 	}
 
-	public void startRemote(Canvas canvas, boolean forceReset=false, boolean resetOnError=true) {
-		taskService.createTask(CanvasStartTask, CanvasStartTask.getConfig(canvas, forceReset, resetOnError), "canvas-start")
+	public void startRemote(Canvas canvas, SecUser user, boolean forceReset=false, boolean resetOnError=true) {
+		taskService.createTask(CanvasStartTask, CanvasStartTask.getConfig(canvas, forceReset, resetOnError), "canvas-start", user)
 	}
 
 	@Transactional(noRollbackFor=[CanvasUnreachableException])
@@ -149,6 +146,8 @@ class CanvasService {
 	 *
 	 * - Permission to the canvas that contains the module
 	 * - Permission to a dashboard that contains the module from that canvas
+	 *
+	 * Deprecated: runtime permission checking now much more comprehensive in SignalPathService
 	 */
 	@CompileStatic
 	Map authorizedGetModuleOnCanvas(String canvasId, Integer moduleId, Long dashboardId, SecUser user, Permission.Operation op) {
@@ -171,11 +170,16 @@ class CanvasService {
 	}
 
 	@CompileStatic
+	void resetUiChannels(Map signalPathMap) {
+		UiChannelIterator.over(signalPathMap).each { UiChannelIterator.Element element ->
+			element.uiChannelData.id = null
+		}
+	}
+
 	private boolean hasCanvasPermission(Canvas canvas, SecUser user, Permission.Operation op) {
 		return op == Permission.Operation.READ && canvas.example || permissionService.check(user, canvas, op)
 	}
 
-	@CompileStatic
 	private boolean hasModulePermissionViaDashboard(Canvas canvas, Integer moduleId, Long dashboardId, SecUser user, Permission.Operation op) {
 		if (!dashboardId) {
 			return false
@@ -189,7 +193,7 @@ class CanvasService {
 		} != null
 	}
 
-	private Map constructNewSignalPathMap(Canvas canvas, SaveCanvasCommand command, boolean resetUi) {
+	private Map constructNewSignalPathMap(Canvas canvas, SaveCanvasCommand command, SecUser user, boolean resetUi) {
 		Map inputSignalPathMap = canvas.json != null ? JSON.parse(canvas.json) : [:]
 
 		inputSignalPathMap.name = command.name
@@ -200,28 +204,14 @@ class CanvasService {
 			resetUiChannels(inputSignalPathMap)
 		}
 
-		return reconstructFrom(inputSignalPathMap)
-	}
-
-	private static void resetUiChannels(Map signalPathMap) {
-		HashMap<String,String> replacements = [:]
-		UiChannelIterator.over(signalPathMap).each { UiChannelIterator.Element element ->
-			if (replacements.containsKey(element.uiChannelData.id)) {
-				element.uiChannelData.id = replacements[element.uiChannelData.id]
-			}
-			else {
-				String newId = IdGenerator.get()
-				replacements[element.uiChannelData.id] = newId
-				element.uiChannelData.id = newId
-			}
-		}
+		return reconstructFrom(inputSignalPathMap, user)
 	}
 
 	/**
 	 * Rebuild JSON to check it is ok and up-to-date
 	 */
-	private Map reconstructFrom(Map signalPathMap) {
-		Globals globals = GlobalsFactory.createInstance(signalPathMap.settings ?: [:], grailsApplication)
+	private Map reconstructFrom(Map signalPathMap, SecUser user) {
+		Globals globals = GlobalsFactory.createInstance(signalPathMap.settings ?: [:], grailsApplication, user)
 		try {
 			return signalPathService.reconstruct(signalPathMap, globals)
 		} catch (Exception e) {

@@ -4,6 +4,7 @@ import com.unifina.signalpath.AbstractSignalPathModule;
 import com.unifina.signalpath.Input;
 import com.unifina.signalpath.Output;
 
+@Deprecated
 public class PassThrough extends AbstractSignalPathModule {
 
 	Input<Object> input = new Input<>(this,"in","Object");
@@ -18,7 +19,7 @@ public class PassThrough extends AbstractSignalPathModule {
 	@Override
 	public void initialize() {
 		// Input source and Output targets must be of same type
-		if (input.isConnected() && output.getTargets().length>0) {
+		if (input.isConnected() && output.getTargets().size()>0) {
 			String type = input.getSource().getTypeName();
 			
 			// TODO: For now, skip the complex situation in which two Object 

@@ -48,6 +48,15 @@ div.table.clickable-table {
 		.td, .th {
 			display: table-cell;
 		}
+
+		.button-column {
+			width: 70px;
+			border-left: none !important;
+			> * {
+				float: right;
+			}
+		}
+
 		.td {
 			&:extend(td);
 			&:extend(.table tr > td);
@@ -71,7 +80,7 @@ div.table.clickable-table {
 	&.table-bordered {
 		&:extend(.table-bordered);
 		.thead > .tr > .th {
-			&:not(:first-child),{
+			&:not(:first-child){
 				border-left: 1px solid #dddddd;
 			}
 		}

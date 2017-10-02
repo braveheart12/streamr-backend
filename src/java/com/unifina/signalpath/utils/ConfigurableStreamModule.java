@@ -1,20 +1,15 @@
 package com.unifina.signalpath.utils;
 
+import com.unifina.data.IStreamRequirement;
+import com.unifina.domain.data.Stream;
+import com.unifina.signalpath.*;
 import grails.converters.JSON;
-
-import java.util.Map;
-
 import org.codehaus.groovy.grails.web.json.JSONArray;
 import org.codehaus.groovy.grails.web.json.JSONObject;
 
-import com.unifina.data.IStreamRequirement;
-import com.unifina.domain.data.Stream;
-import com.unifina.signalpath.AbstractSignalPathModule;
-import com.unifina.signalpath.ListOutput;
-import com.unifina.signalpath.MapOutput;
-import com.unifina.signalpath.StreamParameter;
-import com.unifina.signalpath.StringOutput;
-import com.unifina.signalpath.TimeSeriesOutput;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * This module creates inputs and outputs on configuration time
@@ -28,17 +23,9 @@ import com.unifina.signalpath.TimeSeriesOutput;
  * This module works well with the MapMessageEventRecipient event recipient class.
  * @author Henri
  */
-public class ConfigurableStreamModule extends AbstractSignalPathModule implements IStreamRequirement {
+public class ConfigurableStreamModule extends AbstractStreamSourceModule implements IStreamRequirement {
 
-	protected StreamParameter streamParameter = new StreamParameter(this,"stream");
 	transient protected JSONObject streamConfig = null;
-	
-	@Override
-	public void init() {
-		addInput(streamParameter);
-		streamParameter.setCheckModuleId(true);
-		streamParameter.setUpdateOnChange(true);
-	}
 
 	@Override
 	public void sendOutput() {
@@ -54,7 +41,7 @@ public class ConfigurableStreamModule extends AbstractSignalPathModule implement
 	protected void onConfiguration(Map<String, Object> config) {
 		super.onConfiguration(config);
 		
-		Stream stream = streamParameter.value;
+		Stream stream = streamParameter.getValue();
 		if (stream.getConfig() == null) {
 			throw new IllegalStateException("Stream "+stream.getName()+" is not properly configured!");
 		}
@@ -66,31 +53,31 @@ public class ConfigurableStreamModule extends AbstractSignalPathModule implement
 			JSONObject j = (JSONObject)o;
 			String type = j.getString("type");
 			String name = j.getString("name");
-			
+
+			Output output = null;
+
 			if (type.equalsIgnoreCase("number")) {
-				TimeSeriesOutput output = new TimeSeriesOutput(this, name);
-				output.noRepeat = false;
-				addOutput(output);
+				output = new TimeSeriesOutput(this, name);
 			} else if (type.equalsIgnoreCase("string")) {
-				addOutput(new StringOutput(this,name));
+				output = new StringOutput(this, name);
 			} else if (type.equalsIgnoreCase("boolean")) {
-				TimeSeriesOutput output = new TimeSeriesOutput(this, name);
-				output.noRepeat = false;
-				addOutput(output);
+				output = new BooleanOutput(this, name);
 			} else if (type.equalsIgnoreCase("map")) {
-				addOutput(new MapOutput(this, name));
+				output = new MapOutput(this, name);
 			} else if (type.equalsIgnoreCase("list")) {
-				addOutput(new ListOutput(this, name));
+				output = new ListOutput(this, name);
+			}
+
+			if (output != null) {
+				if (output instanceof PrimitiveOutput) {
+					((PrimitiveOutput) output).setNoRepeat(false);
+				}
+				addOutput(output);
 			}
 		}
 		
 		if (streamConfig.containsKey("name"))
 			this.setName(streamConfig.get("name").toString());
 	}
-	
-	@Override
-	public Stream getStream() {
-		return streamParameter.getValue();
-	}
-	
+
 }

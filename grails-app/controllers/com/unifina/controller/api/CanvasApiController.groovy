@@ -3,6 +3,7 @@ package com.unifina.controller.api
 import com.unifina.api.SaveCanvasCommand
 import com.unifina.domain.security.Permission.Operation
 import com.unifina.domain.signalpath.Canvas
+import com.unifina.security.AuthLevel
 import com.unifina.security.StreamrApi
 import grails.converters.JSON
 import grails.plugin.springsecurity.annotation.Secured
@@ -41,12 +42,20 @@ class CanvasApiController {
 		render(canvases*.toMap() as JSON)
 	}
 
-	@StreamrApi(requiresAuthentication = false)
-	def show(String id) {
+	@StreamrApi(authenticationLevel = AuthLevel.NONE)
+	def show(String id, Boolean runtime) {
 		Canvas canvas = canvasService.authorizedGetById(id, request.apiUser, Operation.READ)
-		Map result = canvasService.reconstruct(canvas)
-		canvas.json = result as JSON
-		render canvas.toMap() as JSON
+		if (runtime) {
+			Map result = canvas.toMap()
+			Map runtimeJson = signalPathService.runtimeRequest(signalPathService.buildRuntimeRequest([type: 'json'], "canvases/$canvas.id", request.apiUser), false).json
+			result.putAll(runtimeJson)
+			render result as JSON
+		}
+		else {
+			Map result = canvasService.reconstruct(canvas, request.apiUser)
+			canvas.json = result as JSON
+			render canvas.toMap() as JSON
+		}
 	}
 
 	@StreamrApi
@@ -58,14 +67,14 @@ class CanvasApiController {
 	@StreamrApi
 	def update(String id) {
 		Canvas canvas = canvasService.authorizedGetById(id, request.apiUser, Operation.WRITE)
-		canvasService.updateExisting(canvas, readSaveCommand())
+		canvasService.updateExisting(canvas, readSaveCommand(), request.apiUser)
 		render canvas.toMap() as JSON
 	}
 
 	@StreamrApi
 	def delete(String id) {
 		Canvas canvas = canvasService.authorizedGetById(id, request.apiUser, Operation.WRITE)
-		canvas.delete(flush: true)
+		canvasService.deleteCanvas(canvas, request.apiUser)
 		response.status = 204
 		render ""
 	}
@@ -93,39 +102,27 @@ class CanvasApiController {
 	}
 
 	/**
-	 * Sends a runtime request to a running canvas
-	 */
-	@StreamrApi(requiresAuthentication = false)
-	def request(String id, Boolean local) {
-		Canvas canvas = canvasService.authorizedGetById(id, request.apiUser, Operation.READ)
-		def msg = request.JSON
-		Map response = signalPathService.runtimeRequest(msg, canvas, null, request.apiUser, local ? true : false)
-
-		log.info("request: responding with $response")
-		render response as JSON
-	}
-
-	/**
 	 * Gets the json of a single module on a canvas
 	 */
-	@StreamrApi(requiresAuthentication = false)
-	def module(String canvasId, Integer moduleId, Long dashboard) {
-		Map moduleMap = canvasService.authorizedGetModuleOnCanvas(canvasId, moduleId, dashboard, request.apiUser, Operation.READ)
-		render moduleMap as JSON
+	@StreamrApi(authenticationLevel = AuthLevel.NONE)
+	def module(String canvasId, Integer moduleId, Long dashboard, Boolean runtime) {
+		if (runtime) {
+			render signalPathService.runtimeRequest(signalPathService.buildRuntimeRequest([type: 'json'], "canvases/$canvasId/modules/$moduleId", request.apiUser), false).json as JSON
+		}
+		else {
+			Map moduleMap = canvasService.authorizedGetModuleOnCanvas(canvasId, moduleId, dashboard, request.apiUser, Operation.READ)
+			render moduleMap as JSON
+		}
 	}
 
 	/**
-	 * Sends a runtime request to a module on a canvas
+	 * Sends a runtime request to a running canvas or module
      */
-	@StreamrApi(requiresAuthentication = false)
-	def moduleRequest(String canvasId, Integer moduleId, Long dashboard, Boolean local) {
-		// Always asks for read permission only. Problem?
-		Map moduleMap = canvasService.authorizedGetModuleOnCanvas(canvasId, moduleId, dashboard, request.apiUser, Operation.READ)
-		Canvas canvas = Canvas.get(canvasId)
+	@StreamrApi(authenticationLevel = AuthLevel.NONE)
+	def runtimeRequest(String path, Boolean local) {
 		def msg = request.JSON
-
-		Map response = signalPathService.runtimeRequest(msg, canvas, moduleId, request.apiUser, local ? true : false)
-		log.info("request: responding with $response")
+		Map response = signalPathService.runtimeRequest(signalPathService.buildRuntimeRequest(msg, "canvases/$path", request.apiUser), local ? true : false)
+		log.debug("request: responding with $response")
 		render response as JSON
 	}
 

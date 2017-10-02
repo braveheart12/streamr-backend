@@ -3,6 +3,7 @@ package com.unifina.controller.api
 import com.unifina.api.NotPermittedException
 import com.unifina.api.InvalidArgumentsException
 import com.unifina.domain.data.Stream
+import com.unifina.domain.security.Key
 import com.unifina.domain.security.Permission
 import com.unifina.domain.security.Permission.Operation
 import com.unifina.domain.security.SecUser
@@ -18,22 +19,31 @@ import spock.lang.Specification
 
 @TestFor(PermissionApiController)
 @Mixin(FiltersUnitTestMixin)
-@Mock([Permission, Stream, SecUser, Canvas, UnifinaCoreAPIFilters, UserService])
+@Mock([Permission, Key, Stream, SecUser, Canvas, UnifinaCoreAPIFilters, UserService])
 class PermissionApiControllerSpec extends Specification {
 	def permissionService
 
 	// Canvas and Stream chosen because one has string id and one has long id
-	Canvas canvasOwned, canvasShared, canvasRestricted
+	Canvas canvasOwned, canvasShared, canvasRestricted, canvasPublic
 	Stream streamOwned, streamShared, streamRestricted
 
 	SecUser me, other
-	Permission canvasPermission, streamPermission
+	Permission canvasPermission, streamPermission, canvasAnonPermission
+	List<Permission> ownerPermissions
 
 	def setup() {
 		controller.permissionService = permissionService = Mock(PermissionService)
 
-		me = new SecUser(id: 1, username: "me", apiKey: "myApiKey").save(validate: false)
-		other = new SecUser(id: 2, username: "other", apiKey: "otherApiKey").save(validate: false)
+		me = new SecUser(id: 1, username: "me").save(validate: false)
+		other = new SecUser(id: 2, username: "other").save(validate: false)
+
+		def meKey = new Key(name: "meKey", user: me)
+		meKey.id = "myApiKey"
+		meKey.save(failOnError: true, validate: true)
+
+		def otherKey = new Key(name: "otherKey", user: me)
+		otherKey.id = "otherApiKey"
+		otherKey.save(failOnError: true, validate: true)
 
 		def newCanvas = { String id, SecUser owner ->
 			def c = new Canvas(user: owner)
@@ -43,6 +53,7 @@ class PermissionApiControllerSpec extends Specification {
 		canvasOwned = newCanvas("own", me)
 		canvasShared = newCanvas("shared", other)
 		canvasRestricted = newCanvas("restricted", other)
+		canvasPublic = newCanvas("public", other)
 
 		def newStream = { String id, SecUser owner ->
 			def c = new Stream(user: owner)
@@ -55,24 +66,25 @@ class PermissionApiControllerSpec extends Specification {
 
 		canvasPermission = new Permission(id: 1, user: me, clazz: Canvas.name, stringId: canvasShared.id, operation: Operation.SHARE).save(validate: false)
 		streamPermission = new Permission(id: 2, user: me, clazz: Stream.name, longId: streamShared.id, operation: Operation.SHARE).save(validate: false)
+		canvasAnonPermission = new Permission(id: 3, anonymous: true, clazz: Canvas.name, stringId: canvasPublic.id, operation: Operation.READ).save(validate: false)
 
 		// read permission allows opening stream/canvas but not opening sharing-dialog for that stream/canvas
 		new Permission(user: me, clazz: Canvas.name, stringId: canvasRestricted.id, operation: Operation.READ).save(validate: false)
 		new Permission(user: me, clazz: Stream.name, longId: streamRestricted.id, operation: Operation.READ).save(validate: false)
-    }
 
-	// returned from API, for resource owner, together with granted permissions
-	private def ownerPermissions = [
-		new Permission(id: null, user: me, operation: "read"),
-		new Permission(id: null, user: me, operation: "write"),
-		new Permission(id: null, user: me, operation: "share")
-	]
+		// returned from API, for resource owner, together with granted permissions
+		ownerPermissions = [
+			new Permission(id: null, user: me, operation: Operation.READ),
+			new Permission(id: null, user: me, operation: Operation.WRITE),
+			new Permission(id: null, user: me, operation: Operation.SHARE)
+		]
+    }
 
 	void "validate setup"() {
 		expect:
-		Canvas.count() == 3
+		Canvas.count() == 4
 		Stream.count() == 3
-		Permission.count() == 4
+		Permission.count() == 5
 		SecUser.count() == 2
 	}
 
@@ -230,5 +242,39 @@ class PermissionApiControllerSpec extends Specification {
 		withFilters(action: "save") { controller.save() }
 		then:
 		thrown InvalidArgumentsException
+	}
+
+	void "getOwnPermissions giver owner permissions for own canvas"() {
+		request.addHeader("Authorization", "Token myApiKey")
+		request.requestURI = "/api/v1/canvases/${canvasOwned.id}/permissions/me"
+		params.id = canvasOwned.id
+		params.resourceClass = Canvas
+		params.resourceId = canvasOwned.id
+
+		when:
+		withFilters(action: "index") { controller.getOwnPermissions() }
+		then:
+		response.status == 200
+		response.json*.operation == ownerPermissions*.toMap()*.operation
+
+		1 * permissionService.getPermissionsTo(_, me) >> [*ownerPermissions]
+		0 * permissionService._
+	}
+
+	void "getOwnPermissions lists granted permissions for shared canvas"() {
+		request.addHeader("Authorization", "Token myApiKey")
+		request.requestURI = "/api/v1/canvases/${canvasShared.id}/permissions/me"
+		params.id = canvasShared.id
+		params.resourceClass = Canvas
+		params.resourceId = canvasShared.id
+
+		when:
+		withFilters(action: "index") { controller.getOwnPermissions() }
+		then:
+		response.status == 200
+		response.json == [[id: 1, operation: "share", user: "me"]]
+
+		1 * permissionService.getPermissionsTo(_, me) >> [canvasPermission]
+		0 * permissionService._
 	}
 }

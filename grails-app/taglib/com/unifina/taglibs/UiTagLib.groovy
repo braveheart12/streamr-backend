@@ -34,10 +34,10 @@ public class UiTagLib {
 				\$(document).ready(function() {
 					\$("#${id}").datepicker({
 						weekStart: 1,
-						format: '${message(code:"default.datePicker.format")}',
+						format: '${message(code: "default.datePicker.format")}',
 						autoclose: true,
-						startDate: ${attrs.startDate ? 'new Date('+attrs.startDate.getTime()+')' : 'undefined'},
-						endDate: ${attrs.endDate ? 'new Date('+attrs.endDate.getTime()+')' : 'undefined'},
+						startDate: ${attrs.startDate ? 'new Date(' + attrs.startDate.getTime() + ')' : 'undefined'},
+						endDate: ${attrs.endDate ? 'new Date(' + attrs.endDate.getTime() + ')' : 'undefined'},
 						todayBtn: ${attrs.todayBtn && attrs.todayBtn == 'true' ? 'true' : 'false'}
 					});
 					\$("#${id}").on('change', function() {
@@ -98,6 +98,30 @@ public class UiTagLib {
 		out << body()
 		out << "</div>" // end panel body
 		out << "</div>" // end panel
+	}
+	
+	/**
+	 * Renders a Bootstrap panel and generates an id for it automatically. The id is used with the bootstrap scrollspy.
+	 * @attr title REQUIRED Title of the panel
+	 * @attr class Classes added to the panel
+	 */
+	def scrollSpyPanel = {attrs, body->
+		out << "<div id='${ attrs.title.replaceAll('[^A-Za-z0-9]', '').toLowerCase()  + '-panel'}' class='panel ${attrs.class ?: ''}'>"
+		out << "<div class='panel-heading'>"
+		out << "<span class='panel-title'>${attrs.title}</span>"
+		out << "</div>"
+		out << "<div class='panel-body'>"
+		out << body()
+		out << "</div>" // end panel body
+		out << "</div>" // end panel
+	}
+	
+	/**
+	 * Renders a first-level category to a list with scrollspy. Generates the id automatically
+	 * @attr title REQUIRED title of the category
+	 */
+	def scrollspyCategory = {attrs, body ->
+		out << "<h3 id='${ attrs.title.replaceAll('[^A-Za-z0-9]', '').toLowerCase() + '-category'}'>${ attrs.title }</h3>"
 	}
 	
 	/**
@@ -280,6 +304,36 @@ public class UiTagLib {
 			out << "</div>"
 		}
 	}
+	
+	/**
+	 * Renders a bootstrap style sidebar which can be used e.g. with scrollspy. Consists of sidebarElements
+	 *
+	 */
+	def sidebarNav = {attrs, body ->
+		out << "<nav class='streamr-sidebar'>"
+		out << "<ul class='nav'>"
+		out << body()
+		out << "</ul>"
+		out << "</nav>"
+	}
+	
+	/**
+	 * An element to the sidebarNav
+	 *
+	 * @attr title the title of the domain object
+	 */
+	def sidebarElement = {attrs, body ->
+		out << "<li>"
+		if(body) {
+			out << "<a href='#${ attrs.title.replaceAll('[^A-Za-z0-9]', '').toLowerCase() + '-category'}'>${ attrs.title }</a>"
+			out << "<ul class='nav'>"
+			out << body()
+			out << "</ul>"
+		} else {
+			out << "<a href='#${ attrs.title.replaceAll('[^A-Za-z0-9]', '').toLowerCase() + '-panel'}'>${ attrs.title }</a>"
+		}
+		out << "</li>"
+	}
 
 	/**
 	 * Renders a button that opens a sharePopup (sharing-dialog.js)
@@ -308,13 +362,16 @@ public class UiTagLib {
 		} else if (type == "link") {
 			open = "<a href='#' class='share-button $extraClass' "
 			close = " </a>"
+		} else if (type == "span") {
+			open = "<span class='share-button $extraClass' "
+			close = " </span>"
 		} else {
 			throw new IllegalArgumentException("Unknown 'type' for shareButton: $type")
 		}
 
 		out << open << "onclick='event.preventDefault();$extraOnClick;sharePopup($resourceUrl, $resourceName)' "
 		outputAttributes(attrs, out)
-		out << "><span class='superscript'>+</span><i class='fa fa-user'></i> " << body() << close
+		out << "><i class='fa fa-user'></i> " << body() << close
 
 		// http://stackoverflow.com/questions/33461034/call-grails-2-rrequire-module-from-a-taglib
 		// should be safe, ResourceTagLib.declareModuleRequiredByPage won't add it second time

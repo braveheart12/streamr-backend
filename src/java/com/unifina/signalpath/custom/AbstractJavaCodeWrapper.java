@@ -4,16 +4,19 @@ import java.util.*;
 
 import javax.tools.Diagnostic;
 
+import com.unifina.datasource.ITimeListener;
 import com.unifina.serialization.AnonymousInnerClassDetector;
 import com.unifina.serialization.HiddenFieldDetector;
 import com.unifina.service.SerializationService;
 import com.unifina.signalpath.*;
+import com.unifina.utils.Globals;
+import grails.util.Holders;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import com.unifina.security.UserJavaClassLoader;
 
-public abstract class AbstractJavaCodeWrapper extends ModuleWithUI {
+public abstract class AbstractJavaCodeWrapper extends ModuleWithUI implements ITimeListener {
 
 	transient AbstractCustomModule instance = null;
 	byte[] serializedInstance = null;
@@ -21,6 +24,7 @@ public abstract class AbstractJavaCodeWrapper extends ModuleWithUI {
 	String className = null;
 	String fullCode = null;
 	StoredEndpointFields storedEndpointFields = null;
+	StoredCustomModuleState storedCustomModuleState = null;
 	transient UserJavaClassLoader classLoader = null;
 
 	private static final Logger log = Logger.getLogger(AbstractJavaCodeWrapper.class);
@@ -53,16 +57,13 @@ public abstract class AbstractJavaCodeWrapper extends ModuleWithUI {
 	}
 
 	@Override
-	public void setClearState(boolean clearState) {
-		super.setClearState(clearState);
-		if (instance != null) {
-			instance.setClearState(clearState);
-		}
+	public void sendOutput() {
+		instance.sendOutput();
 	}
 
 	@Override
-	public void sendOutput() {
-		instance.sendOutput();
+	public void setTime(Date time) {
+		instance.setTime(time);
 	}
 
 	@Override
@@ -70,6 +71,19 @@ public abstract class AbstractJavaCodeWrapper extends ModuleWithUI {
 		if (instance != null) {
 			instance.clear();
 		}
+	}
+
+	@Override
+	public void setGlobals(Globals globals) {
+		super.setGlobals(globals);
+		if (instance != null) {
+			instance.setGlobals(globals);
+		}
+	}
+
+	@Override
+	public boolean wasReady() {
+		return instance != null && instance.wasReady();
 	}
 
 	@Override
@@ -85,7 +99,21 @@ public abstract class AbstractJavaCodeWrapper extends ModuleWithUI {
 			"java.text.SimpleDateFormat",
 			"java.lang.*",
 			"java.math.*",
-			"java.util.*"
+			"java.util.*",
+			"org.apache.commons.codec.binary.Hex",
+			"org.apache.commons.codec.DecoderException",
+			"javax.crypto.*",
+			"javax.crypto.spec.*",
+			"javax.imageio.ImageIO",
+			"java.awt.*",
+			"java.io.InputStream",
+			"java.io.OutputStream",
+			"java.io.IOException",
+			"java.io.ByteArrayInputStream",
+			"java.io.ByteArrayOutputStream",
+			"java.security.MessageDigest",
+			"com.google.common.io.ByteStreams",
+			"java.security.spec.*"
 		});
 	}
 
@@ -196,7 +224,7 @@ public abstract class AbstractJavaCodeWrapper extends ModuleWithUI {
 
 		// Register the created class so that it will be cleaned when Globals is destroyed
 		Class<AbstractCustomModule> clazz = (Class<AbstractCustomModule>) classLoader.loadClass(className);
-		globals.registerDynamicClass(clazz);
+		//getGlobals().registerDynamicClass(clazz);
 		return clazz;
 	}
 
@@ -215,10 +243,11 @@ public abstract class AbstractJavaCodeWrapper extends ModuleWithUI {
 		}
 
 		// Inject stuff into the module
-		instance.globals = globals;
+		instance.setGlobals(getGlobals());
 		instance.setHash(hash);
-		instance.setParentSignalPath(parentSignalPath);
+		instance.setParentSignalPath(getParentSignalPath());
 		instance.configure(config);
+		instance.setParentWrapper(this);
 
 		// Validate that anonymous inner classes are not present since they cannot be serialized
 		AnonymousInnerClassDetector anonymousInnerClassDetector = new AnonymousInnerClassDetector();
@@ -240,6 +269,7 @@ public abstract class AbstractJavaCodeWrapper extends ModuleWithUI {
 		// virtue of belonging to object graph. Note that <code>instance</code> is already defined as transient.
 		changeOwnerOfEndpoints(null);
 
+		storedCustomModuleState = instance.getStoredState();
 		storedEndpointFields = StoredEndpointFields.clearAndCollect(instance);
 
 		// Note: instance.beforeSerialization() invoked indirectly
@@ -254,11 +284,11 @@ public abstract class AbstractJavaCodeWrapper extends ModuleWithUI {
 	}
 
 	@Override
-	public void afterDeserialization() {
-		super.afterDeserialization();
+	public void afterDeserialization(SerializationService serializationService) {
+		super.afterDeserialization(serializationService);
 		try {
 			compileAndRegister(className, fullCode);
-			instance = (AbstractCustomModule) serializationService().deserialize(serializedInstance, classLoader);
+			instance = (AbstractCustomModule) serializationService.deserialize(serializedInstance, classLoader);
 			// Need to restore values after deserialization
 			restoreInstanceAfterSerialization();
 		} catch (ClassNotFoundException e) {
@@ -272,17 +302,10 @@ public abstract class AbstractJavaCodeWrapper extends ModuleWithUI {
 	 * instance.
 	 */
 	private void restoreInstanceAfterSerialization() {
-		instance.copyStateFromWrapper(parentSignalPath,
-				inputs,
-				inputsByName,
-				outputs,
-				outputsByName,
-				drivingInputs,
-				globals);
-
+		instance.copyStateFromWrapper(storedCustomModuleState);
 		storedEndpointFields.restoreFields(instance);
 		storedEndpointFields = null;
-
+		storedCustomModuleState = null;
 		changeOwnerOfEndpoints(instance);
 	}
 
@@ -296,6 +319,6 @@ public abstract class AbstractJavaCodeWrapper extends ModuleWithUI {
 	}
 
 	private SerializationService serializationService() {
-		return globals.getBean(SerializationService.class);
+		return Holders.getApplicationContext().getBean(SerializationService.class);
 	}
 }

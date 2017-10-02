@@ -1,11 +1,11 @@
 package com.unifina.controller.core.signalpath
 
+import com.unifina.domain.security.Key
 import com.unifina.domain.security.Permission.Operation
 import com.unifina.domain.signalpath.Canvas
 import grails.converters.JSON
 import grails.plugin.springsecurity.SpringSecurityService
 import grails.plugin.springsecurity.annotation.Secured
-import org.atmosphere.cpr.BroadcasterFactory
 import org.codehaus.groovy.grails.commons.GrailsApplication
 import org.springframework.util.FileCopyUtils
 
@@ -42,15 +42,26 @@ class CanvasController {
 			order "lastUpdated", "desc"
 		}
 		List<Canvas> readableCanvases = permissionService.get(Canvas, user, Operation.READ, criteriaFilter)
-		List<Canvas> shareableCanvases = permissionService.get(Canvas, user, Operation.SHARE, criteriaFilter)
-		[canvases: readableCanvases, shareable: shareableCanvases, user: user, stateFilter: params.state ? params.list("state") : []]
+		Set<Canvas> shareableCanvases = permissionService.get(Canvas, user, Operation.SHARE, criteriaFilter).toSet()
+		Set<Canvas> writableCanvases = permissionService.get(Canvas, user, Operation.WRITE, criteriaFilter).toSet()
+		[canvases: readableCanvases, shareableCanvases: shareableCanvases, writableCanvases: writableCanvases, user: user, stateFilter: params.state ? params.list("state") : []]
 	}
 
 	def editor() {
 		def beginDate = new Date()
 		def endDate = new Date()
+		def currentUser = SecUser.get(springSecurityService.currentUser.id)
+		def json = request.JSON
 
-		[beginDate:beginDate, endDate:endDate, id:params.id, examples:params.examples, user:SecUser.get(springSecurityService.currentUser.id)]
+		[
+			beginDate: beginDate,
+			endDate: endDate,
+			id: params.id,
+			examples: params.examples,
+			user: currentUser,
+			key: currentUser?.keys?.iterator()?.next(), // any one of the user's keys will do
+			json: (json as JSON)?.toString()
+		]
 	}
 
 	// Can be accessed anonymously for embedding canvases in iframes (eg. the landing page)
@@ -89,7 +100,7 @@ class CanvasController {
 	
 	@Secured(["ROLE_ADMIN"])
 	def debug() {
-		return [runners: servletContext["signalPathRunners"], returnChannels: servletContext["returnChannels"], broadcasters: BroadcasterFactory.getDefault().lookupAll()]
+		return [runners: servletContext["signalPathRunners"], returnChannels: servletContext["returnChannels"]]
 	}
 
 	def loadBrowser() {

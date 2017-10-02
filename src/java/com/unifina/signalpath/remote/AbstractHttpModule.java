@@ -2,15 +2,18 @@ package com.unifina.signalpath.remote;
 
 import com.unifina.data.FeedEvent;
 import com.unifina.data.IEventRecipient;
+import com.unifina.datasource.IStopListener;
 import com.unifina.feed.ITimestamped;
 import com.unifina.signalpath.*;
 import com.unifina.utils.MapTraversal;
+import org.apache.http.HttpHeaders;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.*;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.conn.ssl.SSLContexts;
 import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
+import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
 import org.apache.http.nio.client.HttpAsyncClient;
@@ -19,17 +22,21 @@ import javax.net.ssl.SSLContext;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Functionality that is common to HTTP modules:
+ * Functionality that is common to modules that make a HTTP request:
  *  - sync/async requests
  *  - body formatting
  *  - SSL
+ *
+ * Crucial benefit over simply doing Unirest.post: not blocking the whole canvas (Streamr thread) while request is pending
  */
-public abstract class AbstractHttpModule extends AbstractSignalPathModule implements IEventRecipient {
+public abstract class AbstractHttpModule extends ModuleWithSideEffects implements IEventRecipient, IStopListener {
 
 	protected static final String BODY_FORMAT_JSON = "application/json";
 	protected static final String BODY_FORMAT_FORMDATA = "application/x-www-form-urlencoded";
@@ -47,19 +54,25 @@ public abstract class AbstractHttpModule extends AbstractSignalPathModule implem
 	private transient Propagator asyncPropagator;
 	private transient CloseableHttpAsyncClient cachedHttpClient;
 
+	private static class DontVerifyStrategy implements TrustStrategy {
+		public boolean isTrusted(X509Certificate[] var1, String var2) throws CertificateException {
+			return true;
+		}
+	}
+
 	/** This function is overridden so that the tests can inject a mock HttpAsyncClient */
 	protected HttpAsyncClient getHttpClient() {
 		if (cachedHttpClient == null) {
 			if (trustSelfSigned) {
 				try {
-					SSLContext sslcontext = SSLContexts
+					SSLContext sslContext = SSLContexts
 							.custom()
-							.loadTrustMaterial(null, new TrustSelfSignedStrategy())
+							.loadTrustMaterial(null, new DontVerifyStrategy())
 							.build();
 					cachedHttpClient = HttpAsyncClients.custom()
 							.setMaxConnTotal(MAX_CONNECTIONS)
 							.setMaxConnPerRoute(MAX_CONNECTIONS)
-							.setSSLContext(sslcontext)
+							.setSSLContext(sslContext)
 							.build();
 				} catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException e) {
 					trustSelfSigned = false;
@@ -77,17 +90,59 @@ public abstract class AbstractHttpModule extends AbstractSignalPathModule implem
 		return cachedHttpClient;
 	}
 
+	private void stopClient() {
+		try {
+			if (cachedHttpClient != null) {
+				cachedHttpClient.close();
+			}
+		} catch (Exception e) {
+			throw new RuntimeException("Closing HTTP client failed", e);
+		}
+	}
+
+	@Override
+	public void onStop() {
+		stopClient();
+	}
+
+	@Override
+	public void finalize() {
+		stopClient();
+	}
+
+	@Override
+	public void initialize() {
+		super.initialize();
+		// copied from ModuleWithUI
+		if (getGlobals().isRunContext()) {
+			getGlobals().getDataSource().addStopListener(this);
+		}
+	}
+
+	private SSLContext getSelfSignedSslContext() {
+		SSLContext sslContext;
+		try {
+			sslContext = SSLContexts
+					.custom()
+					.loadTrustMaterial(null, new TrustSelfSignedStrategy())
+					.build();
+		} catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException e) {
+			sslContext = null;
+		}
+		return sslContext;
+	}
+
 	@Override
 	public Map<String,Object> getConfiguration() {
 		Map<String, Object> config = super.getConfiguration();
 		ModuleOptions options = ModuleOptions.get(config);
 
 		ModuleOption bodyContentTypeOption = new ModuleOption("bodyContentType", bodyContentType, ModuleOption.OPTION_STRING);
-		bodyContentTypeOption.addPossibleValue(AbstractHttpModule.BODY_FORMAT_JSON, AbstractHttpModule.BODY_FORMAT_JSON);
-		bodyContentTypeOption.addPossibleValue(AbstractHttpModule.BODY_FORMAT_FORMDATA, AbstractHttpModule.BODY_FORMAT_FORMDATA);
+		bodyContentTypeOption.addPossibleValue(BODY_FORMAT_JSON, BODY_FORMAT_JSON);
+		bodyContentTypeOption.addPossibleValue(BODY_FORMAT_FORMDATA, BODY_FORMAT_FORMDATA);
 		options.add(bodyContentTypeOption);
 
-		ModuleOption asyncOption = new ModuleOption("syncMode", isAsync ? "async" : "sync", ModuleOption.OPTION_BOOLEAN);
+		ModuleOption asyncOption = new ModuleOption("syncMode", isAsync ? "async" : "sync", ModuleOption.OPTION_STRING);
 		asyncOption.addPossibleValue("asynchronous", "async");
 		asyncOption.addPossibleValue("synchronized", "sync");
 		options.add(asyncOption);
@@ -99,19 +154,25 @@ public abstract class AbstractHttpModule extends AbstractSignalPathModule implem
 	}
 
 	@Override
-	public void onConfiguration(Map<String, Object> config) {
+	protected void onConfiguration(Map<String, Object> config) {
 		super.onConfiguration(config);
 		bodyContentType = MapTraversal.getString(config, "options.bodyContentType.value", AbstractHttpModule.BODY_FORMAT_JSON);
 		trustSelfSigned = MapTraversal.getBoolean(config, "options.trustSelfSigned.value");
 		isAsync = MapTraversal.getString(config, "options.syncMode.value", "async").equals("async");
-		timeoutMillis = 1000 * MapTraversal.getInt(config, "options.timeoutSeconds.value", DEFAULT_TIMEOUT_SECONDS);
+
+		Integer timeoutSeconds = MapTraversal.getInteger(config, "options.timeoutSeconds.value");
+		if (timeoutSeconds != null) {
+			timeoutMillis = 1000 * timeoutSeconds;
+		}
+
+		if (trustSelfSigned && getSelfSignedSslContext() == null) {
+			trustSelfSigned = false;
+			// TODO: notify user that self-signed certificates aren't supported
+		}
 
 		// HTTP module in async mode won't send outputs on SendOutput(),
 		// 	but only in receive() where it creates its own Propagator
-		propagationSink = isAsync;
-
-		// try getting HTTP client, resets trustSelfSigned if such SSL client can't be created
-		getHttpClient();
+		setPropagationSink(isAsync);
 	}
 
 	/**
@@ -121,8 +182,8 @@ public abstract class AbstractHttpModule extends AbstractSignalPathModule implem
 	protected abstract HttpRequestBase createRequest();
 
 	@Override
-	public void sendOutput() {
-		final HttpTransaction response = new HttpTransaction(globals.time);
+	public void activateWithSideEffects() {
+		final HttpTransaction response = new HttpTransaction(getGlobals().time);
 
 		// get HTTP request from subclass
 		HttpRequestBase request = null;
@@ -134,6 +195,10 @@ public abstract class AbstractHttpModule extends AbstractSignalPathModule implem
 			sendOutput(response);
 			return;
 		}
+		if (request instanceof HttpEntityEnclosingRequestBase && BODY_FORMAT_JSON.equals(bodyContentType)) {
+			request.setHeader(HttpHeaders.ACCEPT, "application/json");
+			request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+		}	// FORMDATA headers are correct already if the entity is UrlEncodedFormEntity
 		RequestConfig requestConfig = RequestConfig.custom()
 				.setConnectTimeout(timeoutMillis)
 				.setConnectionRequestTimeout(timeoutMillis)
@@ -168,9 +233,9 @@ public abstract class AbstractHttpModule extends AbstractSignalPathModule implem
 
 			private void returnResponse() {
 				response.responseTime = System.currentTimeMillis() - startTime;
-				response.timestamp = globals.isRealtime() ? new Date() : globals.time;
+				response.timestamp = getGlobals().isRealtime() ? new Date() : getGlobals().time;
 				if (async) {
-					globals.getDataSource().getEventQueue().enqueue(new FeedEvent<>(response, response.timestamp, self));
+					getGlobals().getDataSource().getEventQueue().enqueue(new FeedEvent<>(response, response.timestamp, self));
 				} else {
 					latch.countDown();	// goto latch.await() below
 				}
@@ -190,6 +255,11 @@ public abstract class AbstractHttpModule extends AbstractSignalPathModule implem
 		}
 	}
 
+	@Override
+	protected String getNotificationAboutActivatingWithoutSideEffects() {
+		return getName() + ": Requests are not being made in historical mode by default. This can be changed in module options.";
+	}
+
 	/**
 	 * Asynchronously handle server response, call comes from event queue
 	 * @param event containing HttpTransaction created within sendOutput
@@ -198,7 +268,6 @@ public abstract class AbstractHttpModule extends AbstractSignalPathModule implem
 	public void receive(FeedEvent event) {
 		if (event.content instanceof HttpTransaction) {
 			sendOutput((HttpTransaction) event.content);
-			setSendPending(true);
 			getPropagator().propagate();
 		} else {
 			super.receive(event);
@@ -225,19 +294,15 @@ public abstract class AbstractHttpModule extends AbstractSignalPathModule implem
 		public VerbParameter(AbstractSignalPathModule owner, String name) {
 			super(owner, name, "POST"); //this.getValueList()[0]);
 		}
-		private List<PossibleValue> getValueList() {
+		@Override
+		protected List<PossibleValue> getPossibleValues() {
 			return Arrays.asList(
-				new PossibleValue("GET", "GET"),
-				new PossibleValue("POST", "POST"),
-				new PossibleValue("PUT", "PUT"),
-				new PossibleValue("DELETE", "DELETE"),
-				new PossibleValue("PATCH", "PATCH")
+					new PossibleValue("GET", "GET"),
+					new PossibleValue("POST", "POST"),
+					new PossibleValue("PUT", "PUT"),
+					new PossibleValue("DELETE", "DELETE"),
+					new PossibleValue("PATCH", "PATCH")
 			);
-		}
-		@Override public Map<String, Object> getConfiguration() {
-			Map<String, Object> config = super.getConfiguration();
-			config.put("possibleValues", getValueList());
-			return config;
 		}
 		public boolean hasBody() {
 			String v = this.getValue();

@@ -3,8 +3,6 @@ package com.unifina.signalpath.charts;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.unifina.push.PushChannel;
-import com.unifina.signalpath.AbstractSignalPathModule;
 import com.unifina.signalpath.DoubleParameter;
 import com.unifina.signalpath.ModuleWithUI;
 import com.unifina.signalpath.TimeSeriesInput;
@@ -46,9 +44,7 @@ public class Gauge extends ModuleWithUI {
 			msg.put("v",value.value);
 		}
 
-		if (globals != null && globals.getUiChannel() != null) {
-			globals.getUiChannel().push(msg, uiChannelId);
-		}
+		pushToUiChannel(msg);
 	}
 
 	@Override
