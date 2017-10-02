@@ -1,7 +1,7 @@
 package com.unifina.signalpath.blockchain
 
+import com.unifina.BeanMockingSpecification
 import com.unifina.api.NotPermittedException
-import com.unifina.datasource.DataSource
 import com.unifina.datasource.RealtimeDataSource
 import com.unifina.domain.security.IntegrationKey
 import com.unifina.domain.security.SecUser
@@ -15,6 +15,9 @@ import spock.lang.Specification
 @Mock([IntegrationKey, SecUser])
 class EthereumAccountParameterSpec extends Specification {
 
+@Mock([IntegrationKey, SecUser])
+class EthereumAccountParameterSpec extends BeanMockingSpecification {
+
 	EthereumAccountParameter parameter
 
 	void setup() {
@@ -22,6 +25,8 @@ class EthereumAccountParameterSpec extends Specification {
 		module.globals = Stub(Globals) {
 			getBean(_) >> new EthereumIntegrationKeyService()
 		}
+		mockBean(EthereumIntegrationKeyService, new EthereumIntegrationKeyService())
+		module.globals = new Globals()
 		parameter = new EthereumAccountParameter(module, "ethAccount")
 	}
 
