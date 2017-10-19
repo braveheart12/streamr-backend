@@ -73,21 +73,17 @@ class ApiService {
 			// To filter out duplicates
 			resultTransformer Criteria.DISTINCT_ROOT_ENTITY
 //			expanded.each {
-			fetchMode "items", FetchMode.JOIN
-//			createAlias("items", "items", CriteriaSpecification.LEFT_JOIN)
+			createAlias("items", "items", Criteria.LEFT_JOIN)
+			fetchMode "item", FetchMode.JOIN
 //			fetchMode "items", FetchMode.JOIN
-//			projections {
-//
-//			}
+			projections {
+				property("items.title","title")
+			}
 		}
 	}
 
 	boolean isPublicFlagOn(params) {
 		return params.public != null && Boolean.parseBoolean(params.public)
-	}
-
-	boolean isIncludeOwnPermissionsFlagOn(params) {
-		return params.includeOwnPermissions != null && Boolean.parseBoolean(params.includeOwnPermissions)
 	}
 
 	@CompileStatic

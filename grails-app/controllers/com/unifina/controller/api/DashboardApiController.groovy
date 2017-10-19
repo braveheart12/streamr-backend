@@ -27,7 +27,7 @@ class DashboardApiController {
 		def searchCriteria = apiService.createSearchCriteria(params, ["name"])
 		def joinCriteria = apiService.createJoinCriteria(params)
 		def criteria = searchCriteria << joinCriteria
-		def dashboards = permissionService.get(Dashboard, request.apiUser, Permission.Operation.READ, apiService.isPublicFlagOn(params), criteria, apiService.isIncludeOwnPermissionsFlagOn(params))
+		def dashboards = permissionService.get(Dashboard, request.apiUser, Permission.Operation.READ, apiService.isPublicFlagOn(params), criteria)
 		render(dashboards as JSON)
 	}
 

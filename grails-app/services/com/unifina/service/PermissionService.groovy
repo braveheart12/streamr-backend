@@ -168,7 +168,7 @@ class PermissionService {
 	 * Get all resources of given type that the user has specified type of access to
 	 * @throws IllegalArgumentException for bad resourceClass
 	 */
-	public <T> List<T> get(Class<T> resourceClass, userish, Operation op, boolean includeAnonymous, Closure resourceFilter = {}, boolean includeOwnPermissions = false) {
+	public <T> List<T> get(Class<T> resourceClass, userish, Operation op, boolean includeAnonymous, Closure resourceFilter = {}) {
 		if (!includeAnonymous && !userish?.id) {
 			return []
 		}
@@ -217,18 +217,8 @@ class PermissionService {
 			resourceClass.getDeclaredField("permissions")
 			ownPermissionsExists = true
 		} catch (e) {}
-		if (includeOwnPermissions && ownPermissionsExists) {
-			// TODO: make better
-			resources = resources.collect({ res ->
-				res.ownPermissions = perms.findAll({ perm ->
-					res.id == perm[resourceIdProp]
-				})
-				res
-			})
-			return resources
-		} else {
-			return resources
-		}
+
+		return resources
 	}
 	/** Overload to allow leaving out the anonymous-include-flag but including the filter */
 	public <T> List<T> get(Class<T> resourceClass, userish, Operation op, Closure resourceFilter = {}, boolean includeOwnPermissions = false) {
