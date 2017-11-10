@@ -68,17 +68,9 @@ class ApiService {
 	}
 
 	Closure createJoinCriteria(params) {
-		def expanded = params.list("expand") ?: []
+//		def expanded = params.list("expand") ?: []
 		return {
-			// To filter out duplicates
-			resultTransformer Criteria.DISTINCT_ROOT_ENTITY
-//			expanded.each {
-			createAlias("items", "items", Criteria.LEFT_JOIN)
-			fetchMode "item", FetchMode.JOIN
-//			fetchMode "items", FetchMode.JOIN
-			projections {
-				property("items.title","title")
-			}
+
 		}
 	}
 

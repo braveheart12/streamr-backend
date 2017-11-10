@@ -221,20 +221,20 @@ class PermissionService {
 		return resources
 	}
 	/** Overload to allow leaving out the anonymous-include-flag but including the filter */
-	public <T> List<T> get(Class<T> resourceClass, userish, Operation op, Closure resourceFilter = {}, boolean includeOwnPermissions = false) {
-		return get(resourceClass, userish, op, false, resourceFilter, includeOwnPermissions)
+	public <T> List<T> get(Class<T> resourceClass, userish, Operation op, Closure resourceFilter = {}) {
+		return get(resourceClass, userish, op, false, resourceFilter)
 	}
 	/** Convenience overload, adding a flag for public resources may look cryptic */
-	public <T> List<T> getAll(Class<T> resourceClass, userish, Operation op, Closure resourceFilter = {}, boolean includeOwnPermissions = false) {
-		return get(resourceClass, userish, op, true, resourceFilter, includeOwnPermissions)
+	public <T> List<T> getAll(Class<T> resourceClass, userish, Operation op, Closure resourceFilter = {}) {
+		return get(resourceClass, userish, op, true, resourceFilter)
 	}
 	/** Overload to allow leaving out the op but including the filter */
-	public <T> List<T> get(Class<T> resourceClass, userish, Closure resourceFilter = {}, boolean includeOwnPermissions = false) {
-		return get(resourceClass, userish, Operation.READ, false, resourceFilter, includeOwnPermissions)
+	public <T> List<T> get(Class<T> resourceClass, userish, Closure resourceFilter = {}) {
+		return get(resourceClass, userish, Operation.READ, false, resourceFilter)
 	}
 	/** Convenience overload, adding a flag for public resources may look cryptic */
-	public <T> List<T> getAll(Class<T> resourceClass, userish, Closure resourceFilter = {}, boolean includeOwnPermissions = false) {
-		return get(resourceClass, userish, Operation.READ, true, resourceFilter, includeOwnPermissions)
+	public <T> List<T> getAll(Class<T> resourceClass, userish, Closure resourceFilter = {}) {
+		return get(resourceClass, userish, Operation.READ, true, resourceFilter)
 	}
 
 	/**

@@ -46,7 +46,7 @@ class SecUser {
 			return false
 		}
 
-		if (obj.id == null || this.id == null) {
+		if (obj == null || obj.id == null || this.id == null) {
 			return this.is(obj)
 		} else {
 			return obj.id == this.id
