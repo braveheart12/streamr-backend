@@ -14,7 +14,8 @@ const inProduction = process.env.NODE_ENV === 'production'
 module.exports = {
     entry: {
         profilePage: path.resolve(root, 'web-app', 'react-app', 'profilePageMain.js'),
-        dashboardPage: path.resolve(root, 'web-app', 'react-app', 'dashboardPageMain.js')
+        dashboardPage: path.resolve(root, 'web-app', 'react-app', 'dashboardPageMain.js'),
+        streamPage: path.resolve(root, 'web-app', 'react-app', 'streamPageMain.js')
     },
     output: {
         path: path.resolve(root, 'web-app', 'js', 'unifina', 'webpack-bundles'),

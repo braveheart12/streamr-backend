@@ -11,11 +11,12 @@ type Children = string | Node | Array<Node>
 import styles from './breadcrumb.pcss'
 
 export class StreamrBreadcrumb extends Component<{
-    children?: Children
+    children?: Children,
+    style?: {}
 }> {
     render() {
         return (
-            <Breadcrumb className={styles.breadcrumb}>
+            <Breadcrumb style={this.props.style} className={styles.breadcrumb}>
                 {this.props.children}
             </Breadcrumb>
         )

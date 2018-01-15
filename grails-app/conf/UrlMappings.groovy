@@ -33,6 +33,7 @@ class UrlMappings {
 		"/api/v1/streams"(resources: "streamApi", excludes: ["create", "edit"])
 		"/api/v1/streams/$resourceId/permissions"(resources: "permissionApi", excludes: ["create", "edit", "update"]) { resourceClass = Stream }
 		"/api/v1/streams/$resourceId/permissions/me"(controller: "permissionApi", action: "getOwnPermissions") { resourceClass = Stream }
+		"/api/v1/streams/$id/fields"(controller: "streamApi", action: "setFields")
 		"/api/v1/streams/$id/detectFields"(controller: "streamApi", action: "detectFields")
 		"/api/v1/streams/$id/range"(controller: "streamApi", action: "range")
 		"/api/v1/streams/$resourceId/keys"(resources: "keyApi", excludes: ["create", "edit", "update"]) { resourceClass = Stream }
@@ -59,5 +60,8 @@ class UrlMappings {
 
 		// Mappings for pages using React Router (the root for the router)
 		"/dashboard/editor/$id**?"(controller: "dashboard", action: "editor")
+		"/stream/$path**?"(controller: "stream", action: "index")
+
+		"/api/v1/oembed"(controller: "oembedApi", action: "index")
 	}
 }

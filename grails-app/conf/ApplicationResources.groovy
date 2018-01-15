@@ -286,6 +286,11 @@ modules = {
 		resource url: [dir: 'js/unifina/webpack-bundles', file: 'dashboardPage.bundle.js', plugin: 'unifina-core']
 		resource url: [dir: 'js/unifina/webpack-bundles', file: 'dashboardPage.bundle.css', plugin: 'unifina-core']
 	}
+	'stream-page-webpack-bundle' {
+		dependsOn 'webpack-commons-bundle'
+		resource url: [dir: 'js/unifina/webpack-bundles', file: 'streamPage.bundle.js', plugin: 'unifina-core']
+		resource url: [dir: 'js/unifina/webpack-bundles', file: 'streamPage.bundle.css', plugin: 'unifina-core']
+	}
 	'signalpath-core' {
 		// Easier to merge if dependencies are one-per-row instead of comma-separated list
 		dependsOn 'streamr'

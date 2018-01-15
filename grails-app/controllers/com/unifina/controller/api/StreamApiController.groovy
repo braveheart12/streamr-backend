@@ -78,6 +78,18 @@ class StreamApiController {
 		}
 	}
 
+	@StreamrApi
+	def setFields(String id) {
+		getAuthorizedStream(id, Operation.WRITE) { stream ->
+			def fields = request.JSON
+			Map config = stream.config ? JSON.parse(stream.config) : [:]
+			config.fields = fields
+			stream.config = (config as JSON)
+
+			Map result = [success: true, id: stream.id]
+			render result as JSON
+		}
+	}
 
 	private String readConfig() {
 		Map config = request.JSON.config
