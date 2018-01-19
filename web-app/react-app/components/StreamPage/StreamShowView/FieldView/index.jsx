@@ -4,6 +4,7 @@ import React, {Component} from 'react'
 import {connect} from 'react-redux'
 import {Panel, Table, Button, FormControl, Alert} from 'react-bootstrap'
 import FontAwesome from 'react-fontawesome'
+import serialize from 'form-serialize'
 import {saveFields} from '../../../../actions/stream'
 import {showError} from '../../../../actions/notification'
 
@@ -39,6 +40,7 @@ export class FieldView extends Component<Props, State> {
         fields: [],
         savedFields: []
     }
+    form: any
     
     componentWillReceiveProps(props: Props) {
         this.setState({
@@ -70,42 +72,106 @@ export class FieldView extends Component<Props, State> {
         })
     }
     
-    addNewField = () => {
-        this.setState({
-            fields: [...this.state.fields, this.state.newField],
-            newField: {}
-        })
-    }
+    static getNameForInput = (type: string, i: number | string) => `${type}_${i}`
     
-    removeField = (i: number) => {
-        const fields = [...this.state.fields]
-        fields.splice(i, 1)
-        this.setState({
-            fields
+    parseFormAndSetState = (addNew: boolean = false) => {
+        const data = serialize(this.form, {
+            hash: true,
+            empty: true
         })
-    }
-    
-    editField = (i: number, fieldOfField: string, newValue: string) => {
-        const fields = [...this.state.fields]
-        fields[i] = {
-            ...fields[i],
-            [fieldOfField]: newValue
-        }
-        this.setState({
-            fields
-        })
-    }
-    
-    editNewField = (fieldOfField: string, value: string) => {
-        this.setState({
-            newField: {
-                ...this.state.newField,
-                [fieldOfField]: value
+        const fields: Array<{
+            name: string,
+            type: string,
+            remove?: ?string
+        }> = []
+        let newField
+        Object.keys(data).forEach(key => {
+            const typeOfField = key.replace(/_(\w|\d)+/, '')
+            const i = parseFloat(key.replace(/(\w+)_/, ''))
+            const value = data[key]
+            if (!isNaN(i)) {
+                fields[i] = {
+                    ...(fields[i] || {}),
+                    [typeOfField]: value
+                }
             }
         })
+        const newFieldName = data[FieldView.getNameForInput('name', 'new')]
+        const newFieldType = data[FieldView.getNameForInput('type', 'new')]
+        if (addNew) {
+            if (newFieldName && newFieldType) {
+                fields.push({
+                    name: newFieldName,
+                    type: newFieldType
+                })
+            }
+        } else {
+            newField = {
+                name: newFieldName,
+                type: newFieldType
+            }
+        }
+        this.setState({
+            fields: fields.filter(f => !f.remove),
+            newField: addNew ? {} : newField
+        })
     }
     
+    onChange = () => {
+        this.parseFormAndSetState()
+    }
+    
+    onSubmit = (e: Event) => {
+        e.preventDefault()
+        this.parseFormAndSetState(true)
+    }
+
     render() {
+        const NameField = (props: {inputName: string, value?: ?string}) => (
+            <FormControl
+                bsSize="sm"
+                placeholder="Name"
+                name={props.inputName}
+                defaultValue={props.value}
+                onBlur={this.onChange}
+            />
+        )
+        const TypeField = (props: {inputName: string, value?: ?string}) => (
+            <FormControl
+                componentClass="select"
+                placeholder="select"
+                bsSize="sm"
+                name={props.inputName}
+                defaultValue={props.value}
+                onChange={this.onChange}
+            >
+                {['number', 'string', 'boolean', 'map', 'list'].map(t => (
+                    <option
+                        key={t}
+                        value={t}
+                    >
+                        {t}
+                    </option>
+                ))}
+            </FormControl>
+        )
+        const RemoveField = (props: {inputName: string}) => (
+            <Button
+                bsSize="sm"
+                bsStyle="danger"
+                className={styles.removeFieldButton}
+            >
+                <input
+                    type="checkbox"
+                    name={props.inputName}
+                    className={styles.removeFieldInput}
+                    onChange={this.onChange}
+                />
+                <FontAwesome
+                    name="minus"
+                />
+            </Button>
+        )
         return (
             <Panel className={styles.fieldView}>
                 <Panel.Heading>
@@ -115,7 +181,6 @@ export class FieldView extends Component<Props, State> {
                             <Button bsSize="sm" onClick={this.save} bsStyle="primary">Save</Button>
                             <Button bsSize="sm" onClick={this.cancelEditing}>Cancel</Button>
                         </div>
-                    
                     ) : (
                         <div className="panel-heading-controls">
                             <Button bsSize="sm" onClick={this.startEditing}>Configure Fields</Button>
@@ -124,101 +189,75 @@ export class FieldView extends Component<Props, State> {
                 </Panel.Heading>
                 <Panel.Body>
                     {(this.state.fields.length || this.state.editing) ? (
-                        <Table striped condensed hover>
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Type</th>
-                                    {this.state.editing && <th/>}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {this.state.fields.map(({name, type}: {name: string, type: string}, i: number) => this.state.editing ? (
-                                    <tr key={i}>
-                                        <td>
-                                            <FormControl
-                                                bsSize="sm"
-                                                value={name}
-                                                onChange={(e) => {
-                                                    this.editField(i, 'name', e.target.value)
-                                                }}
-                                                onKeyPress={(e) => {
-                                                    if (e.key === 'Enter') {
-                                                        this.addNewField()
-                                                    }
-                                                }}
-                                            />
-                                        </td>
-                                        <td>
-                                            <FormControl
-                                                componentClass="select"
-                                                placeholder="select"
-                                                bsSize="sm"
-                                                value={type}
-                                                onChange={(e) => {
-                                                    this.editField(i, 'type', e.target.value)
-                                                }}
-                                            >
-                                                <option value="number">number</option>
-                                                <option value="string">string</option>
-                                                <option value="boolean">boolean</option>
-                                                <option value="map">map</option>
-                                                <option value="list">list</option>
-                                            </FormControl>
-                                        </td>
-                                        <td style={{
-                                            width: 0
-                                        }}>
-                                            <Button bsSize="sm" bsStyle="danger" onClick={() => this.removeField(i)}>
-                                                <FontAwesome name="minus"/>
-                                            </Button>
-                                        </td>
+                        <form
+                            ref={f => this.form = f}
+                            onSubmit={this.onSubmit}
+                        >
+                            <Table striped condensed hover className={this.state.editing && styles.editing}>
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Type</th>
+                                        {this.state.editing && <th/>}
                                     </tr>
-                                ) : (
-                                    <tr key={name}>
-                                        <td>{name}</td>
-                                        <td>{type}</td>
-                                    </tr>
-                                ))}
-                                {this.state.editing && (
-                                    <tr className={styles.newFieldRow}>
-                                        <td>
-                                            <FormControl
-                                                value={this.state.newField.name || ''}
-                                                bsSize="sm"
-                                                onChange={(e) => {
-                                                    this.editNewField('name', e.target.value)
-                                                }}
-                                            />
-                                        </td>
-                                        <td>
-                                            <FormControl
-                                                componentClass="select"
-                                                placeholder="select"
-                                                bsSize="sm"
-                                                value={this.state.newField.type || ''}
-                                                onChange={(e) => {
-                                                    this.editNewField('type', e.target.value)
-                                                }}
-                                            >
-                                                <option value="number">number</option>
-                                                <option value="string">string</option>
-                                                <option value="boolean">boolean</option>
-                                                <option value="map">map</option>
-                                                <option value="list">list</option>
-                                            </FormControl>
-                                        </td>
-                                        <td style={{
-                                            width: 0
-                                        }}>
-                                            <Button bsSize="sm" bsStyle="success" onClick={this.addNewField}>
-                                                <FontAwesome name="plus"/>
-                                            </Button>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </Table>
+                                </thead>
+                                <tbody>
+                                    {this.state.fields.map(({name, type}: {name: string, type: string}, i: number) => this.state.editing ? (
+                                        <tr key={i}>
+                                            <td>
+                                                <NameField
+                                                    inputName={FieldView.getNameForInput('name', i)}
+                                                    value={name}
+                                                />
+                                            </td>
+                                            <td>
+                                                <TypeField
+                                                    inputName={FieldView.getNameForInput('type', i)}
+                                                    value={type}
+                                                />
+                                            </td>
+                                            <td>
+                                                <RemoveField
+                                                    inputName={FieldView.getNameForInput('remove', i)}
+                                                />
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        <tr key={name}>
+                                            <td>{name}</td>
+                                            <td>{type}</td>
+                                        </tr>
+                                    ))}
+                                    {this.state.editing && (
+                                        <tr className={styles.newFieldRow}>
+                                            <td>
+                                                <NameField
+                                                    inputName={FieldView.getNameForInput('name', 'new')}
+                                                    value={this.state.newField.name}
+                                                />
+                                            </td>
+                                            <td>
+                                                <TypeField
+                                                    inputName={FieldView.getNameForInput('type', 'new')}
+                                                    value={this.state.newField.type}
+                                                />
+                                            </td>
+                                            <td style={{
+                                                width: 0
+                                            }}>
+                                                <Button
+                                                    bsSize="sm"
+                                                    bsStyle="success"
+                                                    type="submit"
+                                                >
+                                                    <FontAwesome name="plus"/>
+                                                </Button>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </Table>
+                        </form>
                     ) : (
                         <Alert>
                             <FontAwesome name="exclamation-mark"/>

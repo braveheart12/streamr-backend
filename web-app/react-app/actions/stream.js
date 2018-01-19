@@ -82,7 +82,13 @@ export const getMyStreamPermissions = (id: Stream.id) => (dispatch: Function) =>
 export const saveFields = (id: Stream.id, fields: Stream.config.fields) => (dispatch: Function) => {
     dispatch(saveFieldsRequest())
     return axios.post(createLink(`${apiUrl}/${id}/fields`), fields)
-        .then(({data}) => dispatch(saveFieldsSuccess(id, data)))
+        .then(({data}) => {
+            dispatch(saveFieldsSuccess(id, data))
+            dispatch(showSuccess({
+                title: 'Success!',
+                message: 'Fields saved successfully'
+            }))
+        })
         .catch(res => {
             const e = parseError(res)
             dispatch(saveFieldsFailure(e))

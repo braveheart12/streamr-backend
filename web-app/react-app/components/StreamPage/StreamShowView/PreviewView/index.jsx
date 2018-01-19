@@ -41,8 +41,8 @@ export class PreviewView extends Component<Props, State> {
         })
     }
     
-    componentWillMount() {
-        this.client.subscribe(this.props.stream.id, this.onData)
+    componentWillReceiveProps(newProps: Props) {
+        newProps.stream && this.client.subscribe(newProps.stream.id, this.onData)
     }
     
     onData = (data: {}) => {
