@@ -11,7 +11,7 @@
 
 <body>
 	<script>
-		const keyId = '${keyId}'
+		const keyId = '${key.id}'
 	</script>
 	<div id="streamPageRoot" style="width:100%;height:100%"></div>
 </body>

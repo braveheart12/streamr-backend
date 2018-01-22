@@ -12,6 +12,7 @@ import FieldView from './FieldView'
 import PreviewView from './PreviewView'
 
 import {getStream, openStream, getMyStreamPermissions} from '../../../actions/stream'
+import {getCurrentUser} from '../../../actions/user'
 
 import type {Stream, State as ReducerState} from '../../../flowtype/stream-types'
 
@@ -22,6 +23,7 @@ type Props = {
     getStream: (id: Stream.id) => void,
     openStream: (id: Stream.id) => void,
     getMyStreamPermissions: (id: Stream.id) => void,
+    getCurrentUser: () => void,
     match: {
         params: {
             id?: string
@@ -44,6 +46,7 @@ export class StreamShowView extends Component<Props, State> {
         this.props.getStream(id)
         this.props.openStream(id)
         this.props.getMyStreamPermissions(id)
+        this.props.getCurrentUser()
     }
     
     render() {
@@ -97,6 +100,9 @@ const mapDispatchToProps = (dispatch: Function) => ({
     },
     getMyStreamPermissions(id: Stream.id) {
         dispatch(getMyStreamPermissions(id))
+    },
+    getCurrentUser() {
+        dispatch(getCurrentUser())
     }
 })
 

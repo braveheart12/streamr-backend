@@ -35,14 +35,12 @@ import java.text.SimpleDateFormat
 class StreamController {
 
 	def springSecurityService
-	
+
 	def permissionService
 	def streamService
 
 	def index() {
-		return [
-				key: springSecurityService.currentUser?.keys?.iterator()?.next()
-		]
+		[key: springSecurityService.currentUser?.keys?.iterator()?.next()]
 	}
 
 	def list() {

@@ -20,6 +20,7 @@ type State = {
     editing: boolean,
     fields: Stream.config.fields,
     savedFields: Stream.config.fields,
+    duplicateFieldIndexes: Array<number>,
     newField: {
         name?: string,
         type?: string
@@ -38,7 +39,8 @@ export class FieldView extends Component<Props, State> {
         editing: false,
         newField: {},
         fields: [],
-        savedFields: []
+        savedFields: [],
+        duplicateFieldIndexes: []
     }
     form: any
     
@@ -56,13 +58,19 @@ export class FieldView extends Component<Props, State> {
     }
     
     save = () => {
-        this.props.saveFields(this.props.stream.id, this.state.fields)
-            .then(() => {
-                this.setState({
-                    editing: false,
-                    savedFields: this.state.fields
+        if (this.state.duplicateFieldIndexes.length === 0) {
+            this.props.saveFields(this.props.stream.id, this.state.fields)
+                .then(() => {
+                    this.setState({
+                        editing: false,
+                        savedFields: this.state.fields
+                    })
                 })
+        } else {
+            this.props.showError({
+                title: `Duplicate field names: ${this.state.fields[this.state.duplicateFieldIndexes[0]].name}`
             })
+        }
     }
     
     cancelEditing = () => {
@@ -73,6 +81,21 @@ export class FieldView extends Component<Props, State> {
     }
     
     static getNameForInput = (type: string, i: number | string) => `${type}_${i}`
+    
+    findDuplicatesFromFields = (fields: Array<Stream.fields>) => {
+        const duplicates = []
+        fields.reduce((existingFieldsWithIndexes, currentField, i) => {
+            if (existingFieldsWithIndexes[currentField.name] !== undefined) {
+                duplicates.push(existingFieldsWithIndexes[currentField.name], i)
+            } else {
+                existingFieldsWithIndexes[currentField.name] = i
+            }
+            return existingFieldsWithIndexes
+        }, {})
+        this.setState({
+            duplicateFieldIndexes: duplicates
+        })
+    }
     
     parseFormAndSetState = (addNew: boolean = false) => {
         const data = serialize(this.form, {
@@ -111,10 +134,12 @@ export class FieldView extends Component<Props, State> {
                 type: newFieldType
             }
         }
+        const newFields = fields.filter(f => !f.remove)
         this.setState({
-            fields: fields.filter(f => !f.remove),
+            fields: newFields,
             newField: addNew ? {} : newField
         })
+        this.findDuplicatesFromFields(newFields)
     }
     
     onChange = () => {
@@ -203,7 +228,7 @@ export class FieldView extends Component<Props, State> {
                                 </thead>
                                 <tbody>
                                     {this.state.fields.map(({name, type}: {name: string, type: string}, i: number) => this.state.editing ? (
-                                        <tr key={i}>
+                                        <tr key={i} className={this.state.duplicateFieldIndexes.includes(i) ? styles.duplicate : ''}>
                                             <td>
                                                 <NameField
                                                     inputName={FieldView.getNameForInput('name', i)}
@@ -275,7 +300,7 @@ const mapStateToProps = ({stream}: { stream: ReducerState }) => ({
 })
 
 const mapDispatchToProps = (dispatch) => ({
-    showError(error: {title: string}) {
+    showError(error: {title: string, message?: string}) {
         dispatch(showError(error))
     },
     saveFields(id: Stream.id, fields: Stream.config.fields) {

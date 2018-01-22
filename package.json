@@ -109,6 +109,7 @@
     "redux-thunk": "^2.2.0",
     "sinon": "^2.3.6",
     "streamr-client": "^0.9.3",
+    "stringify-object": "^3.2.1",
     "style-loader": "^0.17.0",
     "underscore": "*",
     "uuid": "latest",
