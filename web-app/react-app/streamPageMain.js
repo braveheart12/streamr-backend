@@ -30,7 +30,7 @@ render(
                 <Notifier/>
                 <Route path="/create" component={StreamCreateView}/>
                 <Route path="/show/:id" component={StreamShowView}/>
-                <Route exact path="/" component={() => {
+                <Route exact path="/(index)?" component={() => {
                     window.location.assign(path.resolve(basename, 'list'))
                 }}/>
             </div>

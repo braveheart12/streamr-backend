@@ -7,6 +7,9 @@ import {
     CREATE_STREAM_REQUEST,
     CREATE_STREAM_SUCCESS,
     CREATE_STREAM_FAILURE,
+    UPDATE_STREAM_REQUEST,
+    UPDATE_STREAM_SUCCESS,
+    UPDATE_STREAM_FAILURE,
     GET_MY_STREAM_PERMISSIONS_REQUEST,
     GET_MY_STREAM_PERMISSIONS_SUCCESS,
     GET_MY_STREAM_PERMISSIONS_FAILURE,
@@ -28,6 +31,7 @@ export default function(state: State = initialState, action: Action) : State {
     switch (action.type) {
         case GET_STREAM_REQUEST:
         case CREATE_STREAM_REQUEST:
+        case UPDATE_STREAM_REQUEST:
         case GET_MY_STREAM_PERMISSIONS_REQUEST:
             return {
                 ...state,
@@ -35,6 +39,7 @@ export default function(state: State = initialState, action: Action) : State {
             }
         case GET_STREAM_SUCCESS:
         case CREATE_STREAM_SUCCESS:
+        case UPDATE_STREAM_SUCCESS:
             return {
                 ...state,
                 byId: {
@@ -49,6 +54,7 @@ export default function(state: State = initialState, action: Action) : State {
             }
         case GET_STREAM_FAILURE:
         case CREATE_STREAM_FAILURE:
+        case UPDATE_STREAM_FAILURE:
         case GET_MY_STREAM_PERMISSIONS_FAILURE:
             return {
                 ...state,

@@ -5,7 +5,7 @@ declare var keyId: string
 import React, {Component} from 'react'
 import {connect} from 'react-redux'
 import StreamrClient from 'streamr-client'
-import {Panel, Table, Modal} from 'react-bootstrap'
+import {Panel, Table, Modal, Button} from 'react-bootstrap'
 import FontAwesome from 'react-fontawesome'
 import moment from 'moment-timezone'
 import {default as stringifyObject} from 'stringify-object'
@@ -21,6 +21,7 @@ type DataPoint = {
         timestamp: number
     }
 }
+
 type Props = {
     stream: Stream,
     currentUser: User
@@ -46,6 +47,7 @@ export class PreviewView extends Component<Props, State> {
     constructor() {
         super()
         this.client = new StreamrClient({
+            // TODO: change to use the value in config after merging CORE-1087
             url: 'ws://127.0.0.1:8890/api/v1/ws',
             authKey: keyId,
             autoconnect: true,
@@ -86,10 +88,24 @@ export class PreviewView extends Component<Props, State> {
         })
     }
     
-    static prettyPrintData = (data: ?{}) => {
+    pause = () => {
+        this.client.pause()
+        this.setState({
+            paused: true
+        })
+    }
+    
+    unpause = () => {
+        this.client.connect()
+        this.setState({
+            paused: false
+        })
+    }
+    
+    static prettyPrintData = (data: ?{}, compact: boolean = false) => {
         return stringifyObject(data, {
             indent: '  ',
-            inlineCharacterLimit: 1
+            inlineCharacterLimit: compact ? Infinity : 5
         })
     }
     
@@ -101,6 +117,26 @@ export class PreviewView extends Component<Props, State> {
             <Panel>
                 <Panel.Heading>
                     Realtime Data Preview
+                    <div className="panel-heading-controls">
+                        {this.state.paused ? (
+                            <Button
+                                bsSize="sm"
+                                bsStyle="primary"
+                                onClick={this.unpause}
+                                title="Continue"
+                            >
+                                <FontAwesome name="play"/>
+                            </Button>
+                        ) : (
+                            <Button
+                                bsSize="sm"
+                                onClick={this.pause}
+                                title="Pause"
+                            >
+                                <FontAwesome name="pause"/>
+                            </Button>
+                        )}
+                    </div>
                 </Panel.Heading>
                 <Panel.Body>
                     <Table className={styles.dataTable} striped condensed hover>
@@ -114,11 +150,13 @@ export class PreviewView extends Component<Props, State> {
                         <tbody>
                             {this.state.visibleData.map(d => (
                                 <tr key={JSON.stringify(d.metadata)}>
-                                    <td>
+                                    <td className={styles.timestampColumn}>
                                         {PreviewView.prettyPrintDate(d.metadata && d.metadata.timestamp, tz)}
                                     </td>
                                     <td className={styles.messageColumn}>
-                                        {JSON.stringify(d.data)}
+                                        <div className={styles.messagePreview}>
+                                            {PreviewView.prettyPrintData(d.data, true)}
+                                        </div>
                                     </td>
                                     <td>
                                         <a href="#" onClick={() => this.openInfoScreen(d)}>
@@ -134,7 +172,7 @@ export class PreviewView extends Component<Props, State> {
                     show={this.state.infoScreenMessage != null}
                     onHide={this.closeInfoScreen}
                 >
-                    <Modal.Header>
+                    <Modal.Header closeButton>
                         Info about data point
                     </Modal.Header>
                     <Modal.Body>
@@ -149,9 +187,7 @@ export class PreviewView extends Component<Props, State> {
                                     <td>{PreviewView.prettyPrintDate(this.state.infoScreenMessage && this.state.infoScreenMessage.metadata && this.state.infoScreenMessage.metadata.timestamp, tz)}</td>
                                 </tr>
                                 <tr>
-                                    <th>
-                                        Data
-                                    </th>
+                                    <th>Data</th>
                                     <td className={styles.dataColumn}>
                                         <code>
                                             {PreviewView.prettyPrintData(this.state.infoScreenMessage && this.state.infoScreenMessage.data)}
@@ -172,6 +208,4 @@ const mapStateToProps = ({stream, user}: {stream: ReducerState, user: UserReduce
     currentUser: user.currentUser
 })
 
-const mapDispatchToProps = (dispatch) => ({})
-
-export default connect(mapStateToProps, mapDispatchToProps)(PreviewView)
+export default connect(mapStateToProps)(PreviewView)

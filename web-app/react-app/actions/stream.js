@@ -19,6 +19,10 @@ export const GET_STREAM_REQUEST = 'GET_STREAM_REQUEST'
 export const GET_STREAM_SUCCESS = 'GET_STREAM_SUCCESS'
 export const GET_STREAM_FAILURE = 'GET_STREAM_FAILURE'
 
+export const UPDATE_STREAM_REQUEST = 'UPDATE_STREAM_REQUEST'
+export const UPDATE_STREAM_SUCCESS = 'UPDATE_STREAM_SUCCESS'
+export const UPDATE_STREAM_FAILURE = 'UPDATE_STREAM_FAILURE'
+
 export const GET_MY_STREAM_PERMISSIONS_REQUEST = 'GET_MY_STREAM_PERMISSIONS_REQUEST'
 export const GET_MY_STREAM_PERMISSIONS_SUCCESS = 'GET_MY_STREAM_PERMISSIONS_SUCCESS'
 export const GET_MY_STREAM_PERMISSIONS_FAILURE = 'GET_MY_STREAM_PERMISSIONS_FAILURE'
@@ -31,23 +35,27 @@ export const OPEN_STREAM = 'OPEN_STREAM'
 
 const apiUrl = '/api/v1/streams'
 
-export const createStream = (data: {name: string, description: string}) => (dispatch: Function) => {
+export const createStream = (data: {name: string, description: string}) => (dispatch: Function): Promise<Stream> => {
     dispatch(createStreamRequest())
-    axios.post(createLink(apiUrl), data)
-        .then(({data}: {data: Stream}) => {
-            dispatch(showSuccess({
-                title: `Stream ${data.name} created successfully!`
-            }))
-            dispatch(createStreamSuccess(data))
-        })
-        .catch(res => {
-            const e = parseError(res)
-            dispatch(showError({
-                title: e.message
-            }))
-            dispatch(createStreamFailure(e))
-            throw e
-        })
+    return new Promise((resolve, reject) => {
+        axios.post(createLink(apiUrl), data)
+            .then(({data}: {data: Stream}) => {
+                dispatch(showSuccess({
+                    title: `Stream ${data.name} created successfully!`
+                }))
+                dispatch(createStreamSuccess(data))
+                resolve(data)
+            })
+            .catch(res => {
+                const e = parseError(res)
+                dispatch(showError({
+                    title: 'Error!',
+                    message: e.message
+                }))
+                dispatch(createStreamFailure(e))
+                reject(e)
+            })
+    })
 }
 
 export const getStream = (id: Stream.id) => (dispatch: Function) => {
@@ -57,9 +65,31 @@ export const getStream = (id: Stream.id) => (dispatch: Function) => {
         .catch(res => {
             const e = parseError(res)
             dispatch(showError({
-                title: e.message
+                title: 'Error!',
+                message: e.message
             }))
             dispatch(getStreamFailure(e))
+            throw e
+        })
+}
+
+export const updateStream = (stream: Stream) => (dispatch: Function) => {
+    dispatch(updateStreamRequest())
+    return axios.put(createLink(`${apiUrl}/${stream.id}`), stream)
+        .then(({data}) => {
+            dispatch(updateStreamSuccess(data))
+            dispatch(showSuccess({
+                title: 'Success!',
+                message: 'Stream saved successfully'
+            }))
+        })
+        .catch(res => {
+            const e = parseError(res)
+            dispatch(showError({
+                title: 'Error!',
+                message: e.message
+            }))
+            dispatch(updateStreamFailure(e))
             throw e
         })
 }
@@ -120,17 +150,17 @@ const saveFieldsFailure = (error: ApiError) => ({
     error
 })
 
-const createStreamRequest = () => ({
-    type: CREATE_STREAM_REQUEST
+const updateStreamRequest = () => ({
+    type: UPDATE_STREAM_REQUEST
 })
 
-const createStreamSuccess = (stream: Stream) => ({
-    type: CREATE_STREAM_SUCCESS,
+const updateStreamSuccess = (stream: Stream) => ({
+    type: UPDATE_STREAM_SUCCESS,
     stream
 })
 
-const createStreamFailure = (error: ApiError) => ({
-    type: CREATE_STREAM_FAILURE,
+const updateStreamFailure = (error: ApiError) => ({
+    type: UPDATE_STREAM_FAILURE,
     error
 })
 
@@ -145,6 +175,20 @@ const getStreamSuccess = (stream: Stream) => ({
 
 const getStreamFailure = (error: ApiError) => ({
     type: GET_STREAM_FAILURE,
+    error
+})
+
+const createStreamRequest = () => ({
+    type: CREATE_STREAM_REQUEST
+})
+
+const createStreamSuccess = (stream: Stream) => ({
+    type: CREATE_STREAM_SUCCESS,
+    stream
+})
+
+const createStreamFailure = (error: ApiError) => ({
+    type: CREATE_STREAM_FAILURE,
     error
 })
 

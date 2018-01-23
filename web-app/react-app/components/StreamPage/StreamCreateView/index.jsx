@@ -14,7 +14,13 @@ import {createStream} from '../../../actions/stream'
 import type {Stream} from '../../../flowtype/stream-types'
 
 type Props = {
-    createStream: (stream: Stream) => void
+    createStream: (stream: Stream) => Promise<Stream>,
+    location: {
+      pathname: string
+    },
+    history: {
+        replace: (path: string, state: ?{}) => void
+    }
 }
 
 export class StreamCreateView extends Component<Props> {
@@ -24,6 +30,7 @@ export class StreamCreateView extends Component<Props> {
             hash: true
         })
         this.props.createStream(stream)
+            .then((stream) => this.props.history.replace(`/show/${stream.id}`))
     }
     render() {
         return (
@@ -82,7 +89,7 @@ const mapStateToProps = () => ({})
 
 const mapDispatchToProps = (dispatch: Function) => ({
     createStream(stream: Stream) {
-        dispatch(createStream(stream))
+        return dispatch(createStream(stream))
     }
 })
 
