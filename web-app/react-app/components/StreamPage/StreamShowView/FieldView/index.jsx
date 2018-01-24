@@ -7,6 +7,7 @@ import FontAwesome from 'react-fontawesome'
 import serialize from 'form-serialize'
 import {saveFields} from '../../../../actions/stream'
 import {showError} from '../../../../actions/notification'
+import _ from 'lodash'
 
 import type {Stream, State as ReducerState} from '../../../../flowtype/stream-types'
 
@@ -19,7 +20,6 @@ type Props = {
 type State = {
     editing: boolean,
     fields: Stream.config.fields,
-    savedFields: Stream.config.fields,
     duplicateFieldIndexes: Array<number>,
     newField: {
         name?: string,
@@ -39,21 +39,25 @@ export class FieldView extends Component<Props, State> {
         editing: false,
         newField: {},
         fields: [],
-        savedFields: [],
         duplicateFieldIndexes: []
     }
     form: any
     
+    componentDidMount() {
+        window.addEventListener('beforeunload', this.onBeforeUnload)
+    }
+    
     componentWillReceiveProps(props: Props) {
-        this.setState({
-            fields: props.stream && props.stream.config && props.stream.config.fields && props.stream.config.fields || []
-        })
+        if (!this.state.fields.length) {
+            this.setState({
+                fields: props.stream && props.stream.config && props.stream.config.fields && props.stream.config.fields || []
+            })
+        }
     }
     
     startEditing = () => {
         this.setState({
-            editing: true,
-            savedFields: this.state.fields
+            editing: true
         })
     }
     
@@ -62,8 +66,7 @@ export class FieldView extends Component<Props, State> {
             this.props.saveFields(this.props.stream.id, this.state.fields)
                 .then(() => {
                     this.setState({
-                        editing: false,
-                        savedFields: this.state.fields
+                        editing: false
                     })
                 })
         } else {
@@ -76,8 +79,18 @@ export class FieldView extends Component<Props, State> {
     cancelEditing = () => {
         this.setState({
             editing: false,
-            fields: this.state.savedFields
+            fields: this.props.stream.config.fields
         })
+    }
+    
+    onBeforeUnload = (e: Event & { returnValue: ?string }): ?string => {
+        const [o, n] = [this.props.stream.config.fields, this.state.fields]
+        const changed = o.length !== n.length || _.differenceWith(o, n, _.isEqual).length > 0
+        if (changed) {
+            const message = 'You have unsaved changes in the field editor. Are you sure you want to leave?'
+            e.returnValue = message
+            return message
+        }
     }
     
     static getNameForInput = (type: string, i: number | string) => `${type}_${i}`
@@ -203,8 +216,19 @@ export class FieldView extends Component<Props, State> {
                     Fields
                     {this.state.editing ? (
                         <div className="panel-heading-controls">
-                            <Button bsSize="sm" onClick={this.save} bsStyle="primary">Save</Button>
-                            <Button bsSize="sm" onClick={this.cancelEditing}>Cancel</Button>
+                            <Button
+                                bsSize="sm"
+                                onClick={this.save}
+                                bsStyle="primary"
+                            >
+                                Save
+                            </Button>
+                            <Button
+                                bsSize="sm"
+                                onClick={this.cancelEditing}
+                            >
+                                Cancel
+                            </Button>
                         </div>
                     ) : (
                         <div className="panel-heading-controls">

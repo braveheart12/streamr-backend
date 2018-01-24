@@ -1,5 +1,7 @@
 // @flow
 
+import _ from 'lodash'
+
 import {
     GET_STREAM_REQUEST,
     GET_STREAM_SUCCESS,
@@ -10,6 +12,9 @@ import {
     UPDATE_STREAM_REQUEST,
     UPDATE_STREAM_SUCCESS,
     UPDATE_STREAM_FAILURE,
+    DELETE_STREAM_REQUEST,
+    DELETE_STREAM_SUCCESS,
+    DELETE_STREAM_FAILURE,
     GET_MY_STREAM_PERMISSIONS_REQUEST,
     GET_MY_STREAM_PERMISSIONS_SUCCESS,
     GET_MY_STREAM_PERMISSIONS_FAILURE,
@@ -33,10 +38,12 @@ export default function(state: State = initialState, action: Action) : State {
         case CREATE_STREAM_REQUEST:
         case UPDATE_STREAM_REQUEST:
         case GET_MY_STREAM_PERMISSIONS_REQUEST:
+        case DELETE_STREAM_REQUEST:
             return {
                 ...state,
                 fetching: true
             }
+            
         case GET_STREAM_SUCCESS:
         case CREATE_STREAM_SUCCESS:
         case UPDATE_STREAM_SUCCESS:
@@ -52,23 +59,15 @@ export default function(state: State = initialState, action: Action) : State {
                 fetching: false,
                 error: null
             }
-        case GET_STREAM_FAILURE:
-        case CREATE_STREAM_FAILURE:
-        case UPDATE_STREAM_FAILURE:
-        case GET_MY_STREAM_PERMISSIONS_FAILURE:
+            
+        case DELETE_STREAM_SUCCESS:
             return {
                 ...state,
+                byId: _.omit(state.byId, action.id),
                 fetching: false,
-                error: action.error
+                error: null
             }
-        case OPEN_STREAM:
-            return {
-                ...state,
-                openStream: {
-                    ...state.openStream,
-                    id: action.id
-                }
-            }
+    
         case GET_MY_STREAM_PERMISSIONS_SUCCESS:
             return {
                 ...state,
@@ -82,6 +81,27 @@ export default function(state: State = initialState, action: Action) : State {
                 error: null,
                 fetching: false
             }
+            
+        case GET_STREAM_FAILURE:
+        case CREATE_STREAM_FAILURE:
+        case UPDATE_STREAM_FAILURE:
+        case GET_MY_STREAM_PERMISSIONS_FAILURE:
+        case DELETE_STREAM_FAILURE:
+            return {
+                ...state,
+                fetching: false,
+                error: action.error
+            }
+            
+        case OPEN_STREAM:
+            return {
+                ...state,
+                openStream: {
+                    ...state.openStream,
+                    id: action.id
+                }
+            }
+            
         default:
             return state
     }

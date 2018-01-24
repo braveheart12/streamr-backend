@@ -6,6 +6,7 @@ import {Panel, FormGroup, ControlLabel} from 'react-bootstrap'
 import {DropdownButton, MenuItem, Button, FormControl} from 'react-bootstrap'
 import FontAwesome from 'react-fontawesome'
 import serialize from 'form-serialize'
+import ShareDialog from '../../../ShareDialog'
 
 import {updateStream} from '../../../../actions/stream'
 
@@ -17,7 +18,9 @@ type Props = {
 }
 
 type State = {
-    editing: boolean
+    editing: boolean,
+    contentChanged: boolean,
+    shareDialogIsOpen: boolean
 }
 
 import styles from './infoView.pcss'
@@ -30,7 +33,21 @@ export class InfoView extends Component<Props, State> {
     }
     
     state = {
-        editing: false
+        editing: false,
+        contentChanged: false,
+        shareDialogIsOpen: false
+    }
+    
+    componentDidMount() {
+        window.addEventListener('beforeunload', this.onBeforeUnload)
+    }
+    
+    onBeforeUnload = (e: Event & { returnValue: ?string }): ?string => {
+        if (this.state.contentChanged) {
+            const message = 'You have unsaved changes in the info of the Stream. Are you sure you want to leave?'
+            e.returnValue = message
+            return message
+        }
     }
     
     startEdit = () => {
@@ -41,12 +58,22 @@ export class InfoView extends Component<Props, State> {
     
     stopEdit = () => {
         this.setState({
-            editing: false
+            editing: false,
+            contentChanged: false
+        })
+    }
+    
+    onFormChange = () => {
+        this.setState({
+            contentChanged: true
         })
     }
     
     save = () => {
         this.props.updateStream()
+        this.setState({
+            contentChanged: false
+        })
     }
     
     onSubmit = (e: Event) => {
@@ -61,6 +88,18 @@ export class InfoView extends Component<Props, State> {
             .then(this.stopEdit)
     }
     
+    openShareDialog = () => {
+        this.setState({
+            shareDialogIsOpen: true
+        })
+    }
+
+    closeShareDialog = () => {
+        this.setState({
+            shareDialogIsOpen: false
+        })
+    }
+    
     render() {
         const id = `form${Date.now()}`
         return (
@@ -69,24 +108,43 @@ export class InfoView extends Component<Props, State> {
                     Stream: {this.props.stream.name}
                     {this.state.editing ? (
                         <div className="panel-heading-controls">
-                            <Button bsSize="sm" form={id} bsStyle="primary" type="submit">Save</Button>
-                            <Button bsSize="sm" onClick={this.stopEdit}>Cancel</Button>
+                            <Button
+                                bsSize="sm"
+                                form={id}
+                                bsStyle="primary"
+                                type="submit"
+                            >
+                                Save
+                            </Button>
+                            <Button
+                                bsSize="sm"
+                                onClick={this.stopEdit}
+                            >
+                                Cancel
+                            </Button>
                         </div>
                     ) : (
                         <div className="panel-heading-controls">
                             <DropdownButton
                                 bsSize="sm"
-                                onClick={this.startEdit}
                                 title={<FontAwesome name="bars"/>}
                                 id="edit-dropdown"
                                 noCaret
+                                pullRight
                             >
-                                <MenuItem>
+                                <MenuItem onClick={this.startEdit}>
                                     <FontAwesome name="pencil"/>{' '}Edit
                                 </MenuItem>
-                                <MenuItem>
+                                <MenuItem onClick={this.openShareDialog}>
                                     <FontAwesome name="user"/>{' '}Share
                                 </MenuItem>
+                                <ShareDialog
+                                    resourceType="STREAM"
+                                    resourceId={this.props.stream.id}
+                                    resourceTitle={`Stream ${this.props.stream.name}`}
+                                    isOpen={this.state.shareDialogIsOpen}
+                                    onClose={this.closeShareDialog}
+                                />
                                 <MenuItem>
                                     <FontAwesome name="trash-o"/>{' '}Delete
                                 </MenuItem>
@@ -96,7 +154,7 @@ export class InfoView extends Component<Props, State> {
                 </Panel.Heading>
                 <Panel.Body>
                     {this.state.editing ? (
-                        <form onSubmit={this.onSubmit} id={id}>
+                        <form onSubmit={this.onSubmit} id={id} onChange={this.onFormChange}>
                             <FormGroup>
                                 <ControlLabel>Name</ControlLabel>
                                 <FormControl

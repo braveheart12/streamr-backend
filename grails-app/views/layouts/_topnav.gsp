@@ -14,12 +14,12 @@ Tour.list(function(tourList) {
 
 <div id="main-navbar-collapse" class="collapse navbar-collapse main-navbar-collapse">
 	<div>
-		<ul class="nav navbar-nav">						
+		<ul class="nav navbar-nav">
 		</ul> <!-- / .navbar-nav -->
-	
+
 		<div class="right clearfix">
 			<ul class="nav navbar-nav pull-right right-navbar-nav">
-	
+
 				<sec:ifLoggedIn>
 					<li>
 						<a id="navEditorLink" href="${createLink(controller:"canvas", action:"editor")}"><g:message code="editor.label"/></a>
@@ -34,7 +34,7 @@ Tour.list(function(tourList) {
 						<a id="navStreamsLink" href="${createLink(controller:"stream")}"><g:message code="streams.label"/></a>
 					</li>
 				</sec:ifLoggedIn>
-				
+
 				<sec:ifAllGranted roles="ROLE_ADMIN">
 					<li class="dropdown">
 						<a id="navAdminLink" href="#" class="dropdown-toggle" data-toggle="dropdown">Admin</a>
@@ -60,7 +60,7 @@ Tour.list(function(tourList) {
 							%{--<li><g:link elementId="navExamplesLink" controller="canvas" params="[examples:1]"><g:message code="help.examples.title"/></g:link></li>--}%
 						</ul>
 					</li>
-			
+
 					<li class="dropdown">
 						<a id="navSettingsLink" href="#" class="dropdown-toggle" data-toggle="dropdown">
 							<i class="dropdown-icon fa fa-cog"></i>
@@ -71,7 +71,7 @@ Tour.list(function(tourList) {
 						</ul>
 					</li>
 				</sec:ifLoggedIn>
-				
+
 			</ul> <!-- / .navbar-nav -->
 		</div> <!-- / .right -->
 		</div>

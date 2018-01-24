@@ -23,6 +23,10 @@ export const UPDATE_STREAM_REQUEST = 'UPDATE_STREAM_REQUEST'
 export const UPDATE_STREAM_SUCCESS = 'UPDATE_STREAM_SUCCESS'
 export const UPDATE_STREAM_FAILURE = 'UPDATE_STREAM_FAILURE'
 
+export const DELETE_STREAM_REQUEST = 'DELETE_STREAM_REQUEST'
+export const DELETE_STREAM_SUCCESS = 'DELETE_STREAM_SUCCESS'
+export const DELETE_STREAM_FAILURE = 'DELETE_STREAM_FAILURE'
+
 export const GET_MY_STREAM_PERMISSIONS_REQUEST = 'GET_MY_STREAM_PERMISSIONS_REQUEST'
 export const GET_MY_STREAM_PERMISSIONS_SUCCESS = 'GET_MY_STREAM_PERMISSIONS_SUCCESS'
 export const GET_MY_STREAM_PERMISSIONS_FAILURE = 'GET_MY_STREAM_PERMISSIONS_FAILURE'
@@ -90,6 +94,27 @@ export const updateStream = (stream: Stream) => (dispatch: Function) => {
                 message: e.message
             }))
             dispatch(updateStreamFailure(e))
+            throw e
+        })
+}
+
+export const deleteStream = (stream: Stream) => (dispatch: Function) => {
+    dispatch(deleteStreamRequest())
+    return axios.delete(createLink(`${apiUrl}/${stream.id}`))
+        .then(() => {
+            dispatch(deleteStreamSuccess(stream.id))
+            dispatch(showSuccess({
+                title: 'Success!',
+                message: 'Stream deleted successfully'
+            }))
+        })
+        .catch(res => {
+            const e = parseError(res)
+            dispatch(showError({
+                title: 'Error!',
+                message: e.message
+            }))
+            dispatch(deleteStreamFailure(e))
             throw e
         })
 }
@@ -175,6 +200,20 @@ const getStreamSuccess = (stream: Stream) => ({
 
 const getStreamFailure = (error: ApiError) => ({
     type: GET_STREAM_FAILURE,
+    error
+})
+
+const deleteStreamRequest = () => ({
+    type: DELETE_STREAM_REQUEST
+})
+
+const deleteStreamSuccess = (id: Stream.id) => ({
+    type: DELETE_STREAM_SUCCESS,
+    id
+})
+
+const deleteStreamFailure = (error: ApiError) => ({
+    type: DELETE_STREAM_FAILURE,
     error
 })
 
