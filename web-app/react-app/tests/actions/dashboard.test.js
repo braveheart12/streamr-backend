@@ -63,7 +63,7 @@ describe('Dashboard actions', () => {
             await store.dispatch(actions.getAndReplaceDashboards())
             assert.deepStrictEqual(store.getActions(), expectedActions)
         })
-        it('creates GET_ALL_INTEGRATION_KEYS_FAILURE when fetching integration keys has failed', async (done) => {
+        it('creates GET_AND_REPLACE_DASHBOARDS_FAILURE when fetching dashboards has failed', async (done) => {
             moxios.stubRequest('api/v1/dashboards', {
                 status: 500,
                 response: new Error('test-error')
@@ -115,24 +115,23 @@ describe('Dashboard actions', () => {
             
             await store.dispatch(actions.getDashboard(id))
             assert.deepStrictEqual(store.getActions(), expectedActions)
-            
         })
-        
-        it('creates GET_ALL_INTEGRATION_KEYS_FAILURE when fetching integration keys has failed', async (done) => {
+        it('creates GET_DASHBOARD_FAILURE when fetching a dashboard has failed', async (done) => {
+            const id = 'asdfasdfasasd'
             moxios.stubRequest('api/v1/dashboards', {
                 status: 500,
                 response: new Error('test-error')
             })
             
             const expectedActions = [{
-                type: actions.GET_AND_REPLACE_DASHBOARDS_REQUEST
+                type: actions.GET_DASHBOARD_REQUEST
             }, {
-                type: actions.GET_AND_REPLACE_DASHBOARDS_FAILURE,
+                type: actions.GET_DASHBOARD_FAILURE,
                 error: new Error('test-error')
             }]
             
             try {
-                await store.dispatch(actions.getAndReplaceDashboards())
+                await store.dispatch(actions.getDashboard(id))
             } catch (e) {
                 assert.deepStrictEqual(store.getActions().slice(0, 2), expectedActions)
                 done()
@@ -178,7 +177,7 @@ describe('Dashboard actions', () => {
             assert.equal(store.getActions()[1].notification.type, expectedActions[1].notification.type)
             assert.deepStrictEqual(store.getActions()[2], expectedActions[2])
         })
-        it('creates UPDATE_AND_SAVE_DASHBOARD_FAILURE and CREATE_NOTIFICATION when fetching a dashboard has succeeded', async (done) => {
+        it('creates UPDATE_AND_SAVE_DASHBOARD_FAILURE and CREATE_NOTIFICATION when fetching a dashboard has failed', async (done) => {
             const id = 'test'
             const db = {
                 id,
@@ -272,7 +271,6 @@ describe('Dashboard actions', () => {
             await store.dispatch(originalActions.deleteDashboard('test'))
             assert.deepStrictEqual(store.getActions(), expectedActions)
         })
-        
         it('creates DELETE_DASHBOARD_FAILURE when deleting dashboard has failed', async (done) => {
             moxios.wait(() => {
                 let request = moxios.requests.mostRecent()

@@ -58,7 +58,7 @@ describe('IntegrationKey actions', () => {
             await store.dispatch(actions.getAndReplaceIntegrationKeys())
             assert.deepStrictEqual(store.getActions().slice(0, 2), expectedActions)
         })
-    
+        
         it('creates GET_ALL_INTEGRATION_KEYS_FAILURE when fetching integration keys has failed', async (done) => {
             moxios.stubRequest('api/v1/integration_keys', {
                 status: 500,
