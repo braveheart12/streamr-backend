@@ -5,8 +5,6 @@ import com.unifina.domain.security.Permission
 import com.unifina.domain.security.Permission.Operation
 import com.unifina.api.ApiException
 import com.unifina.feed.DataRange
-import com.unifina.feed.mongodb.MongoDbConfig
-import com.unifina.feed.twitter.TwitterStreamConfig
 import grails.converters.JSON
 import grails.plugin.springsecurity.annotation.Secured
 import groovy.transform.CompileStatic
@@ -22,7 +20,6 @@ import com.unifina.domain.data.Stream
 import com.unifina.domain.security.SecUser
 import com.unifina.domain.signalpath.Module
 import com.unifina.feed.DataRange
-import com.unifina.feed.mongodb.MongoDbConfig
 import com.unifina.utils.CSVImporter
 import com.unifina.utils.CSVImporter.Schema
 import grails.converters.JSON
