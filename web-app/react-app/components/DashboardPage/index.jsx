@@ -3,7 +3,6 @@
 import React, {Component} from 'react'
 import {connect} from 'react-redux'
 import {Helmet} from 'react-helmet'
-import Notifier from '../StreamrNotifierWrapper'
 import Sidebar from './Sidebar/index'
 import Editor from './Editor/index'
 import uuid from 'uuid'
@@ -67,7 +66,6 @@ export class DashboardPage extends Component<Props> {
                 <Helmet>
                     <title>{this.props.dashboard && this.props.dashboard.name || 'New Dashboard'}</title>
                 </Helmet>
-                <Notifier/>
                 <Sidebar/>
                 <Editor/>
                 {this.props.children}

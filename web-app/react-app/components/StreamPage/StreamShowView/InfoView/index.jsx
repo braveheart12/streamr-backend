@@ -10,12 +10,18 @@ import ShareDialog from '../../../ShareDialog'
 
 import {updateStream} from '../../../../actions/stream'
 
-import type {Stream, State as ReducerState} from '../../../../flowtype/stream-types'
+import type {Stream} from '../../../../flowtype/stream-types'
+import type {StreamState} from '../../../../flowtype/states/stream-state'
 
-type Props = {
-    stream: Stream,
+type StateProps = {
+    stream: ?Stream
+}
+
+type DispatchProps = {
     updateStream: (stream: Stream) => Promise<Stream>
 }
+
+type Props = StateProps & DispatchProps
 
 type State = {
     editing: boolean,
@@ -26,11 +32,6 @@ type State = {
 import styles from './infoView.pcss'
 
 export class InfoView extends Component<Props, State> {
-    static defaultProps = {
-        stream: {
-            name: ''
-        }
-    }
     
     state = {
         editing: false,
@@ -70,7 +71,8 @@ export class InfoView extends Component<Props, State> {
     }
     
     save = () => {
-        this.props.updateStream()
+        const {stream, updateStream} = this.props
+        stream && updateStream(stream)
         this.setState({
             contentChanged: false
         })
@@ -105,7 +107,7 @@ export class InfoView extends Component<Props, State> {
         return (
             <Panel>
                 <Panel.Heading>
-                    Stream: {this.props.stream.name}
+                    Stream: {this.props.stream ? this.props.stream.name : ''}
                     {this.state.editing ? (
                         <div className="panel-heading-controls">
                             <Button
@@ -140,8 +142,8 @@ export class InfoView extends Component<Props, State> {
                                 </MenuItem>
                                 <ShareDialog
                                     resourceType="STREAM"
-                                    resourceId={this.props.stream.id}
-                                    resourceTitle={`Stream ${this.props.stream.name}`}
+                                    resourceId={this.props.stream && this.props.stream.id}
+                                    resourceTitle={`Stream ${this.props.stream ? this.props.stream.name : ''}`}
                                     isOpen={this.state.shareDialogIsOpen}
                                     onClose={this.closeShareDialog}
                                 />
@@ -159,7 +161,7 @@ export class InfoView extends Component<Props, State> {
                                 <ControlLabel>Name</ControlLabel>
                                 <FormControl
                                     name="name"
-                                    defaultValue={this.props.stream.name}
+                                    defaultValue={this.props.stream && this.props.stream.name}
                                 />
                             </FormGroup>
                             <FormGroup>
@@ -167,7 +169,7 @@ export class InfoView extends Component<Props, State> {
                                 <FormControl
                                     className={styles.descriptionTextarea}
                                     name="description"
-                                    defaultValue={this.props.stream.description}
+                                    defaultValue={this.props.stream && this.props.stream.description}
                                     componentClass="textarea"
                                 />
                             </FormGroup>
@@ -176,11 +178,11 @@ export class InfoView extends Component<Props, State> {
                         <form>
                             <FormGroup>
                                 <ControlLabel>Name</ControlLabel>
-                                <div>{this.props.stream.name}</div>
+                                <div>{this.props.stream && this.props.stream.name}</div>
                             </FormGroup>
                             <FormGroup>
                                 <ControlLabel>Description</ControlLabel>
-                                <div>{this.props.stream.description}</div>
+                                <div>{this.props.stream && this.props.stream.description}</div>
                             </FormGroup>
                         </form>
                     )}
@@ -190,11 +192,11 @@ export class InfoView extends Component<Props, State> {
     }
 }
 
-const mapStateToProps = ({stream}: {stream: ReducerState}) => ({
-    stream: stream.byId[stream.openStream.id]
+const mapStateToProps = ({stream}: {stream: StreamState}): StateProps => ({
+    stream: stream.openStream.id ? stream.byId[stream.openStream.id] : null
 })
 
-const mapDispatchToProps = (dispatch) => ({
+const mapDispatchToProps = (dispatch: Function): DispatchProps => ({
     updateStream(stream: Stream) {
         return dispatch(updateStream(stream))
     }

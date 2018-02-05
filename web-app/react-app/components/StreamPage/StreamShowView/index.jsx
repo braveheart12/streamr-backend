@@ -14,35 +14,36 @@ import PreviewView from './PreviewView'
 import {getStream, openStream, getMyStreamPermissions} from '../../../actions/stream'
 import {getCurrentUser} from '../../../actions/user'
 
-import type {Stream, State as ReducerState} from '../../../flowtype/stream-types'
+import type {Stream} from '../../../flowtype/stream-types'
+import type {StreamState} from '../../../flowtype/states/stream-state'
 
-type Props = {
-    stream: Stream | {
-        name: string
-    },
-    getStream: (id: Stream.id) => void,
-    openStream: (id: Stream.id) => void,
-    getMyStreamPermissions: (id: Stream.id) => void,
-    getCurrentUser: () => void,
+type StateProps = {
+    stream: ?Stream
+}
+
+type DispatchProps = {
+    getStream: (id: $ElementType<Stream, 'id'>) => void,
+    openStream: (id: $ElementType<Stream, 'id'>) => void,
+    getMyStreamPermissions: (id: $ElementType<Stream, 'id'>) => void,
+    getCurrentUser: () => void
+}
+
+type RouterProps = {
     match: {
         params: {
-            id?: string
+            id: string
         }
     }
 }
 
-type State = {}
+type Props = StateProps & DispatchProps & RouterProps
 
 import styles from './streamShowView.pcss'
 
-export class StreamShowView extends Component<Props, State> {
-    static defaultProps = {
-        stream: {
-            name: ''
-        }
-    }
+export class StreamShowView extends Component<Props> {
+    
     componentWillMount() {
-        let id = this.props.match.params.id
+        const id = this.props.match.params.id
         this.props.getStream(id)
         this.props.openStream(id)
         this.props.getMyStreamPermissions(id)
@@ -53,7 +54,7 @@ export class StreamShowView extends Component<Props, State> {
         return (
             <div className={styles.streamShowView}>
                 <Helmet>
-                    <title>{this.props.stream.name || ' '}</title>
+                    <title>{this.props.stream ? this.props.stream.name : ' '}</title>
                 </Helmet>
                 <StreamrBreadcrumb style={{
                     margin: '-18px -18px 18px'
@@ -62,7 +63,7 @@ export class StreamShowView extends Component<Props, State> {
                         Streams
                     </StreamrBreadcrumbItem>
                     <StreamrBreadcrumbItem active={true}>
-                        {this.props.stream.name}
+                        {this.props.stream ? this.props.stream.name : ''}
                     </StreamrBreadcrumbItem>
                 </StreamrBreadcrumb>
                 <Row>
@@ -87,18 +88,18 @@ export class StreamShowView extends Component<Props, State> {
     }
 }
 
-const mapStateToProps = ({stream}: {stream: ReducerState}) => ({
-    stream: stream.byId[stream.openStream.id]
+const mapStateToProps = ({stream}: {stream: StreamState}): StateProps => ({
+    stream: stream.openStream.id ? stream.byId[stream.openStream.id] : null
 })
 
-const mapDispatchToProps = (dispatch: Function) => ({
-    getStream(id: Stream.id) {
+const mapDispatchToProps = (dispatch: Function): DispatchProps => ({
+    getStream(id: $ElementType<Stream, 'id'>) {
         dispatch(getStream(id))
     },
-    openStream(id: Stream.id) {
+    openStream(id: $ElementType<Stream, 'id'>) {
         dispatch(openStream(id))
     },
-    getMyStreamPermissions(id: Stream.id) {
+    getMyStreamPermissions(id: $ElementType<Stream, 'id'>) {
         dispatch(getMyStreamPermissions(id))
     },
     getCurrentUser() {

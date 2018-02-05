@@ -21,7 +21,8 @@ import {
     OPEN_STREAM
 } from '../actions/stream.js'
 
-import type {State, Action} from '../flowtype/stream-types.js'
+import type {StreamState} from '../flowtype/states/stream-state'
+import type {StreamAction} from '../flowtype/actions/stream-actions'
 
 const initialState = {
     byId: {},
@@ -32,7 +33,7 @@ const initialState = {
     error: null
 }
 
-export default function(state: State = initialState, action: Action) : State {
+export default function(state: StreamState = initialState, action: StreamAction): StreamState {
     switch (action.type) {
         case GET_STREAM_REQUEST:
         case CREATE_STREAM_REQUEST:
@@ -52,7 +53,7 @@ export default function(state: State = initialState, action: Action) : State {
                 byId: {
                     ...state.byId,
                     [action.stream.id]: {
-                        ...(state.byId[state.openStream.id] || {}),
+                        ...(state.openStream.id && state.byId[state.openStream.id] || {}),
                         ...action.stream
                     }
                 },

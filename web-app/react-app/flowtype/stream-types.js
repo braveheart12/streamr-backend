@@ -1,29 +1,18 @@
+// @flow
+
+import type {Permission} from './permission-types'
+
+export type StreamField = {
+    name: string,
+    type: string
+}
+
 export type Stream = {
     id: string,
     name: string,
     description: string,
-    config?: {
-        fields?: Array<{
-            name: string,
-            type: string
-        }>
-    }
-}
-
-export type State = {
-    byId: {
-        [Stream.id]: Stream
+    config: {
+        fields?: Array<StreamField>
     },
-    openStream: {
-        id: Stream.id
-    },
-    ownPermissions: Array<string>,
-    fetching: boolean,
-    error?: ?string
-}
-
-export type Action = {
-    type: string,
-    error?: string,
-    stream?: Stream
+    ownPermissions: Array<$ElementType<Permission, 'operation'>>
 }

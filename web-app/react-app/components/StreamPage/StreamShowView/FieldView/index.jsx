@@ -6,30 +6,37 @@ import {Panel, Table, Button, FormControl, Alert} from 'react-bootstrap'
 import FontAwesome from 'react-fontawesome'
 import serialize from 'form-serialize'
 import {saveFields} from '../../../../actions/stream'
-import {showError} from '../../../../actions/notification'
+import {error} from 'react-notification-system-redux'
 import _ from 'lodash'
 
-import type {Stream, State as ReducerState} from '../../../../flowtype/stream-types'
+import type {Stream, StreamField} from '../../../../flowtype/stream-types'
+import type {StreamState} from '../../../../flowtype/states/stream-state'
 
-type Props = {
-    stream: Stream,
-    showError: (error: {title: string}) => void,
-    saveFields: (id: Stream.id, fields: Stream.config.fields) => Promise<Stream.config.fields>
+type StateProps = {
+    stream: ?Stream
 }
+
+type DispatchProps = {
+    showError: (err: {title: string, message?: string}) => void,
+    saveFields: (id: $ElementType<Stream, 'id'>, fields: Array<StreamField>) => Promise<Array<StreamField>>
+}
+
+type Props = StateProps & DispatchProps
 
 type State = {
     editing: boolean,
-    fields: Stream.config.fields,
+    fields: Array<StreamField>,
     duplicateFieldIndexes: Array<number>,
-    newField: {
-        name?: string,
-        type?: string
+    newField: ?{
+        name: string,
+        type: string
     }
 }
 
 import styles from './fieldView.pcss'
 
 export class FieldView extends Component<Props, State> {
+    form: ?HTMLFormElement
     static defaultProps = {
         stream: {
             name: ''
@@ -37,18 +44,17 @@ export class FieldView extends Component<Props, State> {
     }
     state = {
         editing: false,
-        newField: {},
+        newField: null,
         fields: [],
         duplicateFieldIndexes: []
     }
-    form: any
     
     componentDidMount() {
         window.addEventListener('beforeunload', this.onBeforeUnload)
     }
     
     componentWillReceiveProps(props: Props) {
-        if (!this.state.fields.length) {
+        if (this.state.fields && this.state.fields.length) {
             this.setState({
                 fields: props.stream && props.stream.config && props.stream.config.fields && props.stream.config.fields || []
             })
@@ -63,15 +69,17 @@ export class FieldView extends Component<Props, State> {
     
     save = () => {
         if (this.state.duplicateFieldIndexes.length === 0) {
-            this.props.saveFields(this.props.stream.id, this.state.fields)
+            this.props.stream && this.state.fields && this.props.saveFields(this.props.stream.id, this.state.fields)
                 .then(() => {
                     this.setState({
                         editing: false
                     })
                 })
         } else {
+            const duplicateField = this.state.fields && this.state.fields[this.state.duplicateFieldIndexes[0]]
+            const duplicateFieldName = duplicateField && duplicateField.name || ''
             this.props.showError({
-                title: `Duplicate field names: ${this.state.fields[this.state.duplicateFieldIndexes[0]].name}`
+                title: `Duplicate field names: ${duplicateFieldName}`
             })
         }
     }
@@ -79,12 +87,13 @@ export class FieldView extends Component<Props, State> {
     cancelEditing = () => {
         this.setState({
             editing: false,
-            fields: this.props.stream.config.fields
+            fields: this.props.stream ? this.props.stream.config.fields : []
         })
     }
     
     onBeforeUnload = (e: Event & { returnValue: ?string }): ?string => {
-        const [o, n] = [this.props.stream.config.fields, this.state.fields]
+        const o = this.props.stream && this.props.stream.config.fields || []
+        const n = this.state.fields || []
         const changed = o.length !== n.length || _.differenceWith(o, n, _.isEqual).length > 0
         if (changed) {
             const message = 'You have unsaved changes in the field editor. Are you sure you want to leave?'
@@ -93,21 +102,25 @@ export class FieldView extends Component<Props, State> {
         }
     }
     
-    static getNameForInput = (type: string, i: number | string) => `${type}_${i}`
+    static getNameForInput = (type: string, i: number | string): string => `${type}_${i}`
     
-    findDuplicatesFromFields = (fields: Array<Stream.fields>) => {
-        const duplicates = []
-        fields.reduce((existingFieldsWithIndexes, currentField, i) => {
-            if (existingFieldsWithIndexes[currentField.name] !== undefined) {
-                duplicates.push(existingFieldsWithIndexes[currentField.name], i)
-            } else {
-                existingFieldsWithIndexes[currentField.name] = i
-            }
-            return existingFieldsWithIndexes
-        }, {})
-        this.setState({
-            duplicateFieldIndexes: duplicates
-        })
+    findDuplicatesFromFields = (fields: ?Array<StreamField>) => {
+        if (fields) {
+            const duplicates = []
+            fields.reduce((existingFieldsWithIndexes, currentField, i) => {
+                if (currentField && currentField.name) {
+                    if (existingFieldsWithIndexes[currentField.name] !== undefined) {
+                        duplicates.push(existingFieldsWithIndexes[currentField.name], i)
+                    } else {
+                        existingFieldsWithIndexes[currentField.name] = i
+                    }
+                }
+                return existingFieldsWithIndexes
+            }, {})
+            this.setState({
+                duplicateFieldIndexes: duplicates
+            })
+        }
     }
     
     parseFormAndSetState = (addNew: boolean = false) => {
@@ -120,7 +133,7 @@ export class FieldView extends Component<Props, State> {
             type: string,
             remove?: ?string
         }> = []
-        let newField
+        let newField: StreamField
         Object.keys(data).forEach(key => {
             const typeOfField = key.replace(/_(\w|\d)+/, '')
             const i = parseFloat(key.replace(/(\w+)_/, ''))
@@ -147,10 +160,13 @@ export class FieldView extends Component<Props, State> {
                 type: newFieldType
             }
         }
-        const newFields = fields.filter(f => !f.remove)
+        const newFields = fields.filter(f => !f.remove).map(f => ({
+            name: f.name,
+            type: f.type
+        }))
         this.setState({
             fields: newFields,
-            newField: addNew ? {} : newField
+            newField: addNew ? null : newField
         })
         this.findDuplicatesFromFields(newFields)
     }
@@ -282,13 +298,13 @@ export class FieldView extends Component<Props, State> {
                                             <td>
                                                 <NameField
                                                     inputName={FieldView.getNameForInput('name', 'new')}
-                                                    value={this.state.newField.name}
+                                                    value={this.state.newField && this.state.newField.name}
                                                 />
                                             </td>
                                             <td>
                                                 <TypeField
                                                     inputName={FieldView.getNameForInput('type', 'new')}
-                                                    value={this.state.newField.type}
+                                                    value={this.state.newField && this.state.newField.type}
                                                 />
                                             </td>
                                             <td style={{
@@ -319,15 +335,15 @@ export class FieldView extends Component<Props, State> {
     }
 }
 
-const mapStateToProps = ({stream}: { stream: ReducerState }) => ({
-    stream: stream.byId[stream.openStream.id]
+const mapStateToProps = ({stream}: { stream: StreamState }): StateProps => ({
+    stream: stream.openStream.id ? stream.byId[stream.openStream.id] : null
 })
 
-const mapDispatchToProps = (dispatch) => ({
-    showError(error: {title: string, message?: string}) {
-        dispatch(showError(error))
+const mapDispatchToProps = (dispatch: Function): DispatchProps => ({
+    showError(err: {title: string, message?: string}) {
+        dispatch(error(err))
     },
-    saveFields(id: Stream.id, fields: Stream.config.fields) {
+    saveFields(id: $ElementType<Stream, 'id'>, fields: Array<StreamField>) {
         return dispatch(saveFields(id, fields))
     }
 })

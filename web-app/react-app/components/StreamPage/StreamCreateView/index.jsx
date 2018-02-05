@@ -13,15 +13,20 @@ import {createStream} from '../../../actions/stream'
 
 import type {Stream} from '../../../flowtype/stream-types'
 
-type Props = {
-    createStream: (stream: Stream) => Promise<Stream>,
+type DispatchProps = {
+    createStream: (stream: Stream) => Promise<Stream>
+}
+
+type RouterProps = {
     location: {
-      pathname: string
+        pathname: string
     },
     history: {
         replace: (path: string, state: ?{}) => void
     }
 }
+
+type Props = DispatchProps & RouterProps
 
 export class StreamCreateView extends Component<Props> {
     onSubmit = (e: Event) => {
@@ -85,12 +90,10 @@ export class StreamCreateView extends Component<Props> {
     }
 }
 
-const mapStateToProps = () => ({})
-
-const mapDispatchToProps = (dispatch: Function) => ({
+const mapDispatchToProps = (dispatch: Function): DispatchProps => ({
     createStream(stream: Stream) {
         return dispatch(createStream(stream))
     }
 })
 
-export default connect(mapStateToProps, mapDispatchToProps)(withRouter(StreamCreateView))
+export default connect(null, mapDispatchToProps)(withRouter(StreamCreateView))

@@ -7,10 +7,11 @@ import React, {Component} from 'react'
 import {connect} from 'react-redux'
 import {Panel} from 'react-bootstrap'
 
-import type {Stream, State as ReducerState} from '../../../../flowtype/stream-types'
+import type {Stream} from '../../../../flowtype/stream-types'
+import type {StreamState} from '../../../../flowtype/states/stream-state'
 
 type Props = {
-    streamId: Stream.id
+    streamId: $ElementType<Stream, 'id'>
 }
 
 export class KeyView extends Component<Props> {
@@ -42,7 +43,7 @@ export class KeyView extends Component<Props> {
     }
 }
 
-export const mapStateToProps = ({stream}: {stream: ReducerState}) => ({
+export const mapStateToProps = ({stream}: {stream: StreamState}) => ({
     streamId: stream.openStream.id
 })
 

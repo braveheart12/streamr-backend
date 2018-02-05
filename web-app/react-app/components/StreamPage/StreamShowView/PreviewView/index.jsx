@@ -10,8 +10,10 @@ import FontAwesome from 'react-fontawesome'
 import moment from 'moment-timezone'
 import {default as stringifyObject} from 'stringify-object'
 
-import type {Stream, State as ReducerState} from '../../../../flowtype/stream-types'
-import type {User, State as UserReducerState} from '../../../../flowtype/user-types'
+import type {Stream} from '../../../../flowtype/stream-types'
+import type {User} from '../../../../flowtype/user-types'
+import type {StreamState} from '../../../../flowtype/states/stream-state'
+import type {UserState} from '../../../../flowtype/states/user-state'
 
 import styles from './previewView.pcss'
 
@@ -22,10 +24,12 @@ type DataPoint = {
     }
 }
 
-type Props = {
-    stream: Stream,
-    currentUser: User
+type StateProps = {
+    stream: ?Stream,
+    currentUser: ?User
 }
+
+type Props = StateProps
 
 type State = {
     visibleData: Array<DataPoint>,
@@ -112,7 +116,7 @@ export class PreviewView extends Component<Props, State> {
     static prettyPrintDate = (timestamp: ?number, timezone: ?string) => timestamp && moment.tz(timestamp, timezone).format()
     
     render() {
-        const tz = this.props.currentUser.timezone || moment.tz.guess()
+        const tz = this.props.currentUser && this.props.currentUser.timezone || moment.tz.guess()
         return (
             <Panel>
                 <Panel.Heading>
@@ -203,8 +207,8 @@ export class PreviewView extends Component<Props, State> {
     }
 }
 
-const mapStateToProps = ({stream, user}: {stream: ReducerState, user: UserReducerState}) => ({
-    stream: stream.byId[stream.openStream.id],
+const mapStateToProps = ({stream, user}: {stream: StreamState, user: UserState}): StateProps  => ({
+    stream: stream.openStream.id ? stream.byId[stream.openStream.id] : null,
     currentUser: user.currentUser
 })
 

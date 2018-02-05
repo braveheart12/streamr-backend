@@ -8,7 +8,7 @@ import createLink from './helpers/createLink'
 import { BrowserRouter, Route } from 'react-router-dom'
 import StreamCreateView from './components/StreamPage/StreamCreateView'
 import StreamShowView from './components/StreamPage/StreamShowView'
-import Notifier from './components/Notifier'
+import Notifier from './components/StreamrNotifierWrapper'
 
 import store from './stores/streamPageStore.js'
 
@@ -30,6 +30,7 @@ render(
                 <Notifier/>
                 <Route path="/create" component={StreamCreateView}/>
                 <Route path="/show/:id" component={StreamShowView}/>
+                {/* This is just a way to make a redirection out of react-router and the whole React app */}
                 <Route exact path="/(index)?" component={() => {
                     window.location.assign(path.resolve(basename, 'list'))
                 }}/>

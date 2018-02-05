@@ -8,16 +8,25 @@ import createLink from '../../../../../helpers/createLink'
 import {deleteStream} from '../../../../../actions/stream'
 
 import type {Node} from 'react'
-import type {Stream, State as StreamState} from '../../../../../flowtype/stream-types'
+import type {Stream} from '../../../../../flowtype/stream-types'
+import type {StreamState} from '../../../../../flowtype/states/stream-state'
 
-type Props = {
-    stream: Stream,
+type StateProps = {
+    stream: ?Stream
+}
+
+type DispatchProps = {
+    deleteStream: (stream: Stream) => Promise<void>
+}
+
+type GivenProps = {
     canWrite: boolean,
     buttonProps: {},
     children?: Node | Array<Node>,
-    deleteStream: (id: Stream.id) => Promise<any>,
     className: string
 }
+
+type Props = StateProps & DispatchProps & GivenProps
 
 export class StreamDeleteButton extends Component<Props> {
     
@@ -27,7 +36,7 @@ export class StreamDeleteButton extends Component<Props> {
     }
     
     onDelete = () => {
-        this.props.deleteStream(this.props.stream.id)
+        this.props.stream && this.props.deleteStream(this.props.stream)
             .then(() => {
                 // TODO: change to be handled with react-router
                 window.location.assign(createLink('/stream/list'))
@@ -38,13 +47,13 @@ export class StreamDeleteButton extends Component<Props> {
         return (
             <ConfirmButton
                 buttonProps={{
-                    disabled: !this.props.canWrite || this.props.stream.new,
+                    disabled: !this.props.canWrite,
                     ...this.props.buttonProps
                 }}
                 className={this.props.className}
                 confirmCallback={this.onDelete}
                 confirmTitle="Are you sure?"
-                confirmMessage={`Are you sure you want to remove stream ${this.props.stream.name}?`}
+                confirmMessage={`Are you sure you want to remove stream ${this.props.stream ? this.props.stream.name : ''}?`}
             >
                 {this.props.children}
             </ConfirmButton>
@@ -52,13 +61,13 @@ export class StreamDeleteButton extends Component<Props> {
     }
 }
 
-export const mapStateToProps = ({stream}: {stream: StreamState}) => ({
-    stream: stream.byId[stream.openStream.id]
+export const mapStateToProps = ({stream}: {stream: StreamState}): StateProps => ({
+    stream: stream.openStream.id ? stream.byId[stream.openStream.id] : null
 })
 
-export const mapDispatchToProps = (dispatch: Function) => ({
-    deleteStream(id: Stream.id) {
-        return dispatch(deleteStream(id))
+export const mapDispatchToProps = (dispatch: Function): DispatchProps => ({
+    deleteStream(stream: Stream) {
+        return dispatch(deleteStream(stream))
     }
 })
 
