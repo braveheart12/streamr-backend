@@ -20,9 +20,9 @@ import {
     GET_MY_STREAM_PERMISSIONS_REQUEST,
     GET_MY_STREAM_PERMISSIONS_SUCCESS,
     GET_MY_STREAM_PERMISSIONS_FAILURE,
-    SAVE_FIELDS_REQUEST,
-    SAVE_FIELDS_SUCCESS,
-    SAVE_FIELDS_FAILURE,
+    SAVE_STREAM_FIELDS_REQUEST,
+    SAVE_STREAM_FIELDS_SUCCESS,
+    SAVE_STREAM_FIELDS_FAILURE,
     OPEN_STREAM
 } from '../../actions/stream'
 
@@ -32,7 +32,7 @@ export type StreamAction = {
         | typeof DELETE_STREAM_REQUEST
         | typeof CREATE_STREAM_REQUEST
         | typeof GET_MY_STREAM_PERMISSIONS_REQUEST
-        | typeof SAVE_FIELDS_REQUEST
+        | typeof SAVE_STREAM_FIELDS_REQUEST
 } | {
     type: typeof OPEN_STREAM
         | typeof DELETE_STREAM_SUCCESS,
@@ -43,7 +43,7 @@ export type StreamAction = {
         | typeof CREATE_STREAM_SUCCESS,
     stream: Stream
 } | {
-    type: typeof SAVE_FIELDS_SUCCESS,
+    type: typeof SAVE_STREAM_FIELDS_SUCCESS,
     id: $ElementType<Stream, 'id'>,
     fields: $ElementType<$ElementType<Stream, 'config'>, 'fields'>
 } | {
@@ -51,7 +51,7 @@ export type StreamAction = {
     id: $ElementType<Stream, 'id'>,
     permissions: Array<$ElementType<Permission, 'operation'>>
 } | {
-    type: typeof SAVE_FIELDS_FAILURE
+    type: typeof SAVE_STREAM_FIELDS_FAILURE
         | typeof UPDATE_STREAM_FAILURE
         | typeof GET_STREAM_FAILURE
         | typeof CREATE_STREAM_FAILURE

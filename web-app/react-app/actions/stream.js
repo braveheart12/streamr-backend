@@ -36,9 +36,9 @@ export const GET_MY_STREAM_PERMISSIONS_REQUEST = 'GET_MY_STREAM_PERMISSIONS_REQU
 export const GET_MY_STREAM_PERMISSIONS_SUCCESS = 'GET_MY_STREAM_PERMISSIONS_SUCCESS'
 export const GET_MY_STREAM_PERMISSIONS_FAILURE = 'GET_MY_STREAM_PERMISSIONS_FAILURE'
 
-export const SAVE_FIELDS_REQUEST = 'SAVE_FIELDS_REQUEST'
-export const SAVE_FIELDS_SUCCESS = 'SAVE_FIELDS_SUCCESS'
-export const SAVE_FIELDS_FAILURE = 'SAVE_FIELDS_FAILURE'
+export const SAVE_STREAM_FIELDS_REQUEST = 'SAVE_STREAM_FIELDS_REQUEST'
+export const SAVE_STREAM_FIELDS_SUCCESS = 'SAVE_STREAM_FIELDS_SUCCESS'
+export const SAVE_STREAM_FIELDS_FAILURE = 'SAVE_STREAM_FIELDS_FAILURE'
 
 export const OPEN_STREAM = 'OPEN_STREAM'
 
@@ -164,17 +164,17 @@ export const openStream = (id: StreamId) => ({
 })
 
 const saveFieldsRequest = () => ({
-    type: SAVE_FIELDS_REQUEST
+    type: SAVE_STREAM_FIELDS_REQUEST
 })
 
 const saveFieldsSuccess = (id: StreamId, fields: StreamFields) => ({
-    type: SAVE_FIELDS_SUCCESS,
+    type: SAVE_STREAM_FIELDS_SUCCESS,
     id,
     fields
 })
 
 const saveFieldsFailure = (error: ErrorInUi) => ({
-    type: SAVE_FIELDS_FAILURE,
+    type: SAVE_STREAM_FIELDS_FAILURE,
     error
 })
 

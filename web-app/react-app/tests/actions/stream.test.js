@@ -33,6 +33,76 @@ describe('Stream actions', () => {
         store.clearActions()
     })
 
+    describe('createStream', () => {
+        it('uses POST request', async () => {
+            const stream = {
+                name: 'test'
+            }
+
+            store.dispatch(actions.createStream(stream))
+            await moxios.promiseWait()
+            const request = moxios.requests.mostRecent()
+            assert.equal(request.url, 'api/v1/streams')
+            assert.equal(request.config.method, 'post')
+            assert.deepStrictEqual(JSON.parse(request.config.data), stream)
+        })
+        it('creates CREATE_STREAM_SUCCESS when creating stream has succeeded', async () => {
+            const stream = {
+                name: 'test'
+            }
+            moxios.stubRequest('api/v1/streams', {
+                status: 200,
+                response: stream
+            })
+
+            const expectedActions = [{
+                type: actions.CREATE_STREAM_REQUEST
+            }, {
+                type: actions.CREATE_STREAM_SUCCESS,
+                stream
+            }, {
+                level: 'success'
+            }]
+
+            await store.dispatch(actions.createStream(stream))
+            assert.deepStrictEqual(store.getActions().slice(0, 2), expectedActions.slice(0, 2))
+            assert.equal(store.getActions()[2].level, expectedActions[2].level)
+        })
+        it('creates CREATE_STREAM_FAILURE when creating stream has failed', async () => {
+            const stream = {
+                name: 'test'
+            }
+            moxios.stubRequest('api/v1/streams', {
+                status: 500,
+                response: {
+                    error: 'test',
+                    code: 'TEST'
+                }
+            })
+
+            const expectedActions = [{
+                type: actions.CREATE_STREAM_REQUEST
+            }, {
+                type: actions.CREATE_STREAM_FAILURE,
+                error: {
+                    message: 'test',
+                    code: 'TEST',
+                    statusCode: 500
+                }
+            }, {
+                level: 'error'
+            }]
+
+            try {
+                await store.dispatch(actions.createStream(stream))
+                assert(false, 'Did not fail!')
+            } catch (e) {
+                assert.deepStrictEqual(store.getActions().slice(0, 2), expectedActions.slice(0, 2))
+                assert.equal(store.getActions()[2].level, expectedActions[2].level)
+            }
+        })
+    })
+
     describe('getStream', () => {
         it('creates GET_STREAM_SUCCESS when fetching a stream has succeeded', async () => {
             const id = 'asdfasdfasasd'
@@ -224,76 +294,6 @@ describe('Stream actions', () => {
         })
     })
 
-    describe('createStream', () => {
-        it('uses POST request', async () => {
-            const stream = {
-                name: 'test'
-            }
-
-            store.dispatch(actions.createStream(stream))
-            await moxios.promiseWait()
-            const request = moxios.requests.mostRecent()
-            assert.equal(request.url, 'api/v1/streams')
-            assert.equal(request.config.method, 'post')
-            assert.deepStrictEqual(JSON.parse(request.config.data), stream)
-        })
-        it('creates CREATE_STREAM_SUCCESS when creating stream has succeeded', async () => {
-            const stream = {
-                name: 'test'
-            }
-            moxios.stubRequest('api/v1/streams', {
-                status: 200,
-                response: stream
-            })
-
-            const expectedActions = [{
-                type: actions.CREATE_STREAM_REQUEST
-            }, {
-                type: actions.CREATE_STREAM_SUCCESS,
-                stream
-            }, {
-                level: 'success'
-            }]
-
-            await store.dispatch(actions.createStream(stream))
-            assert.deepStrictEqual(store.getActions().slice(0, 2), expectedActions.slice(0, 2))
-            assert.equal(store.getActions()[2].level, expectedActions[2].level)
-        })
-        it('creates CREATE_STREAM_FAILURE when creating stream has failed', async () => {
-            const stream = {
-                name: 'test'
-            }
-            moxios.stubRequest('api/v1/streams', {
-                status: 500,
-                response: {
-                    error: 'test',
-                    code: 'TEST'
-                }
-            })
-
-            const expectedActions = [{
-                type: actions.CREATE_STREAM_REQUEST
-            }, {
-                type: actions.CREATE_STREAM_FAILURE,
-                error: {
-                    message: 'test',
-                    code: 'TEST',
-                    statusCode: 500
-                }
-            }, {
-                level: 'error'
-            }]
-
-            try {
-                await store.dispatch(actions.createStream(stream))
-                assert(false, 'Did not fail!')
-            } catch (e) {
-                assert.deepStrictEqual(store.getActions().slice(0, 2), expectedActions.slice(0, 2))
-                assert.equal(store.getActions()[2].level, expectedActions[2].level)
-            }
-        })
-    })
-
     describe('saveFields', () => {
         it('uses POST request', async () => {
             const id = 'fjasdlfjasdlkfj'
@@ -332,10 +332,13 @@ describe('Stream actions', () => {
                 type: actions.SAVE_STREAM_FIELDS_SUCCESS,
                 id,
                 fields
+            }, {
+                level: 'success'
             }]
 
             await store.dispatch(actions.saveFields(id, fields))
-            assert.deepStrictEqual(store.getActions(), expectedActions)
+            assert.deepStrictEqual(store.getActions().slice(0, 2), expectedActions.slice(0, 2))
+            assert.equal(store.getActions()[2].level, expectedActions[2].level)
         })
         it('creates SAVE_STREAM_FIELDS_FAILURE when saving fields has failed', async () => {
             const id = 'sfasldkfjsaldkfj'
@@ -348,7 +351,7 @@ describe('Stream actions', () => {
             }]
             moxios.stubRequest(`api/v1/streams/${id}/fields`, {
                 status: 500,
-                error: {
+                response: {
                     error: 'test',
                     code: 'TEST'
                 }
@@ -374,6 +377,14 @@ describe('Stream actions', () => {
                 assert.deepStrictEqual(store.getActions().slice(0, 2), expectedActions.slice(0, 2))
                 assert.deepStrictEqual(store.getActions()[2].level, expectedActions[2].level)
             }
+        })
+    })
+
+    it('must dispatch OPEN_STREAM when opening stream', () => {
+        const id = 'askdfjasldkfjasdlkf'
+        assert.deepStrictEqual(actions.openStream(id), {
+            type: actions.OPEN_STREAM,
+            id
         })
     })
 })
