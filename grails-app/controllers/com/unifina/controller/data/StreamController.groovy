@@ -50,4 +50,103 @@ class StreamController {
 		Set<Stream> writable = permissionService.get(Stream, user, Operation.WRITE).toSet()
 		[streams:streams, shareable:shareable, writable:writable, user:user]
 	}
+
+	def files() {
+		getAuthorizedStream(params.id) { stream, user ->
+			DataRange dataRange = streamService.getDataRange(stream)
+			return [dataRange: dataRange, stream:stream]
+		}
+	}
+
+	def upload() {
+		getAuthorizedStream(params.id, Operation.WRITE) { stream, user ->
+			File temp
+			boolean deleteFile = true
+			try {
+				MultipartFile file = request.getFile("file")
+				temp = File.createTempFile("csv_upload_", ".csv")
+				file.transferTo(temp)
+
+				Map config = (stream.config ? JSON.parse(stream.config) : [:])
+				List fields = config.fields ? config.fields : []
+				CSVImporter csv = new CSVImporter(temp, fields, null, null, springSecurityService.currentUser.timezone)
+				if (csv.getSchema().timestampColumnIndex == null) {
+					deleteFile = false
+					flash.message = "Unfortunately we couldn't recognize some of the fields in the CSV-file. But no worries! With a couple of confirmations we still can import your data."
+					response.status = 500
+					render([success: false, redirect: createLink(action: 'confirm', params: [id: params.id, file: temp.getCanonicalPath()])] as JSON)
+				} else {
+					Map updatedConfig = streamService.importCsv(csv, stream)
+					stream.config = (updatedConfig as JSON)
+					stream.save()
+					render([success: true] as JSON)
+				}
+			} catch (Exception e) {
+				Exception rootCause = ExceptionUtils.getRootCause(e)
+				if(rootCause != null)
+					e = rootCause
+				log.error("Failed to import file", e)
+				response.status = 500
+				render([success: false, error: e.message] as JSON)
+			} finally {
+				if (deleteFile && temp != null && temp.exists()) {
+					temp.delete()
+				}
+			}
+		}
+	}
+
+	def confirm() {
+		getAuthorizedStream(params.id, Operation.WRITE) { stream, user ->
+			File file = new File(params.file)
+
+			Map config = stream.config ? JSON.parse(stream.config) : [:]
+			List fields = config.fields ? config.fields : []
+
+			CSVImporter csv = new CSVImporter(file, fields)
+			Schema schema = csv.getSchema()
+
+			[schema: schema, file: params.file, stream: stream]
+		}
+	}
+
+	def confirmUpload() {
+		getAuthorizedStream(params.id, Operation.WRITE) { stream, user ->
+			File file = new File(params.file)
+			List fields = stream.config ? JSON.parse(stream.config).fields : []
+			def index = Integer.parseInt(params.timestampIndex)
+			def format = params.customFormat ?: params.format
+			try {
+				CSVImporter csv = new CSVImporter(file, fields, index, format)
+				Map config = streamService.importCsv(csv, stream)
+				stream.config = (config as JSON)
+				stream.save()
+			} catch (Throwable e) {
+				e = ExceptionUtils.getRootCause(e)
+				flash.error = e.message
+			}
+			redirect(action: "show", id: params.id)
+		}
+	}
+
+	def deleteDataUpTo() {
+		getAuthorizedStream(params.id, Operation.WRITE) { Stream stream, SecUser user ->
+			Date date = new SimpleDateFormat(message(code: "default.dateOnly.format")).parse(params.date) + 1
+			streamService.deleteDataUpTo(stream, date)
+			flash.message = "All data up to " + params.date + " successfully deleted"
+			redirect(action: "show", params: [id: params.id])
+		}
+	}
+
+	private def getAuthorizedStream(String id, Operation op=Operation.READ, Closure action) {
+		SecUser user = springSecurityService.currentUser
+		Stream stream = Stream.get(id)
+		if (!stream) {
+			response.sendError(404)
+		} else if (!permissionService.check(user, stream, op)) {
+			redirect controller: 'login', action: (request.xhr ? 'ajaxDenied' : 'denied')
+		} else {
+			action.call(stream, user)
+		}
+	}
 }

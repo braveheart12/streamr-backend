@@ -2,7 +2,7 @@
 
 import type {Stream} from '../stream-types'
 import type {Permission} from '../permission-types'
-import type {ApiError} from '../common-types'
+import type {ErrorInUi} from '../common-types'
 
 import {
     CREATE_STREAM_REQUEST,
@@ -57,5 +57,5 @@ export type StreamAction = {
         | typeof CREATE_STREAM_FAILURE
         | typeof DELETE_STREAM_FAILURE
         | typeof GET_MY_STREAM_PERMISSIONS_FAILURE,
-    error: ApiError
+    error: ErrorInUi
 }

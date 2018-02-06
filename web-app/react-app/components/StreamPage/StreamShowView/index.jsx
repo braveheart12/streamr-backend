@@ -10,6 +10,7 @@ import InfoView from './InfoView'
 import KeyView from './KeyView'
 import FieldView from './FieldView'
 import PreviewView from './PreviewView'
+import HistoryView from './HistoryView'
 
 import {getStream, openStream, getMyStreamPermissions} from '../../../actions/stream'
 import {getCurrentUser} from '../../../actions/user'
@@ -41,7 +42,7 @@ type Props = StateProps & DispatchProps & RouterProps
 import styles from './streamShowView.pcss'
 
 export class StreamShowView extends Component<Props> {
-    
+
     componentWillMount() {
         const id = this.props.match.params.id
         this.props.getStream(id)
@@ -49,7 +50,7 @@ export class StreamShowView extends Component<Props> {
         this.props.getMyStreamPermissions(id)
         this.props.getCurrentUser()
     }
-    
+
     render() {
         return (
             <div className={styles.streamShowView}>
@@ -76,11 +77,13 @@ export class StreamShowView extends Component<Props> {
                     <Col sm={6} md={4}>
                         <FieldView/>
                     </Col>
+                </Row>
+                <Row>
                     <Col sm={6}>
                         <PreviewView/>
                     </Col>
                     <Col sm={6}>
-                    
+                        <HistoryView/>
                     </Col>
                 </Row>
             </div>
