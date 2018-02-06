@@ -3,14 +3,18 @@
 declare var Streamr: any
 
 import axios from 'axios'
-import parseError from './utils/parseError'
+import {parseError} from './utils/parseApiResponse'
 import createLink from '../helpers/createLink'
 
 import {success, error} from 'react-notification-system-redux'
 
-import type {ApiError} from '../flowtype/common-types'
+import type {ErrorInUi} from '../flowtype/common-types'
 import type {Stream} from '../flowtype/stream-types'
 import type {Permission} from '../flowtype/permission-types'
+
+type StreamId = $ElementType<Stream, 'id'>
+type StreamFields = $ElementType<$ElementType<Stream, 'config'>, 'fields'>
+type PermissionOperation = Array<$ElementType<Permission, 'operation'>>
 
 export const CREATE_STREAM_REQUEST = 'CREATE_STREAM_REQUEST'
 export const CREATE_STREAM_SUCCESS = 'CREATE_STREAM_SUCCESS'
@@ -38,42 +42,40 @@ export const SAVE_FIELDS_FAILURE = 'SAVE_FIELDS_FAILURE'
 
 export const OPEN_STREAM = 'OPEN_STREAM'
 
-const apiUrl = '/api/v1/streams'
+const apiUrl = 'api/v1/streams'
 
-export const createStream = (data: {name: string, description: string}) => (dispatch: Function): Promise<Stream> => {
+export const createStream = (data: { name: string, description: string }) => (dispatch: Function): Promise<Stream> => {
     dispatch(createStreamRequest())
-    return new Promise((resolve, reject) => {
-        axios.post(createLink(apiUrl), data)
-            .then(({data}: {data: Stream}) => {
-                dispatch(success({
-                    title: `Stream ${data.name} created successfully!`
-                }))
-                dispatch(createStreamSuccess(data))
-                resolve(data)
-            })
-            .catch(res => {
-                const e = parseError(res)
-                dispatch(error({
-                    title: 'Error!',
-                    message: e.error
-                }))
-                dispatch(createStreamFailure(e))
-                reject(e)
-            })
-    })
-}
-
-export const getStream = (id: $ElementType<Stream, 'id'>) => (dispatch: Function) => {
-    dispatch(getStreamRequest())
-    axios.get(createLink(`${apiUrl}/${id}`))
-        .then(({data}: {data: Stream}) => dispatch(getStreamSuccess(data)))
+    return axios.post(createLink(apiUrl), data)
+        .then(({data}: { data: Stream }) => {
+            dispatch(createStreamSuccess(data))
+            dispatch(success({
+                title: 'Success!',
+                message: `Stream ${data.name} created successfully!`
+            }))
+        })
         .catch(res => {
             const e = parseError(res)
+            dispatch(createStreamFailure(e))
             dispatch(error({
                 title: 'Error!',
-                message: e.error
+                message: e.message
             }))
+            throw e
+        })
+}
+
+export const getStream = (id: StreamId) => (dispatch: Function) => {
+    dispatch(getStreamRequest())
+    return axios.get(createLink(`${apiUrl}/${id}`))
+        .then(({data}: { data: Stream }) => dispatch(getStreamSuccess(data)))
+        .catch(res => {
+            const e = parseError(res)
             dispatch(getStreamFailure(e))
+            dispatch(error({
+                title: 'Error!',
+                message: e.message
+            }))
             throw e
         })
 }
@@ -90,16 +92,16 @@ export const updateStream = (stream: Stream) => (dispatch: Function) => {
         })
         .catch(res => {
             const e = parseError(res)
+            dispatch(updateStreamFailure(e))
             dispatch(error({
                 title: 'Error!',
-                message: e.error
+                message: e.message
             }))
-            dispatch(updateStreamFailure(e))
             throw e
         })
 }
 
-export const deleteStream = (stream: Stream) => (dispatch: Function) => {
+export const deleteStream = (stream: Stream) => (dispatch: Function): Promise<void> => {
     dispatch(deleteStreamRequest())
     return axios.delete(createLink(`${apiUrl}/${stream.id}`))
         .then(() => {
@@ -111,16 +113,16 @@ export const deleteStream = (stream: Stream) => (dispatch: Function) => {
         })
         .catch(res => {
             const e = parseError(res)
+            dispatch(deleteStreamFailure(e))
             dispatch(error({
                 title: 'Error!',
-                message: e.error
+                message: e.message
             }))
-            dispatch(deleteStreamFailure(e))
             throw e
         })
 }
 
-export const getMyStreamPermissions = (id: $ElementType<Stream, 'id'>) => (dispatch: Function) => {
+export const getMyStreamPermissions = (id: StreamId) => (dispatch: Function) => {
     dispatch(getMyStreamPermissionsRequest())
     return axios.get(createLink(`${apiUrl}/${id}/permissions/me`))
         .then(res => dispatch(getMyStreamPermissionsSuccess(id, res.data.filter(item => item.user === Streamr.user).map(item => item.operation))))
@@ -129,13 +131,13 @@ export const getMyStreamPermissions = (id: $ElementType<Stream, 'id'>) => (dispa
             dispatch(getMyStreamPermissionsFailure(e))
             dispatch(error({
                 title: 'Error!',
-                message: e.error
+                message: e.message
             }))
             throw e
         })
 }
 
-export const saveFields = (id: $ElementType<Stream, 'id'>, fields: $ElementType<$ElementType<Stream, 'config'>, 'fields'>) => (dispatch: Function) => {
+export const saveFields = (id: StreamId, fields: StreamFields) => (dispatch: Function) => {
     dispatch(saveFieldsRequest())
     return axios.post(createLink(`${apiUrl}/${id}/fields`), fields)
         .then(({data}) => {
@@ -150,13 +152,13 @@ export const saveFields = (id: $ElementType<Stream, 'id'>, fields: $ElementType<
             dispatch(saveFieldsFailure(e))
             dispatch(error({
                 title: 'Error!',
-                message: e.error
+                message: e.message
             }))
             throw e
         })
 }
 
-export const openStream = (id: $ElementType<Stream, 'id'>) => ({
+export const openStream = (id: StreamId) => ({
     type: OPEN_STREAM,
     id
 })
@@ -165,13 +167,13 @@ const saveFieldsRequest = () => ({
     type: SAVE_FIELDS_REQUEST
 })
 
-const saveFieldsSuccess = (id: $ElementType<Stream, 'id'>, fields: $ElementType<$ElementType<Stream, 'config'>, 'fields'>) => ({
+const saveFieldsSuccess = (id: StreamId, fields: StreamFields) => ({
     type: SAVE_FIELDS_SUCCESS,
     id,
     fields
 })
 
-const saveFieldsFailure = (error: ApiError) => ({
+const saveFieldsFailure = (error: ErrorInUi) => ({
     type: SAVE_FIELDS_FAILURE,
     error
 })
@@ -185,7 +187,7 @@ const updateStreamSuccess = (stream: Stream) => ({
     stream
 })
 
-const updateStreamFailure = (error: ApiError) => ({
+const updateStreamFailure = (error: ErrorInUi) => ({
     type: UPDATE_STREAM_FAILURE,
     error
 })
@@ -199,7 +201,7 @@ const getStreamSuccess = (stream: Stream) => ({
     stream
 })
 
-const getStreamFailure = (error: ApiError) => ({
+const getStreamFailure = (error: ErrorInUi) => ({
     type: GET_STREAM_FAILURE,
     error
 })
@@ -208,12 +210,12 @@ const deleteStreamRequest = () => ({
     type: DELETE_STREAM_REQUEST
 })
 
-const deleteStreamSuccess = (id: $ElementType<Stream, 'id'>) => ({
+const deleteStreamSuccess = (id: StreamId) => ({
     type: DELETE_STREAM_SUCCESS,
     id
 })
 
-const deleteStreamFailure = (error: ApiError) => ({
+const deleteStreamFailure = (error: ErrorInUi) => ({
     type: DELETE_STREAM_FAILURE,
     error
 })
@@ -227,7 +229,7 @@ const createStreamSuccess = (stream: Stream) => ({
     stream
 })
 
-const createStreamFailure = (error: ApiError) => ({
+const createStreamFailure = (error: ErrorInUi) => ({
     type: CREATE_STREAM_FAILURE,
     error
 })
@@ -236,13 +238,13 @@ const getMyStreamPermissionsRequest = () => ({
     type: GET_MY_STREAM_PERMISSIONS_REQUEST
 })
 
-const getMyStreamPermissionsSuccess = (id: $ElementType<Stream, 'id'>, permissions: Array<$ElementType<Permission, 'operation'>>) => ({
+const getMyStreamPermissionsSuccess = (id: StreamId, permissions: PermissionOperation) => ({
     type: GET_MY_STREAM_PERMISSIONS_SUCCESS,
     id,
     permissions
 })
 
-const getMyStreamPermissionsFailure = (error: ApiError) => ({
+const getMyStreamPermissionsFailure = (error: ErrorInUi) => ({
     type: GET_MY_STREAM_PERMISSIONS_FAILURE,
     error
 })

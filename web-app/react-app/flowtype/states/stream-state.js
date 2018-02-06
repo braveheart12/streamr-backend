@@ -1,7 +1,7 @@
 // @flow
 
 import type {Stream} from '../stream-types'
-import type {ApiError} from '../common-types'
+import type {ErrorInUi} from '../common-types'
 
 export type StreamState = {
     byId: {
@@ -11,5 +11,5 @@ export type StreamState = {
         id: ?$ElementType<Stream, 'id'>
     },
     fetching: boolean,
-    error?: ?ApiError
+    error?: ?ErrorInUi
 }
