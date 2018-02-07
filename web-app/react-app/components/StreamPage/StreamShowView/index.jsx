@@ -4,7 +4,6 @@ import React, {Component} from 'react'
 import {connect} from 'react-redux'
 import {StreamrBreadcrumb, StreamrBreadcrumbItem} from '../../Breadcrumb'
 import createLink from '../../../helpers/createLink'
-import {Helmet} from 'react-helmet'
 import {Row, Col} from 'react-bootstrap'
 import InfoView from './InfoView'
 import KeyView from './KeyView'
@@ -22,41 +21,15 @@ type StateProps = {
     stream: ?Stream
 }
 
-type DispatchProps = {
-    getStream: (id: $ElementType<Stream, 'id'>) => void,
-    openStream: (id: $ElementType<Stream, 'id'>) => void,
-    getMyStreamPermissions: (id: $ElementType<Stream, 'id'>) => void,
-    getCurrentUser: () => void
-}
-
-type RouterProps = {
-    match: {
-        params: {
-            id: string
-        }
-    }
-}
-
-type Props = StateProps & DispatchProps & RouterProps
+type Props = StateProps
 
 import styles from './streamShowView.pcss'
 
 export class StreamShowView extends Component<Props> {
 
-    componentWillMount() {
-        const id = this.props.match.params.id
-        this.props.getStream(id)
-        this.props.openStream(id)
-        this.props.getMyStreamPermissions(id)
-        this.props.getCurrentUser()
-    }
-
     render() {
         return (
             <div className={styles.streamShowView}>
-                <Helmet>
-                    <title>{this.props.stream ? this.props.stream.name : ' '}</title>
-                </Helmet>
                 <StreamrBreadcrumb style={{
                     margin: '-18px -18px 18px'
                 }}>
@@ -95,19 +68,4 @@ const mapStateToProps = ({stream}: {stream: StreamState}): StateProps => ({
     stream: stream.openStream.id ? stream.byId[stream.openStream.id] : null
 })
 
-const mapDispatchToProps = (dispatch: Function): DispatchProps => ({
-    getStream(id: $ElementType<Stream, 'id'>) {
-        dispatch(getStream(id))
-    },
-    openStream(id: $ElementType<Stream, 'id'>) {
-        dispatch(openStream(id))
-    },
-    getMyStreamPermissions(id: $ElementType<Stream, 'id'>) {
-        dispatch(getMyStreamPermissions(id))
-    },
-    getCurrentUser() {
-        dispatch(getCurrentUser())
-    }
-})
-
-export default connect(mapStateToProps, mapDispatchToProps)(StreamShowView)
+export default connect(mapStateToProps)(StreamShowView)

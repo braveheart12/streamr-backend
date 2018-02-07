@@ -3,7 +3,6 @@
 import React, {Component} from 'react'
 import {connect} from 'react-redux'
 import {Col, Panel} from 'react-bootstrap'
-import {CSVImportView} from './CSVImportView'
 
 type Props = {}
 
@@ -22,9 +21,6 @@ export class HistoryView extends Component<Props, State> {
                         <input/>faslfjsadöf
                         fsalfkjasödflk
                         fajldfkjölkdfdfjl
-                    </Col>
-                    <Col md={6}>
-                        <CSVImportView/>
                     </Col>
                 </Panel.Body>
             </Panel>

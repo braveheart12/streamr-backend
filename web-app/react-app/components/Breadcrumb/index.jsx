@@ -3,6 +3,8 @@
 import React, {Component} from 'react'
 import {Breadcrumb, DropdownButton} from 'react-bootstrap'
 import FontAwesome from 'react-fontawesome'
+import {Link} from 'react-router-dom'
+import _ from 'lodash'
 
 import type {Node} from 'react'
 
@@ -25,21 +27,36 @@ export class StreamrBreadcrumb extends Component<{
 
 export class StreamrBreadcrumbItem extends Component<{
     href?: string,
+    to?: string,
     active?: boolean,
     children?: Children
 }> {
     render() {
         return (
-            <Breadcrumb.Item {...this.props} href={!this.props.active ? this.props.href : undefined}>
-                {this.props.children}
-            </Breadcrumb.Item>
+            <li {...(_.omit(this.props, 'active', 'children', 'to', 'href'))}>
+                {
+                    (this.props.active && (
+                        <span>
+                            {this.props.children}
+                        </span>
+                    )) || (this.props.to && (
+                        <Link to={this.props.to}>
+                            {this.props.children}
+                        </Link>
+                    )) || (
+                        <a href={this.props.href}>
+                            {this.props.children}
+                        </a>
+                    )
+                }
+            </li>
         )
     }
 }
 
 export class StreamrBreadcrumbDropdownButton extends Component<{
     className?: string,
-        children?: Children
+    children?: Children
 }> {
     render() {
         return (

@@ -9,6 +9,8 @@ import {saveFields} from '../../../../actions/stream'
 import {error} from 'react-notification-system-redux'
 import _ from 'lodash'
 
+const config = require('../../streamConfig')
+
 import type {Stream, StreamField} from '../../../../flowtype/stream-types'
 import type {StreamState} from '../../../../flowtype/states/stream-state'
 
@@ -48,11 +50,11 @@ export class FieldView extends Component<Props, State> {
         fields: [],
         duplicateFieldIndexes: []
     }
-    
+
     componentDidMount() {
         window.addEventListener('beforeunload', this.onBeforeUnload)
     }
-    
+
     componentWillReceiveProps(props: Props) {
         if (this.state.fields && this.state.fields.length) {
             this.setState({
@@ -60,13 +62,13 @@ export class FieldView extends Component<Props, State> {
             })
         }
     }
-    
+
     startEditing = () => {
         this.setState({
             editing: true
         })
     }
-    
+
     save = () => {
         if (this.state.duplicateFieldIndexes.length === 0) {
             this.props.stream && this.state.fields && this.props.saveFields(this.props.stream.id, this.state.fields)
@@ -83,14 +85,14 @@ export class FieldView extends Component<Props, State> {
             })
         }
     }
-    
+
     cancelEditing = () => {
         this.setState({
             editing: false,
             fields: this.props.stream ? this.props.stream.config.fields : []
         })
     }
-    
+
     onBeforeUnload = (e: Event & { returnValue: ?string }): ?string => {
         const o = this.props.stream && this.props.stream.config.fields || []
         const n = this.state.fields || []
@@ -101,9 +103,9 @@ export class FieldView extends Component<Props, State> {
             return message
         }
     }
-    
+
     static getNameForInput = (type: string, i: number | string): string => `${type}_${i}`
-    
+
     findDuplicatesFromFields = (fields: ?Array<StreamField>) => {
         if (fields) {
             const duplicates = []
@@ -122,7 +124,7 @@ export class FieldView extends Component<Props, State> {
             })
         }
     }
-    
+
     parseFormAndSetState = (addNew: boolean = false) => {
         const data = serialize(this.form, {
             hash: true,
@@ -170,11 +172,11 @@ export class FieldView extends Component<Props, State> {
         })
         this.findDuplicatesFromFields(newFields)
     }
-    
+
     onChange = () => {
         this.parseFormAndSetState()
     }
-    
+
     onSubmit = (e: Event) => {
         e.preventDefault()
         this.parseFormAndSetState(true)
@@ -199,7 +201,7 @@ export class FieldView extends Component<Props, State> {
                 defaultValue={props.value}
                 onChange={this.onChange}
             >
-                {['number', 'string', 'boolean', 'map', 'list'].map(t => (
+                {config.fieldTypes.map(t => (
                     <option
                         key={t}
                         value={t}

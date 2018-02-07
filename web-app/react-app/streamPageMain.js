@@ -7,7 +7,9 @@ import {Provider} from 'react-redux'
 import createLink from './helpers/createLink'
 import { BrowserRouter, Route } from 'react-router-dom'
 import StreamCreateView from './components/StreamPage/StreamCreateView'
+import StreamPage from './components/StreamPage'
 import StreamShowView from './components/StreamPage/StreamShowView'
+import CSVImportView from './components/StreamPage/StreamShowView/HistoryView/CSVImportView'
 import Notifier from './components/StreamrNotifierWrapper'
 
 import store from './stores/streamPageStore.js'
@@ -29,7 +31,12 @@ render(
             }}>
                 <Notifier/>
                 <Route path="/create" component={StreamCreateView}/>
-                <Route path="/show/:id" component={StreamShowView}/>
+                <Route path="/show/:id">
+                    <StreamPage>
+                        <Route exact path="/show/:id" component={StreamShowView}/>
+                        <Route exact path="/show/:id/importCsv" component={CSVImportView}/>
+                    </StreamPage>
+                </Route>
                 {/* This is just a way to make a redirection out of react-router and the whole React app */}
                 <Route exact path="/(index)?" component={() => {
                     window.location.assign(path.resolve(basename, 'list'))

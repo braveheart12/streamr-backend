@@ -81,6 +81,7 @@
     "moxios": "^0.4.0",
     "mustache": "*",
     "packery": "^2.1.1",
+    "papaparse": "^4.3.7",
     "path": "^0.12.7",
     "postcss-color-function": "^3.0.0",
     "postcss-extend": "^1.0.5",
