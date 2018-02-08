@@ -21,17 +21,22 @@ import {
     GET_MY_STREAM_PERMISSIONS_REQUEST,
     GET_MY_STREAM_PERMISSIONS_SUCCESS,
     GET_MY_STREAM_PERMISSIONS_FAILURE,
+    UPLOAD_CSV_FILE_REQUEST,
+    UPLOAD_CSV_FILE_SUCCESS,
+    UPLOAD_CSV_FILE_FAILURE,
     OPEN_STREAM
 } from '../actions/stream.js'
 
 import type {StreamState} from '../flowtype/states/stream-state'
 import type {StreamAction} from '../flowtype/actions/stream-actions'
+import type {CSVImporterSchema} from '../flowtype/stream-types'
 
 const initialState = {
     byId: {},
     openStream: {
         id: null
     },
+    csvUpload: null,
     fetching: false,
     error: null
 }
@@ -44,6 +49,7 @@ export default function(state: StreamState = initialState, action: StreamAction)
         case GET_MY_STREAM_PERMISSIONS_REQUEST:
         case DELETE_STREAM_REQUEST:
         case SAVE_STREAM_FIELDS_REQUEST:
+        case UPLOAD_CSV_FILE_REQUEST:
             return {
                 ...state,
                 fetching: true
@@ -103,6 +109,7 @@ export default function(state: StreamState = initialState, action: StreamAction)
         case GET_MY_STREAM_PERMISSIONS_FAILURE:
         case DELETE_STREAM_FAILURE:
         case SAVE_STREAM_FIELDS_FAILURE:
+        case UPLOAD_CSV_FILE_FAILURE:
             return {
                 ...state,
                 fetching: false,

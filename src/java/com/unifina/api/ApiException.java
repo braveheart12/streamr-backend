@@ -1,5 +1,8 @@
 package com.unifina.api;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Exceptions thrown by ApiControllers
  *

@@ -10,7 +10,8 @@ export type ErrorFromApi = {
 export type ErrorInUi = {
     message: string,
     statusCode?: number,
-    code?: string
+    code?: string,
+    data?: {}
 }
 
 export type UiChannel = {

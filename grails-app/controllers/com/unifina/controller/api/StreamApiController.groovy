@@ -10,8 +10,11 @@ import com.unifina.domain.security.Permission.Operation
 import com.unifina.feed.DataRange
 import com.unifina.security.AuthLevel
 import com.unifina.security.StreamrApi
+import com.unifina.utils.CSVImporter
 import grails.converters.JSON
 import grails.plugin.springsecurity.annotation.Secured
+import org.apache.commons.lang.exception.ExceptionUtils
+import org.springframework.web.multipart.MultipartFile
 
 @Secured(["IS_AUTHENTICATED_ANONYMOUSLY"])
 class StreamApiController {
@@ -87,6 +90,65 @@ class StreamApiController {
 
 			Map result = [success: true, id: stream.id]
 			render result as JSON
+		}
+	}
+
+	@StreamrApi
+	def uploadCsvFile(String id) {
+		getAuthorizedStream(id, Operation.WRITE) { Stream stream ->
+			File temp
+			boolean deleteFile = true
+			try {
+				MultipartFile file = request.getFile("file")
+				temp = File.createTempFile("csv_upload_", ".csv")
+				file.transferTo(temp)
+
+				Map config = (stream.config ? JSON.parse(stream.config) : [:])
+				List fields = config.fields ? config.fields : []
+				CSVImporter csv = new CSVImporter(temp, fields, null, null, request.apiUser.timezone)
+				if (csv.getSchema().timestampColumnIndex == null) {
+					deleteFile = false
+					def e = new ApiException(500, 'CSV_PARSE_EXCEPTION', 'fsaklfjlasdkfjsdfadflkj')
+					response.setStatus(e.statusCode)
+					render([code: e.code, message: e.message, fileUrl: temp.getCanonicalPath(), schema: csv.getSchema().toMap()] as JSON)
+				} else {
+					Map updatedConfig = streamService.importCsv(csv, stream)
+					stream.config = (updatedConfig as JSON)
+					stream.save()
+					render([success: true] as JSON)
+				}
+			} catch (Exception e) {
+				Exception rootCause = ExceptionUtils.getRootCause(e)
+				if(rootCause != null)
+					e = rootCause
+				log.error("Failed to import file", e)
+				response.status = 500
+				render([success: false, error: e.message] as JSON)
+			} finally {
+				if (deleteFile && temp != null && temp.exists()) {
+					temp.delete()
+				}
+			}
+		}
+	}
+
+	@StreamrApi
+	def confirmCsvFileUpload(String id) {
+		getAuthorizedStream(id, Operation.WRITE) { stream ->
+			File file = new File(request.JSON.fileUrl)
+			List fields = stream.config ? JSON.parse(stream.config).fields : []
+			def index = Integer.parseInt(request.JSON.timestampColumnIndex)
+			def format = request.JSON.dateFormat
+			try {
+				CSVImporter csv = new CSVImporter(file, fields, index, format)
+				Map config = streamService.importCsv(csv, stream)
+				stream.config = (config as JSON)
+				stream.save()
+				render([stream: stream] as JSON)
+			} catch (Throwable e) {
+				e = ExceptionUtils.getRootCause(e)
+				throw e
+			}
 		}
 	}
 

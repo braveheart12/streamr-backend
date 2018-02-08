@@ -9,7 +9,7 @@ import { BrowserRouter, Route } from 'react-router-dom'
 import StreamCreateView from './components/StreamPage/StreamCreateView'
 import StreamPage from './components/StreamPage'
 import StreamShowView from './components/StreamPage/StreamShowView'
-import CSVImportView from './components/StreamPage/StreamShowView/HistoryView/CSVImportView'
+import ConfirmCsvImportView from './components/StreamPage/StreamShowView/HistoryView/ConfirmCsvImportView'
 import Notifier from './components/StreamrNotifierWrapper'
 
 import store from './stores/streamPageStore.js'
@@ -34,7 +34,7 @@ render(
                 <Route path="/show/:id">
                     <StreamPage>
                         <Route exact path="/show/:id" component={StreamShowView}/>
-                        <Route exact path="/show/:id/importCsv" component={CSVImportView}/>
+                        <Route exact path="/show/:id/confirmCsvImport" component={ConfirmCsvImportView}/>
                     </StreamPage>
                 </Route>
                 {/* This is just a way to make a redirection out of react-router and the whole React app */}

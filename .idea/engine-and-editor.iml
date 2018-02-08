@@ -27,8 +27,7 @@
       </configuration>
     </facet>
   </component>
-  <component name="NewModuleRootManager" inherit-compiler-output="true">
-    <exclude-output />
+  <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$/src/java" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/groovy" isTestSource="false" />
@@ -42,6 +41,7 @@
       <sourceFolder url="file://$MODULE_DIR$/test/functional" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/grails-app/utils" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/grails-app/conf" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/.slcache" />
       <excludeFolder url="file://$MODULE_DIR$/target/classes" />
       <excludeFolder url="file://$MODULE_DIR$/target/test-classes" />
     </content>
@@ -268,7 +268,6 @@
           <root url="jar://$MAVEN_REPOSITORY$/org/javassist/javassist/3.15.0-GA/javassist-3.15.0-GA.jar!/" />
           <root url="file://$MODULE_DIR$/lib" />
         </CLASSES>
-        <JAVADOC />
         <SOURCES>
           <root url="jar://$USER_HOME$/.sdkman/candidates/grails/2.5.6/dist/grails-plugin-converters-2.5.6-sources.jar!/" />
           <root url="jar://$USER_HOME$/.sdkman/candidates/grails/2.5.6/dist/grails-plugin-domain-class-2.5.6-sources.jar!/" />

@@ -1,6 +1,6 @@
 // @flow
 
-import type {Stream} from '../stream-types'
+import type {CSVImporterSchema, Stream} from '../stream-types'
 import type {Permission} from '../permission-types'
 import type {ErrorInUi} from '../common-types'
 
@@ -23,6 +23,9 @@ import {
     SAVE_STREAM_FIELDS_REQUEST,
     SAVE_STREAM_FIELDS_SUCCESS,
     SAVE_STREAM_FIELDS_FAILURE,
+    UPLOAD_CSV_FILE_REQUEST,
+    UPLOAD_CSV_FILE_SUCCESS,
+    UPLOAD_CSV_FILE_FAILURE,
     OPEN_STREAM
 } from '../../actions/stream'
 
@@ -33,6 +36,7 @@ export type StreamAction = {
         | typeof CREATE_STREAM_REQUEST
         | typeof GET_MY_STREAM_PERMISSIONS_REQUEST
         | typeof SAVE_STREAM_FIELDS_REQUEST
+        | typeof UPLOAD_CSV_FILE_REQUEST
 } | {
     type: typeof OPEN_STREAM
         | typeof DELETE_STREAM_SUCCESS,
@@ -58,4 +62,12 @@ export type StreamAction = {
         | typeof DELETE_STREAM_FAILURE
         | typeof GET_MY_STREAM_PERMISSIONS_FAILURE,
     error: ErrorInUi
+} | {
+    type: typeof UPLOAD_CSV_FILE_FAILURE,
+    error: ErrorInUi,
+    id: $ElementType<Stream, 'id'>,
+    fileUrl: string,
+    schema: CSVImporterSchema
+} | {
+    type: typeof UPLOAD_CSV_FILE_SUCCESS
 }

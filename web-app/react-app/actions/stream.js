@@ -9,7 +9,7 @@ import createLink from '../helpers/createLink'
 import {success, error} from 'react-notification-system-redux'
 
 import type {ErrorInUi} from '../flowtype/common-types'
-import type {Stream} from '../flowtype/stream-types'
+import type {Stream, CSVImporterSchema} from '../flowtype/stream-types'
 import type {Permission} from '../flowtype/permission-types'
 
 type StreamId = $ElementType<Stream, 'id'>
@@ -40,29 +40,40 @@ export const SAVE_STREAM_FIELDS_REQUEST = 'SAVE_STREAM_FIELDS_REQUEST'
 export const SAVE_STREAM_FIELDS_SUCCESS = 'SAVE_STREAM_FIELDS_SUCCESS'
 export const SAVE_STREAM_FIELDS_FAILURE = 'SAVE_STREAM_FIELDS_FAILURE'
 
+export const UPLOAD_CSV_FILE_REQUEST = 'UPLOAD_CSV_FILE_REQUEST'
+export const UPLOAD_CSV_FILE_SUCCESS = 'UPLOAD_CSV_FILE_SUCCESS'
+export const UPLOAD_CSV_FILE_FAILURE = 'UPLOAD_CSV_FILE_FAILURE'
+
+export const CONFIRM_CSV_FILE_UPLOAD_REQUEST = 'CONFIRM_CSV_FILE_UPLOAD_REQUEST'
+export const CONFIRM_CSV_FILE_UPLOAD_SUCCESS = 'CONFIRM_CSV_FILE_UPLOAD_SUCCESS'
+export const CONFIRM_CSV_FILE_UPLOAD_FAILURE = 'CONFIRM_CSV_FILE_UPLOAD_FAILURE'
+
 export const OPEN_STREAM = 'OPEN_STREAM'
 
 const apiUrl = 'api/v1/streams'
 
 export const createStream = (data: { name: string, description: string }) => (dispatch: Function): Promise<Stream> => {
     dispatch(createStreamRequest())
-    return axios.post(createLink(apiUrl), data)
-        .then(({data}: { data: Stream }) => {
-            dispatch(createStreamSuccess(data))
-            dispatch(success({
-                title: 'Success!',
-                message: `Stream ${data.name} created successfully!`
-            }))
-        })
-        .catch(res => {
-            const e = parseError(res)
-            dispatch(createStreamFailure(e))
-            dispatch(error({
-                title: 'Error!',
-                message: e.message
-            }))
-            throw e
-        })
+    return new Promise((resolve, reject) => {
+        axios.post(createLink(apiUrl), data)
+            .then(({data}: { data: Stream }) => {
+                dispatch(createStreamSuccess(data))
+                dispatch(success({
+                    title: 'Success!',
+                    message: `Stream ${data.name} created successfully!`
+                }))
+                resolve(data)
+            })
+            .catch(res => {
+                const e = parseError(res)
+                dispatch(createStreamFailure(e))
+                dispatch(error({
+                    title: 'Error!',
+                    message: e.message
+                }))
+                reject(e)
+            })
+    })
 }
 
 export const getStream = (id: StreamId) => (dispatch: Function) => {
@@ -150,6 +161,54 @@ export const saveFields = (id: StreamId, fields: StreamFields) => (dispatch: Fun
         .catch(res => {
             const e = parseError(res)
             dispatch(saveFieldsFailure(e))
+            dispatch(error({
+                title: 'Error!',
+                message: e.message
+            }))
+            throw e
+        })
+}
+
+export const uploadCsvFile = (id: StreamId, file: File) => (dispatch: Function) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    dispatch(uploadCsvFileRequest())
+    return axios.post(createLink(`${apiUrl}/${id}/uploadCsvFile`), formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    })
+        .then(({data}) => {
+            debugger
+        })
+        .catch((res) => {
+            const e = parseError(res)
+            e.data = {
+                fileUrl: res.response.data.fileUrl,
+                schema: res.response.data.schema
+            }
+            dispatch(uploadCsvFileFailure(e))
+            dispatch(error({
+                title: 'Error!',
+                message: e.message
+            }))
+            throw e
+        })
+}
+
+export const confirmCsvFileUpload = (id: StreamId, fileUrl: string, dateFormat: string, timestampColumnIndex: number) => (dispatch: Function) => {
+    dispatch(confirmCsvFileUploadRequest())
+    return axios.post(createLink(`${apiUrl}/${id}/confirmCsvFileUpload`), {
+        fileUrl,
+        dateFormat,
+        timestampColumnIndex
+    })
+        .then(({data}) => {
+            debugger
+        })
+        .catch((res) => {
+            const e = parseError(res)
+            dispatch(confirmCsvFileUploadFailure(e))
             dispatch(error({
                 title: 'Error!',
                 message: e.message
@@ -247,4 +306,30 @@ const getMyStreamPermissionsSuccess = (id: StreamId, permissions: PermissionOper
 const getMyStreamPermissionsFailure = (error: ErrorInUi) => ({
     type: GET_MY_STREAM_PERMISSIONS_FAILURE,
     error
+})
+
+const uploadCsvFileRequest = () => ({
+    type: UPLOAD_CSV_FILE_REQUEST
+})
+
+const uploadCsvFileSuccess = () => ({
+    type: UPLOAD_CSV_FILE_SUCCESS
+})
+
+const uploadCsvFileFailure = (error: ErrorInUi) => ({
+    type: UPLOAD_CSV_FILE_FAILURE,
+    error,
+})
+
+const confirmCsvFileUploadRequest = () => ({
+    type: CONFIRM_CSV_FILE_UPLOAD_REQUEST
+})
+
+const confirmCsvFileUploadSuccess = () => ({
+    type: CONFIRM_CSV_FILE_UPLOAD_SUCCESS
+})
+
+const confirmCsvFileUploadFailure = (error: ErrorInUi) => ({
+    type: CONFIRM_CSV_FILE_UPLOAD_FAILURE,
+    error,
 })
