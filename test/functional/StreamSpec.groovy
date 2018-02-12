@@ -50,32 +50,32 @@ class StreamSpec extends LoginTester1Spec implements ConfirmationMixin, StreamMi
 		then: "the stream has no data anymore"
 			waitFor { noHistoryMessage.displayed }
 
-		
+
 		when: "Clicked to go to the configure view and deleted the fields"
 			configureFieldsButton.click()
 		waitFor { $(".delete-field-button").size() == 4 }
 			deleteFields()
 		then: "There are no fields anymore"
 			waitFor { $(".delete-field-button").size() == 0 }
-		
+
 		when: "Saved"
 			$("button.save").click()
 		then: "Go to StreamShowPage, no configured fields"
 			waitFor { at StreamShowPage }
 			waitFor { $("div.alert.alert-info")[0].displayed }
 	}
-	
+
 	void "creating streams and autodetecting fields"() {
 		setup:
 			def streamName = "StreamSpec"+System.currentTimeMillis()
 			to StreamListPage
 			waitFor { at StreamListPage }
-		
+
 		when: "create stream button is clicked"
 			createButton.click()
 		then: "must go to stream create page"
 			waitFor { at StreamCreatePage }
-			
+
 		when: "name and desc are entered and next button is clicked"
 			name << streamName
 			description << streamName + " description"
@@ -104,7 +104,7 @@ class StreamSpec extends LoginTester1Spec implements ConfirmationMixin, StreamMi
 					$("select", name:"field_type").getAt(1).value() == "number"
 					$(".delete-field-button").size() == 2
 			}
-			
+
 		when: "save button is clicked"
 			saveButton.click()
 		then: "navigate back to show page, showing the fields and message"
@@ -121,7 +121,7 @@ class StreamSpec extends LoginTester1Spec implements ConfirmationMixin, StreamMi
 			deleteStreamButton.click()
 		then: "must show confirmation"
 			waitForConfirmation()
-			
+
 		when: "confirmation accepted"
 			acceptConfirmation()
 		then: "must navigate to list page and show message"

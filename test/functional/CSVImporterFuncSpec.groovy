@@ -77,19 +77,19 @@ class CSVImporterFuncSpec extends LoginTester1Spec implements CanvasMixin, Strea
 		$("#endDate").firstElement().clear()
 		$("#endDate") << "2015-02-25"
 		$(".input-group-addon", text:"To").click()
-		
+
 		searchAndClickContains("CSVImporter")
 		moduleShouldAppearOnCanvas("Stream")
 		searchAndClick("Label")
 		moduleShouldAppearOnCanvas("Label")
-		
+
 		connectEndpoints(findOutput("Stream", "price"), findInput("Label", "label"))
 		runHistoricalButton.click()
-		
+
 		then: "The label module has some content -> stream has data"
 		waitFor(15){ $(".module .modulebody .modulelabel").text() != "" }
 	}
-	
+
 }
 
 

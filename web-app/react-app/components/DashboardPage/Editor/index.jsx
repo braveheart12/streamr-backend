@@ -92,14 +92,14 @@ type State = {
 
 export class Editor extends Component<Props, State> {
     client: StreamrClient
-    
+
     static defaultProps = {
         dashboard: {
             name: '',
             items: []
         }
     }
-    
+
     state = {
         breakpoints: dashboardConfig.layout.breakpoints,
         cols: dashboardConfig.layout.cols,
@@ -107,7 +107,7 @@ export class Editor extends Component<Props, State> {
         isFullscreen: false,
         sharingDialogIsOpen: false
     }
-    
+
     constructor() {
         super()
         this.client = new StreamrClient({
@@ -117,20 +117,20 @@ export class Editor extends Component<Props, State> {
             autoDisconnect: false
         })
     }
-    
+
     componentDidMount() {
         window.addEventListener('beforeunload', this.onBeforeUnload)
-        
+
         const menuToggle = document.getElementById('main-menu-toggle')
         menuToggle && menuToggle.addEventListener('click', this.onMenuToggle)
     }
-    
+
     componentWillReceiveProps(nextProps: Props) {
         if (this.props.dashboard && nextProps.dashboard && this.props.dashboard.id !== nextProps.dashboard.id) {
             this.props.history.push(`/${nextProps.dashboard.id || ''}`)
         }
     }
-    
+
     onMenuToggle = () => {
         const menuIsOpen = document.body && document.body.classList && document.body.classList.contains('mmc')
         if (menuIsOpen) {
@@ -139,22 +139,22 @@ export class Editor extends Component<Props, State> {
             this.props.dashboard && this.props.lockEditing(this.props.dashboard.id)
         }
     }
-    
+
     onDragStop = () => {
-    
+
     }
-    
+
     onLayoutChange = (layout: DashboardItem.layout, allLayouts: Layout) => {
         this.onResize(layout)
         this.props.dashboard && this.props.updateDashboardLayout(this.props.dashboard.id, allLayouts)
     }
-    
+
     onFullscreenToggle = (value?: boolean) => {
         this.setState({
             isFullscreen: value !== undefined ? value : !this.state.isFullscreen
         })
     }
-    
+
     generateLayout = (): ?Layout => {
         const db = this.props.dashboard
         const layout = db && _.zipObject(dashboardConfig.layout.sizes, _.map(dashboardConfig.layout.sizes, (size: 'lg' | 'md' | 'sm' | 'xs') => {
@@ -171,7 +171,7 @@ export class Editor extends Component<Props, State> {
         }))
         return layout
     }
-    
+
     onResize = (layout: Array<LayoutItem>) => {
         this.setState({
             layoutsByItemId: layout.reduce((result, item) => {
@@ -180,7 +180,7 @@ export class Editor extends Component<Props, State> {
             }, {})
         })
     }
-    
+
     onBeforeUnload = (e: Event & { returnValue: ?string }): ?string => {
         if (this.props.dashboard && this.props.dashboard.id && !this.props.dashboard.saved) {
             const message = 'You have unsaved changes in your Dashboard. Are you sure you want to leave?'
@@ -188,11 +188,11 @@ export class Editor extends Component<Props, State> {
             return message
         }
     }
-    
+
     static generateItemId(item: DashboardItem): string {
         return `${item.canvas}-${item.module}`
     }
-    
+
     render() {
         const {dashboard} = this.props
         const layout = dashboard && dashboard.items && this.generateLayout()

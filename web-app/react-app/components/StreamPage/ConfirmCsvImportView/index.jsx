@@ -5,16 +5,16 @@ import {connect} from 'react-redux'
 import {withRouter} from 'react-router-dom'
 import {Panel, Col, ControlLabel, Form, FormControl, FormGroup, Radio, Table, Button} from 'react-bootstrap'
 import Select from 'react-select'
-import {StreamrBreadcrumb, StreamrBreadcrumbItem} from '../../../../Breadcrumb'
+import {StreamrBreadcrumb, StreamrBreadcrumbItem} from '../../Breadcrumb/index'
 import serialize from 'form-serialize'
-import {confirmCsvFileUpload} from '../../../../../actions/stream'
+import {confirmCsvFileUpload} from '../../../actions/stream'
 
 import styles from './csvImportView.pcss'
-import createLink from '../../../../../helpers/createLink'
+import createLink from '../../../helpers/createLink'
 
-import type {CSVImporterSchema, Stream} from '../../../../../flowtype/stream-types'
-import type {StreamState} from '../../../../../flowtype/states/stream-state'
-import type {OnSubmitEvent} from '../../../../../flowtype/common-types'
+import type {CSVImporterSchema, Stream} from '../../../flowtype/stream-types'
+import type {StreamState} from '../../../flowtype/states/stream-state'
+import type {OnSubmitEvent} from '../../../flowtype/common-types'
 
 type StateProps = {
     stream: ?Stream
@@ -137,12 +137,21 @@ export class ConfirmCsvImportView extends Component<Props, State> {
                                         name="dateFormat"
                                         value={this.state.dateFormat}
                                         onChange={this.onDateFormatChange}
-                                        options={['dd/MM/yyyy HH:mm:ss.SSS'].map(v => ({
-                                            value: v,
-                                            label: v
+                                        options={Object.entries({
+                                            'dd-MM-yyyy HH:mm:ss.SSS': 'dd/MM/yyyy HH:mm:ss.SSS',
+                                            'MM-dd-yyyy HH:mm:ss.SSS': 'MM/dd/yyyy HH:mm:ss.SSS',
+                                            'unix': 'Java timestamp (milliseconds since January 1st 1970 UTC)',
+                                            'unix-s': 'Unix timestamp (seconds since January 1st 1970 UTC)'
+                                        }).map(([value, label]) => ({
+                                            value,
+                                            label
                                         }))}
                                         required
                                     />
+                                </FormGroup>
+                                <FormGroup>
+                                    Select from the list or type your own
+                                    (must be in <a href="https://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html" target="_blank" rel="nofollow noopener noreferrer">Java SimpleDateFormat pattern syntax</a>)
                                 </FormGroup>
                                 <Button
                                     type="submit"

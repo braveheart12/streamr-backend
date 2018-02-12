@@ -47,7 +47,7 @@
 						return info;
 					}
 				});
-				
+
 				var redirects = []
 				var errorMessages = []
 				dz[0].dropzone.on("error", function(e, msg, xhr){
@@ -69,7 +69,7 @@
 				})
 			});
 			</script>
-			
+
 			<div id="dropzone" class="dropzone-box">
 				<div class="dz-default dz-message">
 					<i class="fa fa-cloud-upload"></i>

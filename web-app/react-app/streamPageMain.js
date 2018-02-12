@@ -9,7 +9,7 @@ import { BrowserRouter, Route } from 'react-router-dom'
 import StreamCreateView from './components/StreamPage/StreamCreateView'
 import StreamPage from './components/StreamPage'
 import StreamShowView from './components/StreamPage/StreamShowView'
-import ConfirmCsvImportView from './components/StreamPage/StreamShowView/HistoryView/ConfirmCsvImportView'
+import ConfirmCsvImportView from './components/StreamPage/ConfirmCsvImportView'
 import Notifier from './components/StreamrNotifierWrapper'
 
 import store from './stores/streamPageStore.js'

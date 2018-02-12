@@ -24,21 +24,27 @@ import {
     UPLOAD_CSV_FILE_REQUEST,
     UPLOAD_CSV_FILE_SUCCESS,
     UPLOAD_CSV_FILE_FAILURE,
+    UPLOAD_CSV_FILE_UNKNOWN_SCHEMA,
+    CONFIRM_CSV_FILE_UPLOAD_REQUEST,
+    CONFIRM_CSV_FILE_UPLOAD_SUCCESS,
+    CONFIRM_CSV_FILE_UPLOAD_FAILURE,
     OPEN_STREAM
 } from '../actions/stream.js'
 
 import type {StreamState} from '../flowtype/states/stream-state'
 import type {StreamAction} from '../flowtype/actions/stream-actions'
 import type {CSVImporterSchema} from '../flowtype/stream-types'
+import {CANCEL_CSV_FILE_UPLOAD} from '../actions/stream'
 
 const initialState = {
     byId: {},
     openStream: {
         id: null
     },
-    csvUpload: null,
+    savingStreamFields: false,
     fetching: false,
-    error: null
+    error: null,
+    csvUpload: null
 }
 
 export default function(state: StreamState = initialState, action: StreamAction): StreamState {
@@ -48,11 +54,40 @@ export default function(state: StreamState = initialState, action: StreamAction)
         case UPDATE_STREAM_REQUEST:
         case GET_MY_STREAM_PERMISSIONS_REQUEST:
         case DELETE_STREAM_REQUEST:
-        case SAVE_STREAM_FIELDS_REQUEST:
-        case UPLOAD_CSV_FILE_REQUEST:
             return {
                 ...state,
                 fetching: true
+            }
+
+        case SAVE_STREAM_FIELDS_REQUEST:
+            return {
+                ...state,
+                savingStreamFields: true
+            }
+
+        case UPLOAD_CSV_FILE_REQUEST:
+            return {
+                ...state,
+                csvUpload: {
+                    id: action.id,
+                    fetching: true
+                }
+            }
+
+        case CONFIRM_CSV_FILE_UPLOAD_REQUEST:
+            return {
+                ...state,
+                csvUpload: {
+                    ...(state.csvUpload || {}),
+                    fetching: true
+                }
+            }
+
+        case UPLOAD_CSV_FILE_SUCCESS:
+        case CONFIRM_CSV_FILE_UPLOAD_SUCCESS:
+            return {
+                ...state,
+                csvUpload: null
             }
 
         case GET_STREAM_SUCCESS:
@@ -103,16 +138,42 @@ export default function(state: StreamState = initialState, action: StreamAction)
                 fetching: false
             }
 
+        case UPLOAD_CSV_FILE_UNKNOWN_SCHEMA:
+            return {
+                ...state,
+                uploadCsv: {
+                    fetching: false,
+                    id: action.streamId,
+                    fileUrl: action.fileUrl,
+                    schema: action.schema
+                }
+            }
+
+        case CONFIRM_CSV_FILE_UPLOAD_FAILURE:
+            return {
+                ...state,
+                error: action.error,
+                uploadCsv: {
+                    ...(state.uploadCsv || {}),
+                    fetching: false
+                }
+            }
+
         case GET_STREAM_FAILURE:
         case CREATE_STREAM_FAILURE:
         case UPDATE_STREAM_FAILURE:
         case GET_MY_STREAM_PERMISSIONS_FAILURE:
         case DELETE_STREAM_FAILURE:
-        case SAVE_STREAM_FIELDS_FAILURE:
-        case UPLOAD_CSV_FILE_FAILURE:
             return {
                 ...state,
                 fetching: false,
+                error: action.error
+            }
+
+        case SAVE_STREAM_FIELDS_FAILURE:
+            return {
+                ...state,
+                savingStreamFields: false,
                 error: action.error
             }
 
@@ -143,6 +204,12 @@ export default function(state: StreamState = initialState, action: StreamAction)
                     ...state.openStream,
                     id: action.id
                 }
+            }
+
+        case CANCEL_CSV_FILE_UPLOAD:
+            return {
+                ...state,
+                csvUpload: null
             }
 
         default:

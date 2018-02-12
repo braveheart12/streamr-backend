@@ -9,7 +9,7 @@ import InfoView from './InfoView'
 import KeyView from './KeyView'
 import FieldView from './FieldView'
 import PreviewView from './PreviewView'
-import HistoryView from './HistoryView'
+import HistoryView from './HistoryView/CSVImport'
 
 import {getStream, openStream, getMyStreamPermissions} from '../../../actions/stream'
 import {getCurrentUser} from '../../../actions/user'

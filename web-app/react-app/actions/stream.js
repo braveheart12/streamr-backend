@@ -42,12 +42,14 @@ export const SAVE_STREAM_FIELDS_FAILURE = 'SAVE_STREAM_FIELDS_FAILURE'
 
 export const UPLOAD_CSV_FILE_REQUEST = 'UPLOAD_CSV_FILE_REQUEST'
 export const UPLOAD_CSV_FILE_SUCCESS = 'UPLOAD_CSV_FILE_SUCCESS'
+export const UPLOAD_CSV_FILE_UNKNOWN_SCHEMA = 'UPLOAD_CSV_FILE_UNKNOWN_SCHEMA'
 export const UPLOAD_CSV_FILE_FAILURE = 'UPLOAD_CSV_FILE_FAILURE'
 
 export const CONFIRM_CSV_FILE_UPLOAD_REQUEST = 'CONFIRM_CSV_FILE_UPLOAD_REQUEST'
 export const CONFIRM_CSV_FILE_UPLOAD_SUCCESS = 'CONFIRM_CSV_FILE_UPLOAD_SUCCESS'
 export const CONFIRM_CSV_FILE_UPLOAD_FAILURE = 'CONFIRM_CSV_FILE_UPLOAD_FAILURE'
 
+export const CANCEL_CSV_FILE_UPLOAD = 'CANCEL_CSV_FILE_UPLOAD'
 export const OPEN_STREAM = 'OPEN_STREAM'
 
 const apiUrl = 'api/v1/streams'
@@ -178,20 +180,24 @@ export const uploadCsvFile = (id: StreamId, file: File) => (dispatch: Function) 
             'Content-Type': 'multipart/form-data'
         }
     })
-        .then(({data}) => {
-            debugger
+        .then(() => {
+            dispatch(uploadCsvFileSuccess())
         })
         .catch((res) => {
             const e = parseError(res)
-            e.data = {
-                fileUrl: res.response.data.fileUrl,
-                schema: res.response.data.schema
+            if (e.code === 'CSV_PARSE_UNKNOWN_SCHEMA') {
+                dispatch(uploadCsvFileUnknownSchema(id, res.response.data.fileUrl, res.response.data.schema))
+                dispatch(success({
+                    title: 'Success!',
+                    message: 'CSV file imported successfully'
+                }))
+            } else {
+                dispatch(uploadCsvFileFailure(e))
+                dispatch(error({
+                    title: 'Error!',
+                    message: e.message
+                }))
             }
-            dispatch(uploadCsvFileFailure(e))
-            dispatch(error({
-                title: 'Error!',
-                message: e.message
-            }))
             throw e
         })
 }
@@ -203,8 +209,12 @@ export const confirmCsvFileUpload = (id: StreamId, fileUrl: string, dateFormat: 
         dateFormat,
         timestampColumnIndex
     })
-        .then(({data}) => {
-            debugger
+        .then(() => {
+            dispatch(confirmCsvFileUploadSuccess())
+            dispatch(success({
+                title: 'Success!',
+                message: 'CSV file imported successfully'
+            }))
         })
         .catch((res) => {
             const e = parseError(res)
@@ -220,6 +230,10 @@ export const confirmCsvFileUpload = (id: StreamId, fileUrl: string, dateFormat: 
 export const openStream = (id: StreamId) => ({
     type: OPEN_STREAM,
     id
+})
+
+export const cancelCsvFileUpload = () => ({
+    type: CANCEL_CSV_FILE_UPLOAD
 })
 
 const saveFieldsRequest = () => ({
@@ -319,6 +333,13 @@ const uploadCsvFileSuccess = () => ({
 const uploadCsvFileFailure = (error: ErrorInUi) => ({
     type: UPLOAD_CSV_FILE_FAILURE,
     error,
+})
+
+const uploadCsvFileUnknownSchema = (id: $ElementType<Stream, 'id'>, fileUrl: string, schema: CSVImporterSchema) => ({
+    type: UPLOAD_CSV_FILE_UNKNOWN_SCHEMA,
+    streamId: id,
+    fileUrl,
+    schema
 })
 
 const confirmCsvFileUploadRequest = () => ({

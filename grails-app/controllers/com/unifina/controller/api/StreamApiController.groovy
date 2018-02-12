@@ -19,6 +19,12 @@ import org.springframework.web.multipart.MultipartFile
 @Secured(["IS_AUTHENTICATED_ANONYMOUSLY"])
 class StreamApiController {
 
+	static allowedMethods = [
+	  	"setFields": "POST",
+		"uploadCsvFile": "POST",
+		"confirmCsvFileUpload": "POST"
+	]
+
 	def streamService
 	def permissionService
 	def apiService
@@ -94,6 +100,14 @@ class StreamApiController {
 	}
 
 	@StreamrApi
+	def dataFiles(String id) {
+		getAuthorizedStream(id) { stream ->
+			DataRange dataRange = streamService.getDataRange(stream)
+			render([dataRange: dataRange, stream:stream] as JSON)
+		}
+	}
+
+	@StreamrApi
 	def uploadCsvFile(String id) {
 		getAuthorizedStream(id, Operation.WRITE) { Stream stream ->
 			File temp
@@ -108,7 +122,7 @@ class StreamApiController {
 				CSVImporter csv = new CSVImporter(temp, fields, null, null, request.apiUser.timezone)
 				if (csv.getSchema().timestampColumnIndex == null) {
 					deleteFile = false
-					def e = new ApiException(500, 'CSV_PARSE_EXCEPTION', 'fsaklfjlasdkfjsdfadflkj')
+					def e = new ApiException(500, 'CSV_PARSE_UNKNOWN_SCHEMA', 'Parsing of the file failed. Please configure the schema of the file and try again!')
 					response.setStatus(e.statusCode)
 					render([code: e.code, message: e.message, fileUrl: temp.getCanonicalPath(), schema: csv.getSchema().toMap()] as JSON)
 				} else {
@@ -119,11 +133,11 @@ class StreamApiController {
 				}
 			} catch (Exception e) {
 				Exception rootCause = ExceptionUtils.getRootCause(e)
-				if(rootCause != null)
+				if (rootCause != null) {
 					e = rootCause
+				}
 				log.error("Failed to import file", e)
-				response.status = 500
-				render([success: false, error: e.message] as JSON)
+				throw e
 			} finally {
 				if (deleteFile && temp != null && temp.exists()) {
 					temp.delete()
@@ -144,7 +158,7 @@ class StreamApiController {
 				Map config = streamService.importCsv(csv, stream)
 				stream.config = (config as JSON)
 				stream.save()
-				render([stream: stream] as JSON)
+				render(stream.toMap() as JSON)
 			} catch (Throwable e) {
 				e = ExceptionUtils.getRootCause(e)
 				throw e

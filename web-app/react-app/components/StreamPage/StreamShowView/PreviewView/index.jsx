@@ -8,7 +8,11 @@ import StreamrClient from 'streamr-client'
 import {Panel, Table, Modal, Button} from 'react-bootstrap'
 import FontAwesome from 'react-fontawesome'
 import moment from 'moment-timezone'
-import {default as stringifyObject} from 'stringify-object'
+import stringifyObject from 'stringify-object'
+
+window.StreamrClient = StreamrClient
+
+const config = require('../../../../config')
 
 import type {Stream} from '../../../../flowtype/stream-types'
 import type {User} from '../../../../flowtype/user-types'
@@ -47,18 +51,17 @@ export class PreviewView extends Component<Props, State> {
         paused: false,
         infoScreenMessage: null
     }
-    
+
     constructor() {
         super()
         this.client = new StreamrClient({
-            // TODO: change to use the value in config after merging CORE-1087
-            url: 'ws://127.0.0.1:8890/api/v1/ws',
+            url: config.wsUrl,
             authKey: keyId,
             autoconnect: true,
             autoDisconnect: false
         })
     }
-    
+
     componentWillReceiveProps(newProps: Props) {
         if (newProps.stream && newProps.stream.id && !this.subscription) {
             this.subscription = this.client.subscribe({

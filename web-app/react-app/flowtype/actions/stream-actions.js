@@ -26,7 +26,12 @@ import {
     UPLOAD_CSV_FILE_REQUEST,
     UPLOAD_CSV_FILE_SUCCESS,
     UPLOAD_CSV_FILE_FAILURE,
-    OPEN_STREAM
+    UPLOAD_CSV_FILE_UNKNOWN_SCHEMA,
+    CONFIRM_CSV_FILE_UPLOAD_REQUEST,
+    CONFIRM_CSV_FILE_UPLOAD_SUCCESS,
+    CONFIRM_CSV_FILE_UPLOAD_FAILURE,
+    OPEN_STREAM,
+    CANCEL_CSV_FILE_UPLOAD
 } from '../../actions/stream'
 
 export type StreamAction = {
@@ -36,7 +41,13 @@ export type StreamAction = {
         | typeof CREATE_STREAM_REQUEST
         | typeof GET_MY_STREAM_PERMISSIONS_REQUEST
         | typeof SAVE_STREAM_FIELDS_REQUEST
-        | typeof UPLOAD_CSV_FILE_REQUEST
+        | typeof CANCEL_CSV_FILE_UPLOAD
+        | typeof UPLOAD_CSV_FILE_SUCCESS
+        | typeof CONFIRM_CSV_FILE_UPLOAD_REQUEST
+        | typeof CONFIRM_CSV_FILE_UPLOAD_SUCCESS
+} | {
+    type: typeof UPLOAD_CSV_FILE_REQUEST,
+    id: $ElementType<Stream, 'id'>
 } | {
     type: typeof OPEN_STREAM
         | typeof DELETE_STREAM_SUCCESS,
@@ -60,14 +71,13 @@ export type StreamAction = {
         | typeof GET_STREAM_FAILURE
         | typeof CREATE_STREAM_FAILURE
         | typeof DELETE_STREAM_FAILURE
+        | typeof UPLOAD_CSV_FILE_FAILURE
+        | typeof CONFIRM_CSV_FILE_UPLOAD_FAILURE
         | typeof GET_MY_STREAM_PERMISSIONS_FAILURE,
     error: ErrorInUi
 } | {
-    type: typeof UPLOAD_CSV_FILE_FAILURE,
-    error: ErrorInUi,
-    id: $ElementType<Stream, 'id'>,
+    type: typeof UPLOAD_CSV_FILE_UNKNOWN_SCHEMA,
+    streamId: $ElementType<Stream, 'id'>,
     fileUrl: string,
     schema: CSVImporterSchema
-} | {
-    type: typeof UPLOAD_CSV_FILE_SUCCESS
 }

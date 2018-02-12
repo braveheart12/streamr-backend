@@ -9,7 +9,7 @@
 
 </head>
 
-<body>
+<body style="height: 100%">
 	<script>
 		const keyId = '${key.id}'
 	</script>

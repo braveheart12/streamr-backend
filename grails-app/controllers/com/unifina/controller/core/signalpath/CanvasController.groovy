@@ -20,7 +20,7 @@ class CanvasController {
 	SpringSecurityService springSecurityService
 	SignalPathService signalPathService
 	PermissionService permissionService
-	
+
 	def index() {
 		redirect(action: "editor", params:params)
 	}
@@ -65,21 +65,21 @@ class CanvasController {
 	def embed() {
 		[id:params.id]
 	}
-	
+
 	def reconstruct() {
 		Map json = [signalPathContext: (params.signalPathContext ? JSON.parse(params.signalPathContext) : [:]), signalPathData: JSON.parse(params.signalPathData)]
 		Globals globals = GlobalsFactory.createInstance(json.signalPathContext, null)
 		Map result = signalPathService.reconstruct(json, globals)
 		render result as JSON
 	}
-	
+
 	def existsCsv() {
 		String fileName = System.getProperty("java.io.tmpdir") + File.separator + params.filename
 		File file = new File(fileName)
 		Map result = (file.canRead() ? [success:true, filename:params.filename] : [success:false])
 		render result as JSON
 	}
-	
+
 	def downloadCsv() {
 		String fileName = System.getProperty("java.io.tmpdir") + File.separator + params.filename
 		File file = new File(fileName)
@@ -93,7 +93,7 @@ class CanvasController {
 		}
 		else throw new FileNotFoundException("File not found: "+params.filename)
 	}
-	
+
 	@Secured(["ROLE_ADMIN"])
 	def debug() {
 		return [runners: servletContext["signalPathRunners"], returnChannels: servletContext["returnChannels"]]
