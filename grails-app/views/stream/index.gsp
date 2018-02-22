@@ -4,9 +4,7 @@
 
 	<title>Stream</title>
 
-	<r:require module="streamr-credentials-control"/>
 	<r:require module="stream-page-webpack-bundle"/>
-
 </head>
 
 <body style="height: 100%">

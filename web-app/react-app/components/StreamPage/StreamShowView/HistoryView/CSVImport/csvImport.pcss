@@ -6,6 +6,26 @@
   text-align: center;
   transition: border 0.2s ease;
 
+  &:not(.disabled) {
+    cursor: pointer;
+
+    .content {
+      &:hover {
+        .fileUploadIcon {
+          background-color: #aaa;
+          color: #333;
+        }
+      }
+    }
+  }
+
+  &.disabled {
+    border-color: rgba(0, 0, 0, 0.3);
+
+    .text {
+      color: #999;
+    }
+  }
   &.active {
     font-weight: bold;
   }
@@ -38,13 +58,6 @@
       display: inline-block;
       width: 160px;
       font-size: 16px;
-    }
-
-    &:hover {
-      .fileUploadIcon {
-        background-color: #aaa;
-        color: #333;
-      }
     }
   }
 }

@@ -38,7 +38,7 @@ export class CsvImport extends Component<Props, State> {
             .then(() => {})
             .catch(() => {
                 if (this.props.fileUrl) {
-                    this.props.stream && this.props.history.push(`/show/${this.props.stream.id}/confirmCsvImport`)
+                    this.props.stream && this.props.history.push(`${this.props.stream.id}/confirmCsvImport`)
                 }
             })
     }
@@ -49,12 +49,12 @@ export class CsvImport extends Component<Props, State> {
                 <div className={styles.fileUploadIcon}>
                     {this.props.fetching ? (
                         <FontAwesome
-                            name="cloud-upload"
+                            name="spinner"
+                            pulse
                         />
                     ) : (
                         <FontAwesome
-                            name="spinner"
-                            pulse
+                            name="cloud-upload"
                         />
                     )}
                 </div>
@@ -79,6 +79,7 @@ export class CsvImport extends Component<Props, State> {
                 activeClassName={styles.active}
                 acceptClassName={styles.accept}
                 rejectClassName={styles.reject}
+                disabledClassName={styles.disabled}
                 disabled={this.props.fetching}
             >
                 {this.createContent}

@@ -182,15 +182,15 @@ export const uploadCsvFile = (id: StreamId, file: File) => (dispatch: Function) 
     })
         .then(() => {
             dispatch(uploadCsvFileSuccess())
+            dispatch(success({
+                title: 'Success!',
+                message: 'CSV file imported successfully'
+            }))
         })
         .catch((res) => {
             const e = parseError(res)
             if (e.code === 'CSV_PARSE_UNKNOWN_SCHEMA') {
                 dispatch(uploadCsvFileUnknownSchema(id, res.response.data.fileUrl, res.response.data.schema))
-                dispatch(success({
-                    title: 'Success!',
-                    message: 'CSV file imported successfully'
-                }))
             } else {
                 dispatch(uploadCsvFileFailure(e))
                 dispatch(error({

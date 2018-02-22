@@ -40,12 +40,14 @@ type State = {}
 
 export class StreamPage extends Component<Props, State> {
 
-    componentWillMount() {
-        const id = this.props.match.params.id
-        this.props.getStream(id)
-        this.props.openStream(id)
-        this.props.getMyStreamPermissions(id)
-        this.props.getCurrentUser()
+    componentWillReceiveProps(newProps: Props) {
+        const id = newProps.match.params.id
+        if (!this.props.stream || id !== this.props.stream.id) {
+            this.props.getStream(id)
+            this.props.openStream(id)
+            this.props.getMyStreamPermissions(id)
+            this.props.getCurrentUser()
+        }
     }
 
     render() {

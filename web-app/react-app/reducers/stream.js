@@ -28,13 +28,12 @@ import {
     CONFIRM_CSV_FILE_UPLOAD_REQUEST,
     CONFIRM_CSV_FILE_UPLOAD_SUCCESS,
     CONFIRM_CSV_FILE_UPLOAD_FAILURE,
-    OPEN_STREAM
+    OPEN_STREAM,
+    CANCEL_CSV_FILE_UPLOAD
 } from '../actions/stream.js'
 
 import type {StreamState} from '../flowtype/states/stream-state'
 import type {StreamAction} from '../flowtype/actions/stream-actions'
-import type {CSVImporterSchema} from '../flowtype/stream-types'
-import {CANCEL_CSV_FILE_UPLOAD} from '../actions/stream'
 
 const initialState = {
     byId: {},
@@ -141,7 +140,7 @@ export default function(state: StreamState = initialState, action: StreamAction)
         case UPLOAD_CSV_FILE_UNKNOWN_SCHEMA:
             return {
                 ...state,
-                uploadCsv: {
+                csvUpload: {
                     fetching: false,
                     id: action.streamId,
                     fileUrl: action.fileUrl,
@@ -149,12 +148,19 @@ export default function(state: StreamState = initialState, action: StreamAction)
                 }
             }
 
+        case UPLOAD_CSV_FILE_FAILURE:
+            return {
+                ...state,
+                error: action.error,
+                csvUpload: null
+            }
+
         case CONFIRM_CSV_FILE_UPLOAD_FAILURE:
             return {
                 ...state,
                 error: action.error,
-                uploadCsv: {
-                    ...(state.uploadCsv || {}),
+                csvUpload: {
+                    ...(state.csvUpload || {}),
                     fetching: false
                 }
             }
