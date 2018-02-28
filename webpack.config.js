@@ -12,14 +12,11 @@ const root = path.resolve(__dirname)
 const inProduction = process.env.NODE_ENV === 'production'
 
 module.exports = {
-    entry: {
-        profilePage: path.resolve(root, 'web-app', 'react-app', 'profilePageMain.js'),
-        dashboardPage: path.resolve(root, 'web-app', 'react-app', 'dashboardPageMain.js')
-    },
+    entry: path.resolve(root, 'web-app', 'react-app', 'streamrAppMain.js'),
     output: {
         path: path.resolve(root, 'web-app', 'js', 'unifina', 'webpack-bundles'),
         publicPath: '/js/unifina/webpack-bundles/',
-        filename: '[name].bundle.js'
+        filename: 'streamrApp.bundle.js'
     },
     module: {
         rules: [
@@ -83,7 +80,7 @@ module.exports = {
                 postcss: postcssConfig
             }
         }),
-        new ExtractTextPlugin('[name].bundle.css')
+        new ExtractTextPlugin('streamrApp.bundle.css')
     ].concat(inProduction ? [
         // Production plugins
         new webpack.optimize.OccurrenceOrderPlugin(),
@@ -103,7 +100,7 @@ module.exports = {
         new webpack.NoEmitOnErrorsPlugin(),
         new WebpackNotifierPlugin(),
         new WriteFilePlugin(),
-        new webpack.optimize.CommonsChunkPlugin('commons')
+        // new webpack.optimize.CommonsChunkPlugin('commons')
     ]),
     devtool: !inProduction && 'eval-source-map',
     devServer: {

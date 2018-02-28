@@ -58,6 +58,7 @@ class UrlMappings {
 		"/api/v1/login/$action"(controller: "challengeApi")
 
 		// Mappings for pages using React Router (the root for the router)
-		"/dashboard/editor/$id**?"(controller: "dashboard", action: "editor")
+		"/dashboard/editor/$id**?"(controller: "UIApp", action: "index")
+		"/profile/edit"(controller: "UIApp", "index")
 	}
 }

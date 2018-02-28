@@ -16,14 +16,14 @@ class ProfileController {
 	def userService
 	def permissionService
 	def streamService
-	
+
 	static defaultAction = "edit"
 
-	def edit() {
-		def currentUser = SecUser.get(springSecurityService.currentUser.id)
-		[user: currentUser]
-	}
-	
+//	def edit() {
+//		def currentUser = SecUser.get(springSecurityService.currentUser.id)
+//		[user: currentUser]
+//	}
+
 	def update() {
 		SecUser user = SecUser.get(springSecurityService.currentUser.id)
 		user.properties = params
@@ -59,7 +59,7 @@ class ProfileController {
 
 		render ([success: true] as JSON)
 	}
-	
+
 	def changePwd(ChangePasswordCommand cmd) {
 		def user = SecUser.get(springSecurityService.currentUser.id)
 		if (request.method == 'GET') {
@@ -73,24 +73,24 @@ class ProfileController {
 			else {
 				user.password = springSecurityService.encodePassword(cmd.password)
 				user.save(flush:true, failOnError:true)
-				
+
 				springSecurityService.reauthenticate user.username
-				
+
 				log.info("User $user.username changed password!")
-				
+
 				flash.message = "Password changed!"
 				redirect(action:"edit")
 			}
 		}
 	}
-	
+
 }
 
 class ChangePasswordCommand {
-	
+
 	def springSecurityService
 	def userService
-	
+
 	String currentpassword
 	String password
 	String password2

@@ -283,6 +283,10 @@ modules = {
 		resource url: [dir: 'js/unifina/webpack-bundles', file: 'dashboardPage.bundle.js', plugin: 'unifina-core']
 		resource url: [dir: 'js/unifina/webpack-bundles', file: 'dashboardPage.bundle.css', plugin: 'unifina-core']
 	}
+	'streamr-app-webpack-bundle' {
+		resource url: [dir: 'js/unifina/webpack-bundles', file: 'streamrApp.bundle.js', plugin: 'unifina-core']
+		resource url: [dir: 'js/unifina/webpack-bundles', file: 'streamrApp.bundle.css', plugin: 'unifina-core']
+	}
 	'signalpath-core' {
 		// Easier to merge if dependencies are one-per-row instead of comma-separated list
 		dependsOn 'streamr'
@@ -372,5 +376,4 @@ modules = {
 		resource url:[dir: 'js/swagger-ui/dist/css/', file: 'reset.css', plugin: 'unifina-core']
 		resource url:[dir: 'js/swagger-ui/dist/css/', file: 'screen.css', plugin: 'unifina-core']
 	}
-
 }
