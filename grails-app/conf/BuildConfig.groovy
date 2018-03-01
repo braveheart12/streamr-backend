@@ -90,6 +90,12 @@ grails.project.dependency.resolution = {
 			excludes 'com.google.guava:guava:14.0.1'
 		}
 
+		// https://mvnrepository.com/artifact/org.springframework/spring-websocket
+		compile group: 'org.springframework', name: 'spring-websocket', version: '4.2.9.RELEASE'
+
+		// https://mvnrepository.com/artifact/org.springframework/spring-messaging
+		compile group: 'org.springframework', name: 'spring-messaging', version: '4.2.9.RELEASE'
+
 		runtime 'mysql:mysql-connector-java:5.1.20'
 		compile 'org.postgresql:postgresql:9.4.1208.jre7'
 		compile 'org.mongodb:mongodb-driver:3.2.1'
