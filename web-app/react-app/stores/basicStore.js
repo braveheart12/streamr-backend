@@ -21,9 +21,8 @@ export default (reducers: {}) => {
         combineReducers({
             notifications: notificationReducer,
             user: userReducer,
-            ...reducers
+            ...reducers,
         }),
-        compose.apply(null, toBeComposed)
+        compose.apply(null, toBeComposed),
     )
 }
-

@@ -27,32 +27,38 @@ type DispatchProps = {
 type Props = StateProps & DispatchProps
 
 export class ProfileSettings extends Component<Props> {
-    
+
     componentDidMount() {
         // TODO: move to (yet nonexistent) router
         this.props.getCurrentUser()
     }
-    onNameChange = ({target}: {target: {
-        value: $ElementType<User, 'name'>
-    }}) => {
+
+    onNameChange = ({target}: {
+        target: {
+            value: $ElementType<User, 'name'>
+        }
+    }) => {
         this.props.updateCurrentUserName(target.value)
     }
-    onTimezoneChange = ({target}: {target: {
+
+    onTimezoneChange = ({value}: {
         value: $ElementType<User, 'timezone'>
-    }}) => {
-        this.props.updateCurrentUserTimezone(target.value)
+    }) => {
+        this.props.updateCurrentUserTimezone(value)
     }
+
     onSubmit = (e: Event) => {
         e.preventDefault()
         this.props.user && this.props.saveCurrentUser(this.props.user)
     }
+
     render() {
         const options = moment.tz.names().map(tz => ({
             value: tz,
-            label: tz
+            label: tz,
         }))
         return (
-            <Panel>
+            <Panel >
                 <Panel.Heading>
                     Profile Settings
                 </Panel.Heading>
@@ -64,7 +70,6 @@ export class ProfileSettings extends Component<Props> {
                             </ControlLabel>
                             <div>{this.props.user && this.props.user.username}</div>
                         </FormGroup>
-            
                         <FormGroup>
                             <ControlLabel>
                                 Password
@@ -75,7 +80,6 @@ export class ProfileSettings extends Component<Props> {
                                 </a>
                             </div>
                         </FormGroup>
-            
                         <FormGroup>
                             <ControlLabel>
                                 Full Name
@@ -87,7 +91,6 @@ export class ProfileSettings extends Component<Props> {
                                 required
                             />
                         </FormGroup>
-                
                         <FormGroup>
                             <ControlLabel>
                                 Timezone
@@ -102,7 +105,6 @@ export class ProfileSettings extends Component<Props> {
                                 clearable={false}
                             />
                         </FormGroup>
-                        
                         <FormGroup>
                             <InputGroup>
                                 <Button
@@ -122,8 +124,8 @@ export class ProfileSettings extends Component<Props> {
     }
 }
 
-export const mapStateToProps = ({user}: {user: UserState}): StateProps => ({
-    user: user.currentUser
+export const mapStateToProps = ({user}: { user: UserState }): StateProps => ({
+    user: user.currentUser,
 })
 
 export const mapDispatchToProps = (dispatch: Function): DispatchProps => ({
@@ -138,7 +140,7 @@ export const mapDispatchToProps = (dispatch: Function): DispatchProps => ({
     },
     saveCurrentUser(user: User) {
         dispatch(saveCurrentUser(user))
-    }
+    },
 })
 
 export default connect(mapStateToProps, mapDispatchToProps)(ProfileSettings)

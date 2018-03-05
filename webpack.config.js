@@ -4,6 +4,7 @@ const ExtractTextPlugin = require('extract-text-webpack-plugin')
 const WebpackNotifierPlugin = require('webpack-notifier')
 const WriteFilePlugin = require('write-file-webpack-plugin')
 const FlowtypePlugin = require('flowtype-loader/plugin')
+const CleanWebpackPlugin = require('clean-webpack-plugin')
 
 const postcssConfig = require('./postcss.config.js')
 
@@ -18,9 +19,9 @@ module.exports = {
         streamPage: path.resolve(root, 'web-app', 'react-app', 'streamPageMain.js')
     },
     output: {
-        path: path.resolve(root, 'web-app', 'js', 'unifina', 'webpack-bundles'),
-        publicPath: '/js/unifina/webpack-bundles/',
-        filename: '[name].bundle.js'
+        path: path.resolve(root, 'web-app', 'webpack-bundles'),
+        publicPath: '/webpack-bundles/',
+        filename: inProduction ? '[name].bundle.[chunkhash].js' : '[name].bundle.js'
     },
     module: {
         rules: [
@@ -84,9 +85,13 @@ module.exports = {
                 postcss: postcssConfig
             }
         }),
-        new ExtractTextPlugin('[name].bundle.css')
+        new ExtractTextPlugin(inProduction ? '[name].bundle.[chunkhash].css' : '[name].bundle.css'),
+        new webpack.optimize.CommonsChunkPlugin('commons')
     ].concat(inProduction ? [
         // Production plugins
+        new CleanWebpackPlugin(['web-app/webpack-bundles/*.js', 'web-app/webpack-bundles/*.css'], {
+            verbose: true
+        }),
         new webpack.optimize.OccurrenceOrderPlugin(),
         new webpack.DefinePlugin({
             'process.env': {
@@ -103,8 +108,7 @@ module.exports = {
         new FlowtypePlugin(),
         new webpack.NoEmitOnErrorsPlugin(),
         new WebpackNotifierPlugin(),
-        new WriteFilePlugin(),
-        new webpack.optimize.CommonsChunkPlugin('commons')
+        new WriteFilePlugin()
     ]),
     devtool: !inProduction && 'eval-source-map',
     devServer: {

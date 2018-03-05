@@ -1,7 +1,7 @@
 // @flow
 
 import React, {Component} from 'react'
-import { Panel, Row } from 'react-bootstrap'
+import {Panel, Row} from 'react-bootstrap'
 
 import IntegrationKeyHandlerSegment from './IntegrationKeyHandlerSegment'
 

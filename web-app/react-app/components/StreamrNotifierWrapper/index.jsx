@@ -41,6 +41,15 @@ const style = {
     Title: {
         DefaultStyle: {
             fontSize: '18px'
+        },
+        success: {
+            color: defaultColorOverrides.success
+        },
+        info: {
+            color: defaultColorOverrides.info
+        },
+        error: {
+            color: defaultColorOverrides.error
         }
     },
     Dismiss: {

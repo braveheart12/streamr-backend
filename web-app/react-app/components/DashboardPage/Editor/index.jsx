@@ -8,7 +8,7 @@ import {
     StreamrBreadcrumbItem,
     StreamrBreadcrumbDropdownButton,
     StreamrBreadcrumbToolbar,
-    StreamrBreadcrumbToolbarButton
+    StreamrBreadcrumbToolbarButton,
 } from '../../Breadcrumb'
 import {MenuItem} from 'react-bootstrap'
 import FontAwesome from 'react-fontawesome'
@@ -34,7 +34,7 @@ import {
     updateDashboardChanges,
     lockDashboardEditing,
     unlockDashboardEditing,
-    updateDashboardLayout
+    updateDashboardLayout,
 } from '../../../actions/dashboard'
 
 import type {DashboardState} from '../../../flowtype/states/dashboard-state'
@@ -96,8 +96,8 @@ export class Editor extends Component<Props, State> {
     static defaultProps = {
         dashboard: {
             name: '',
-            items: []
-        }
+            items: [],
+        },
     }
 
     state = {
@@ -105,7 +105,7 @@ export class Editor extends Component<Props, State> {
         cols: dashboardConfig.layout.cols,
         layoutsByItemId: {},
         isFullscreen: false,
-        sharingDialogIsOpen: false
+        sharingDialogIsOpen: false,
     }
 
     constructor() {
@@ -114,7 +114,7 @@ export class Editor extends Component<Props, State> {
             url: config.wsUrl,
             authKey: keyId,
             autoconnect: true,
-            autoDisconnect: false
+            autoDisconnect: false,
         })
     }
 
@@ -151,7 +151,7 @@ export class Editor extends Component<Props, State> {
 
     onFullscreenToggle = (value?: boolean) => {
         this.setState({
-            isFullscreen: value !== undefined ? value : !this.state.isFullscreen
+            isFullscreen: value !== undefined ? value : !this.state.isFullscreen,
         })
     }
 
@@ -165,7 +165,7 @@ export class Editor extends Component<Props, State> {
                     ...dashboardConfig.layout.defaultLayout,
                     ...dashboardConfig.layout.layoutsBySizeAndModule[size][item.webcomponent],
                     ...(layout || {}),
-                    i: id
+                    i: id,
                 } : {}
             })
         }))
@@ -177,7 +177,7 @@ export class Editor extends Component<Props, State> {
             layoutsByItemId: layout.reduce((result, item) => {
                 result[item.i] = item
                 return result
-            }, {})
+            }, {}),
         })
     }
 
@@ -210,7 +210,7 @@ export class Editor extends Component<Props, State> {
                 >
                     <div style={{
                         backgroundColor: '#f6f6f6',
-                        height: '100%'
+                        height: '100%',
                     }}>
                         <StreamrBreadcrumb>
                             <StreamrBreadcrumbItem href={createLink('dashboard/list')}>
@@ -226,7 +226,7 @@ export class Editor extends Component<Props, State> {
                                     {this.props.canShare && (
                                         <MenuItem
                                             onClick={() => this.setState({
-                                                sharingDialogIsOpen: true
+                                                sharingDialogIsOpen: true,
                                             })}
                                             className={styles.dropdownShareButton}
                                         >
@@ -237,7 +237,7 @@ export class Editor extends Component<Props, State> {
                                         <DeleteButton
                                             buttonProps={{
                                                 componentClass: MenuItem,
-                                                bsClass: styles.dropdownDeleteButton
+                                                bsClass: styles.dropdownDeleteButton,
                                             }}
                                         >
                                             <FontAwesome name="trash-o"/> Delete
@@ -246,7 +246,7 @@ export class Editor extends Component<Props, State> {
                                     <ShareDialog
                                         isOpen={this.state.sharingDialogIsOpen}
                                         onClose={() => this.setState({
-                                            sharingDialogIsOpen: false
+                                            sharingDialogIsOpen: false,
                                         })}
                                         resourceType="DASHBOARD"
                                         resourceId={this.props.dashboard && this.props.dashboard.id}
@@ -297,12 +297,12 @@ export class Editor extends Component<Props, State> {
     }
 }
 
-export const mapStateToProps = (state: {dashboard: DashboardState}): StateProps => {
+export const mapStateToProps = (state: { dashboard: DashboardState }): StateProps => {
     const baseState = parseDashboard(state)
     const {dashboard} = baseState
     return {
         ...baseState,
-        editorLocked: !!dashboard && (dashboard.editingLocked || (!dashboard.new && !baseState.canWrite))
+        editorLocked: !!dashboard && (dashboard.editingLocked || (!dashboard.new && !baseState.canWrite)),
     }
 }
 
@@ -318,7 +318,7 @@ export const mapDispatchToProps = (dispatch: Function): DispatchProps => ({
     },
     updateDashboardLayout(id: $ElementType<Dashboard, 'id'>, layout: Layout) {
         dispatch(updateDashboardLayout(id, layout))
-    }
+    },
 })
 
 export default connect(mapStateToProps, mapDispatchToProps)(withRouter(Editor))

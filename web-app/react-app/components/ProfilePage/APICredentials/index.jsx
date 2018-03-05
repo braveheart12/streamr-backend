@@ -47,10 +47,10 @@ export class APICredentials extends Component<Props> {
     }
 }
 
-const mapStateToProps = ({key}: {key: KeyState}): StateProps => {
+const mapStateToProps = ({key}: { key: KeyState }): StateProps => {
     const keys = (key.byTypeAndId.USER || {})['me'] || []
     return {
-        keys
+        keys,
     }
 }
 
@@ -63,7 +63,7 @@ const mapDispatchToProps = (dispatch: Function): DispatchProps => ({
     },
     removeKey(keyId: $ElementType<Key, 'id'>) {
         dispatch(removeResourceKey('USER', 'me', keyId))
-    }
+    },
 })
 
 export default connect(mapStateToProps, mapDispatchToProps)(APICredentials)
