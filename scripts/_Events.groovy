@@ -15,7 +15,7 @@ eventPackagingEnd = { args ->
 	String command = prod ? "npm run build" : "npm run build-dev"
 
 	Process process = runtime.exec(command)
-	StreamGobbler outputGobbler = new StreamGobbler(process.getInputStream());
+	StreamGobbler outputGobbler = new StreamGobbler(process.getInputStream())
 	outputGobbler.start()
 
 	// Wait for npm to exit before continuing

@@ -32,17 +32,17 @@ type State = {
 import styles from './infoView.pcss'
 
 export class InfoView extends Component<Props, State> {
-    
+
     state = {
         editing: false,
         contentChanged: false,
         shareDialogIsOpen: false
     }
-    
+
     componentDidMount() {
         window.addEventListener('beforeunload', this.onBeforeUnload)
     }
-    
+
     onBeforeUnload = (e: Event & { returnValue: ?string }): ?string => {
         if (this.state.contentChanged) {
             const message = 'You have unsaved changes in the info of the Stream. Are you sure you want to leave?'
@@ -50,26 +50,26 @@ export class InfoView extends Component<Props, State> {
             return message
         }
     }
-    
+
     startEdit = () => {
         this.setState({
             editing: true
         })
     }
-    
+
     stopEdit = () => {
         this.setState({
             editing: false,
             contentChanged: false
         })
     }
-    
+
     onFormChange = () => {
         this.setState({
             contentChanged: true
         })
     }
-    
+
     save = () => {
         const {stream, updateStream} = this.props
         stream && updateStream(stream)
@@ -77,7 +77,7 @@ export class InfoView extends Component<Props, State> {
             contentChanged: false
         })
     }
-    
+
     onSubmit = (e: Event) => {
         e.preventDefault()
         const form = serialize(e.target, {
@@ -89,7 +89,7 @@ export class InfoView extends Component<Props, State> {
         })
             .then(this.stopEdit)
     }
-    
+
     openShareDialog = () => {
         this.setState({
             shareDialogIsOpen: true
@@ -101,7 +101,7 @@ export class InfoView extends Component<Props, State> {
             shareDialogIsOpen: false
         })
     }
-    
+
     render() {
         const id = `form${Date.now()}`
         return (

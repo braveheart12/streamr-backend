@@ -73,7 +73,7 @@ export class PreviewView extends Component<Props, State> {
             }))
         }
     }
-    
+
     onData = (dataPoint: DataPoint) => {
         this.setState({
             visibleData: [
@@ -82,42 +82,42 @@ export class PreviewView extends Component<Props, State> {
             ].slice(0, this.state.visibleDataLimit)
         })
     }
-    
+
     openInfoScreen = (d: DataPoint) => {
         this.setState({
             infoScreenMessage: d
         })
     }
-    
+
     closeInfoScreen = () => {
         this.setState({
             infoScreenMessage: null
         })
     }
-    
+
     pause = () => {
         this.client.pause()
         this.setState({
             paused: true
         })
     }
-    
+
     unpause = () => {
         this.client.connect()
         this.setState({
             paused: false
         })
     }
-    
+
     static prettyPrintData = (data: ?{}, compact: boolean = false) => {
         return stringifyObject(data, {
             indent: '  ',
             inlineCharacterLimit: compact ? Infinity : 5
         })
     }
-    
+
     static prettyPrintDate = (timestamp: ?number, timezone: ?string) => timestamp && moment.tz(timestamp, timezone).format()
-    
+
     render() {
         const tz = this.props.currentUser && this.props.currentUser.timezone || moment.tz.guess()
         return (
