@@ -16,6 +16,7 @@
 		<r:require module="sharing-dialog"/>
 		<r:require module="canvas-controls"/>
 		<r:require module="bootstrap-datepicker"/>
+		<r:require module="is-signalpath-saved"/>
 
 		<r:script>
 
@@ -238,7 +239,7 @@ $(function() {
 
 		.tab('Examples', '${ createLink(controller: "canvas", \
 			action: "loadBrowser", params: [ browserId: "examplesLoadBrowser" ]) }')
-			
+
 		.onSelect(function(id) {
 			SignalPath.load(id)
 		})
@@ -527,7 +528,7 @@ $(function() {
 					</div>
 				</div>
 			</div>
-			
+
 			<div id="search-control" class="menu-content" style="overflow: visible">
 				<label for="search">Add Stream / Module</label><br>
 				<input type="text" class="typeahead form-control" id="search" placeholder="Type to search"/>
@@ -594,7 +595,7 @@ $(function() {
 	</div>
 
 	<div id="main-menu-bg"></div>
-	
+
 	<div id="historicalOptionsModal" class="modal fade">
 	  <div class="modal-dialog">
 	    <div class="modal-content">
@@ -613,7 +614,7 @@ $(function() {
 						<option value="1000">1000x</option>
 					</select>
 				</div>
-				
+
 				<div class="form-group">
 					<label>Speed time of day</label>
 					<input id="timeOfDayStart" type="text" name="timeOfDayStart" value="00:00:00" class="form-control">
@@ -655,7 +656,7 @@ $(function() {
 		<li><a href="#" id="saveButton">Save</a></li>
 		<li><a href="#" id="saveAsButton">Save as..</a></li>
 	</ul>
-	
+
 	<!-- extension point for apps using the core plugin -->
 	<g:render template="/canvas/buildBodyExtensions"/>
 

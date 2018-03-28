@@ -336,6 +336,9 @@ modules = {
 		resource url:[dir:'css/signalPath/themes/light', file:'light.css', plugin: 'unifina-core']
 		resource url:[dir:'css/signalPath/themes/light', file:'light.js', plugin: 'unifina-core']
 	}
+	'is-signalpath-saved' {
+		resource url:[dir:'js/unifina/signalPath/core', file:'isSignalPathSaved.js']
+	}
 	'main-theme' {
 		dependsOn 'bootstrap, font-awesome'
 		resource url: "https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,400,600,700,300&subset=latin", attrs: [type: "css"]
