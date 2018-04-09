@@ -2,18 +2,24 @@
 	.btn-sign-up {
 		display: none;
 	}
-	
+
 	.btn-sign-in {
 		display: none;
 	}
 
+	.footer {
+		width: 100%;
+		display: flex;
+		justify-content: space-between;
+	}
+
 	label.checkbox-inline {
 		margin-top: 15px;
-		width: 100%;
+	}
 
-		a.forgot {
-			float: right;
-		}
+	.forgot {
+		display: inline-block;
+		margin-top: 15px;
 	}
 
 	&.show-sign-up {
@@ -26,5 +32,9 @@
 		.btn-sign-in {
 			display: inline-block;
 		}
+	}
+
+	.remember {
+		display: inline-block;
 	}
 }

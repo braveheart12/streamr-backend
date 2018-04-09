@@ -128,6 +128,8 @@
     "write-file-webpack-plugin": "^4.0.2"
   },
   "devDependencies": {
+    "less": "^3.0.1",
+    "less-plugin-glob": "^2.0.1",
     "web3-fake-provider": "^0.1.0"
   }
 }

@@ -15850,17 +15850,25 @@ body.live-show-view #canvas {
 .login-page .btn-sign-in {
   display: none;
 }
+.login-page .footer {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+}
 .login-page label.checkbox-inline {
   margin-top: 15px;
-  width: 100%;
 }
-.login-page label.checkbox-inline a.forgot {
-  float: right;
+.login-page .forgot {
+  display: inline-block;
+  margin-top: 15px;
 }
 .login-page.show-sign-up .btn-sign-up {
   display: inline-block;
 }
 .login-page.show-sign-in .btn-sign-in {
+  display: inline-block;
+}
+.login-page .remember {
   display: inline-block;
 }
 body.module-list {
