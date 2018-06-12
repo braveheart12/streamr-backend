@@ -1,19 +1,21 @@
 package com.unifina.controller.security
 
-import com.unifina.security.StreamrApi
+import com.unifina.security.RedirectAppendingAuthenticationEntryPoint
 import grails.converters.JSON
 import grails.plugin.springsecurity.SpringSecurityUtils
 import grails.plugin.springsecurity.annotation.Secured
-
-import javax.servlet.http.HttpServletResponse
-
 import org.springframework.security.authentication.AccountExpiredException
 import org.springframework.security.authentication.CredentialsExpiredException
 import org.springframework.security.authentication.DisabledException
 import org.springframework.security.authentication.LockedException
 import org.springframework.security.core.context.SecurityContextHolder as SCH
+import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.WebAttributes
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.security.web.savedrequest.RequestCache
+import org.springframework.security.web.savedrequest.SavedRequest
+
+import javax.servlet.http.HttpServletResponse
 
 @Secured(["permitAll"])
 class LoginController {
@@ -27,6 +29,9 @@ class LoginController {
 	 * Dependency injection for the springSecurityService.
 	 */
 	def springSecurityService
+
+	AuthenticationEntryPoint authenticationEntryPoint
+	RequestCache requestCache
 
 	/**
 	 * Default action; redirects to 'defaultTargetUrl' if logged in, /login/auth otherwise.
@@ -54,8 +59,9 @@ class LoginController {
 
 		String view = 'auth'
 		String postUrl = "${request.contextPath}${config.apf.filterProcessesUrl}"
-		render view: view, model: [postUrl: postUrl,
-		                           rememberMeParameter: config.rememberMe.parameter]
+
+		render view: view, model: [postUrl            : postUrl,
+								   rememberMeParameter: config.rememberMe.parameter]
 	}
 
 	/**
@@ -67,13 +73,26 @@ class LoginController {
 	}
 
 	/**
-	 * Show denied page.
+	 * Show denied page. We come here if access to a page is denied.
+	 * Note: ALSO if we have a remember me cookie, but the page requires IS_AUTHENTICATED_FULLY.
+	 * In that case, we redirect to the login view.
 	 */
 	def denied = {
 		if (springSecurityService.isLoggedIn() &&
 				authenticationTrustResolver.isRememberMe(SCH.context?.authentication)) {
-			// have cookie but the page is guarded with IS_AUTHENTICATED_FULLY
-			redirect action: 'full', params: params
+			/**
+			 * User has the cookie, but the page is guarded with IS_AUTHENTICATED_FULLY.
+			 * AjaxAwareAccessDeniedHandler saves the original request to requestCache. Pick it up
+			 * from there to find out where the user was going, and add the redirect query param.
+ 			 */
+			SavedRequest savedRequest = requestCache.getRequest(request, response)
+			if (authenticationEntryPoint instanceof RedirectAppendingAuthenticationEntryPoint) {
+				Map redirectParams = [:]
+				redirectParams.put(authenticationEntryPoint.getRedirectParameterName(), savedRequest.getRedirectUrl())
+				redirect action: 'full', params: [redirect: savedRequest.getRedirectUrl()]
+			} else {
+				throw new IllegalStateException("Whoa! 'authenticationEntryPoint' bean is not an RedirectAppendingAuthenticationEntryPoint! I wasn't expecting that!")
+			}
 		}
 		else if (!springSecurityService.isLoggedIn()) {
 			redirect action: 'auth'
@@ -129,7 +148,7 @@ class LoginController {
 	 * The Ajax success redirect url.
 	 */
 	def ajaxSuccess = {
-		render([success: true, username: springSecurityService.authentication.name] as JSON)
+		render([success: true, user: springSecurityService.currentUser.toMap()] as JSON)
 	}
 
 	/**
@@ -138,7 +157,7 @@ class LoginController {
 	def ajaxDenied = {
 		render([error: 'access denied'] as JSON)
 	}
-	
+
 	def loginForm() {
 		def config = SpringSecurityUtils.securityConfig
 		String postUrl = "${request.contextPath}${config.apf.filterProcessesUrl}"

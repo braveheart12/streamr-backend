@@ -4,8 +4,8 @@ grails.server.port.http = '8081'
 grails.servlet.version = "3.0" // Change depending on target container compliance (2.5 or 3.0)
 grails.tomcat.nio = true
 
-grails.project.target.level = 1.7
-grails.project.source.level = 1.7
+grails.project.target.level = 1.8
+grails.project.source.level = 1.8
 grails.project.class.dir = "target/classes"
 grails.project.test.class.dir = "target/test-classes"
 grails.project.test.reports.dir = "target/test-reports"
@@ -26,7 +26,9 @@ grails.project.fork = [
 		maxPerm: 512,
 		forkReserve:false,
 		daemon:true,
-		jvmArgs: ["-Dwebdriver.chrome.driver="+env["CHROMEDRIVER"]
+		jvmArgs: [
+			"-Djava.awt.headless=true",
+			"-Dwebdriver.chrome.driver="+env["CHROMEDRIVER"]
 		]
 	]
 ]
@@ -84,6 +86,8 @@ grails.project.dependency.resolution = {
 			excludes('org.springframework:spring-context:*')
 			excludes('org.springframework:spring-orm:*')
 		}
+		compile('org.web3j:core:3.3.1')
+		compile('com.amazonaws:aws-java-sdk:1.11.294')
 
 		runtime('mysql:mysql-connector-java:5.1.20')
 		runtime('commons-net:commons-net:3.3')
@@ -115,12 +119,12 @@ grails.project.dependency.resolution = {
 			excludes('spring-security-web')
 		}
 		runtime(':database-migration:1.4.0')
-		runtime(":spring-security-core:2.0-RC4")
+		runtime(":spring-security-core:2.0.0")
 		runtime(":resources:1.2.14")
 		runtime(":cached-resources:1.0")
 		runtime(":zipped-resources:1.0")
 
-		test(":plastic-criteria:1.5")
+		test(":plastic-criteria:1.6.7")
 		test(":geb:$gebVersion")
 		test(":rest-client-builder:2.1.1")
 	}

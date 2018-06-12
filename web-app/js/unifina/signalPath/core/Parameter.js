@@ -143,7 +143,7 @@
 				// Handle same module implementation
 				else {
 					_this.data.value = item.id
-					_this.label.find("a").html(item.name)
+					_this.label.find("a").text(item.name)
 					_this.data.streamName = item.name
 				}
 			}
@@ -386,7 +386,7 @@
 				if (SignalPath.isRunning() && SignalPath.options.allowRuntimeChanges) {
 					var value = pub.editor.getValue()
 					bootbox.confirm({
-						message: "Make a runtime change to '"+pub.getDisplayName()+"'?",
+						message: "Make a runtime change to '"+Streamr.escape(pub.getDisplayName())+"'?",
 						className: "bootbox-sm",
 						callback: function(result) {
 							if (result) {

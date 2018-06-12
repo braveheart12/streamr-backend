@@ -92,7 +92,7 @@ class IntegrationKeyApiControllerSpec extends Specification {
 		request.method = "POST"
 		request.JSON = [
 				name     : "foobar",
-				service  : "ETHEREUM_ID",
+				service  : IntegrationKey.Service.ETHEREUM_ID.toString(),
 				challenge: [
 						id       : challenge.id,
 						challenge: challenge.challenge
@@ -107,13 +107,17 @@ class IntegrationKeyApiControllerSpec extends Specification {
 		then:
 		response.status == 201
 		response.json == [
-				name     : "foobar",
+				id		 : null,
 				challenge: [
-						id       : challenge.id,
-						challenge: challenge.challenge
+					id       : challenge.id,
+					challenge: challenge.challenge
 				],
+				json: [
+					address  : address
+				],
+				name     : "foobar",
+				service  : IntegrationKey.Service.ETHEREUM_ID.toString(),
 				signature: signature,
-				address  : address
 		]
 		1 * ethereumIntegrationKeyService.createEthereumID(_, _, _, _, _) >> new IntegrationKey(
 				name: "foobar",
@@ -123,5 +127,33 @@ class IntegrationKeyApiControllerSpec extends Specification {
 				] as JSON).toString(),
 				service: IntegrationKey.Service.ETHEREUM_ID.toString()
 		)
+	}
+
+	def "delete() invokes ethereumIntegrationKeyService#delete"() {
+		ethereumIntegrationKeyService = controller.ethereumIntegrationKeyService = Mock(EthereumIntegrationKeyService)
+
+		when:
+		params.id = "integration-key-id"
+		request.apiUser = me
+		withFilters(action: "delete") {
+			controller.delete()
+		}
+
+		then:
+		1 * ethereumIntegrationKeyService.delete("integration-key-id", me)
+	}
+
+	def "delete() responds with 204"() {
+		controller.ethereumIntegrationKeyService = Stub(EthereumIntegrationKeyService)
+
+		when:
+		params.id = "integration-key-id"
+		request.apiUser = me
+		withFilters(action: "delete") {
+			controller.delete()
+		}
+
+		then:
+		response.status == 204
 	}
 }

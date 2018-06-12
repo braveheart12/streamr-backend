@@ -1,10 +1,29 @@
-# Use official OpenJDK 7 as base image
-FROM openjdk:7-jdk
+# Use official OpenJDK 8 as base image
+FROM openjdk:8-jdk-alpine
 
 # Set customizable env vars defaults.
 # Set Grails version.
+
+RUN apk update
+RUN apk add curl git python nodejs nodejs-npm
+RUN apk add --no-cache \
+            libstdc++ \
+            && apk add --no-cache --virtual .build-deps \
+                binutils-gold \
+                curl \
+                g++ \
+                gcc \
+                gnupg \
+                libgcc \
+                linux-headers \
+                make \
+                python
+
+RUN wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://raw.githubusercontent.com/sgerrand/alpine-pkg-glibc/master/sgerrand.rsa.pub
+RUN wget https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.27-r0/glibc-2.27-r0.apk
+RUN apk add glibc-2.27-r0.apk
+
 ENV GRAILS_VERSION 2.5.6
-ENV NODE_VERSION 8.9.4
 
 # Install Grails
 WORKDIR /usr/lib/jvm
@@ -18,9 +37,6 @@ ENV GRAILS_HOME /usr/lib/jvm/grails
 ENV PATH $GRAILS_HOME/bin:$PATH
 
 # Download and Install Node
-RUN curl -SLO "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-x64.tar.xz" -o "node-v$NODE_VERSION-linux-x64.tar.xz" \
-    && tar -xJf "node-v$NODE_VERSION-linux-x64.tar.xz" -C /usr/local --strip-components=1 \
-    && rm "node-v$NODE_VERSION-linux-x64.tar.xz"
 
 # Confirm node version
 RUN node --version
@@ -40,8 +56,8 @@ COPY . /app
 RUN grails refresh-dependencies
 RUN grails compile
 
-RUN npm install
+RUN npm install --python=python2.7
 
 # Set Default Behavior
 ENTRYPOINT ["grails"]
-CMD ["-Dstreamr.database.host=mysql -Dstreamr.kafka.bootstrap.servers=kafka:9092 -Dstreamr.redis.hosts=redis -Dstreamr.cassandra.hosts=cassandra run-app"]
+CMD ["-Dstreamr.database.host=localhost -Dstreamr.kafka.bootstrap.servers=localhost:9092 -Dstreamr.redis.hosts=localhost -Dstreamr.cassandra.hosts=localhost run-app"]

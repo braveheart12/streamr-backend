@@ -70,6 +70,7 @@ export class ProfileSettings extends Component<Props> {
                             </ControlLabel>
                             <div>{this.props.user && this.props.user.username}</div>
                         </FormGroup>
+
                         <FormGroup>
                             <ControlLabel>
                                 Password
@@ -91,6 +92,7 @@ export class ProfileSettings extends Component<Props> {
                                 required
                             />
                         </FormGroup>
+
                         <FormGroup>
                             <ControlLabel>
                                 Timezone
@@ -105,6 +107,7 @@ export class ProfileSettings extends Component<Props> {
                                 clearable={false}
                             />
                         </FormGroup>
+
                         <FormGroup>
                             <InputGroup>
                                 <Button

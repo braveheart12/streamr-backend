@@ -1,5 +1,6 @@
 package com.unifina.controller.core.signalpath
 
+import com.unifina.domain.data.Stream
 import com.unifina.domain.security.Permission.Operation
 import com.unifina.domain.security.SecUser
 import com.unifina.domain.signalpath.Canvas
@@ -11,6 +12,8 @@ import grails.converters.JSON
 import grails.plugin.springsecurity.SpringSecurityService
 import grails.plugin.springsecurity.annotation.Secured
 import org.springframework.util.FileCopyUtils
+
+import java.security.AccessControlException
 
 @Secured(["ROLE_USER"])
 class CanvasController {
@@ -47,7 +50,17 @@ class CanvasController {
 		def beginDate = new Date()
 		def endDate = new Date()
 		def currentUser = SecUser.get(springSecurityService.currentUser.id)
-		def json = request.JSON
+		def addStream
+		def error
+
+		if (params.addStream) {
+			Stream stream = Stream.findById(params.addStream)
+			if (!permissionService.canRead(currentUser, stream)) {
+				error = new AccessControlException("Cannot add stream - User ${currentUser.getUsername()} does not have read access to Stream with id ${params.addStream}")
+			} else {
+				addStream = params.addStream
+			}
+		}
 
 		[
 			beginDate: beginDate,
@@ -56,7 +69,9 @@ class CanvasController {
 			examples: params.examples,
 			user: currentUser,
 			key: currentUser?.keys?.iterator()?.next(), // any one of the user's keys will do
-			json: (json as JSON)?.toString()
+			addModuleId: params.addModule,
+			addStreamId: addStream,
+			error: error,
 		]
 	}
 

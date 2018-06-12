@@ -18,11 +18,11 @@
     "test-jenkins": "npm run test-old-jenkins; npm run test-new-jenkins",
     "test-old-jenkins": "mocha web-app/js/unifina/test --recursive --reporter mocha-junit-reporter --reporter-options mochaFile=./test-old-report.xml",
     "test-new-jenkins": "JEST_JUNIT_OUTPUT=test-new-report.xml jest ./web-app/react-app/tests --ci --testResultsProcessor=\"jest-junit\"",
-    "build": "NODE_ENV=production ./node_modules/.bin/webpack",
-    "build-dev": "./node_modules/.bin/webpack",
+    "build": "NODE_ENV=production webpack",
+    "build-dev": "webpack",
     "clean": "rm -rf node_modules/",
     "clean-install": "npm run clean && npm install",
-    "dev": "./node_modules/.bin/webpack-dev-server"
+    "dev": "webpack-dev-server --hot"
   },
   "jest": {
     "moduleNameMapper": {
@@ -60,7 +60,7 @@
     "enzyme": "^3.1.1",
     "enzyme-adapter-react-16": "^1.0.4",
     "eslint": "^4.16.0",
-    "eslint-config-streamr": "^1.0.5",
+    "eslint-config-streamr": "1.0",
     "eslint-loader": "^1.7.1",
     "eslint-plugin-async-await": "0.0.0",
     "eslint-plugin-flowtype": "^2.42.0",
@@ -99,7 +99,7 @@
     "prop-types": "^15.6.0",
     "react": "^16.1.1",
     "react-addons-test-utils": "^15.6.2",
-    "react-bootstrap": "^0.32.0",
+    "react-bootstrap": "^0.32.1",
     "react-copy-to-clipboard": "^5.0.1",
     "react-dom": "^16.1.1",
     "react-dropzone": "^4.2.7",
@@ -120,13 +120,18 @@
     "redux-thunk": "^2.2.0",
     "sinon": "^2.3.6",
     "streamr-client": "^0.9.3",
-    "stringify-object": "^3.2.1",
+    "stringify-object": "^3.2.2",
     "style-loader": "^0.17.0",
+    "uglifyjs-webpack-plugin": "^1.2.4",
     "underscore": "*",
     "uuid": "latest",
+    "web3": "^1.0.0-beta.30",
     "webpack": "^2.6.0",
     "webpack-dev-server": "^2.4.5",
     "webpack-notifier": "^1.5.0",
     "write-file-webpack-plugin": "^4.0.2"
+  },
+  "devDependencies": {
+    "web3-fake-provider": "^0.1.0"
   }
 }
