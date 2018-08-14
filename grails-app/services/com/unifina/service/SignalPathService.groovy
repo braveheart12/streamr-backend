@@ -143,6 +143,8 @@ class SignalPathService {
 		canvas.requestUrl = protocol + "://" + canvas.server + ":" + port + grailsLinkGenerator.link(uri: "/api/v1/canvases/$canvas.id", absolute: false)
 		canvas.state = Canvas.State.RUNNING
 
+		canvas.startedBy = asUser
+
 		canvas.save(flush: true)
 
 		// Start the runner thread
@@ -177,7 +179,6 @@ class SignalPathService {
 		return canvasIdToUser
 	}
 
-	/* Cherry-picked from CORE-1421: Create NodeApiController */
 	@GrailsCompileStatic
 	List<SignalPath> getRunningSignalPaths() {
 		List<List<SignalPath>> signalPaths = runners().values()*.signalPaths
