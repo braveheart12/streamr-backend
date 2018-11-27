@@ -1,6 +1,7 @@
 .idea
 .settings
 .slcache
+target
 out
 .git
 node_modules
