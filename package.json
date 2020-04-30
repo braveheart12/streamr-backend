@@ -78,7 +78,7 @@
     "identity-obj-proxy": "^3.0.0",
     "jest": "^23.3.0",
     "jest-junit": "^3.6.0",
-    "jquery": "1.11.1",
+    "jquery": "3.5.0",
     "jquery-ui": "*",
     "jsdom": "8.1.0",
     "lodash": "^4.17.4",
