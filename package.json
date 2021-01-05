@@ -39,7 +39,7 @@
     "@streamr/streamr-layout": "^1.2.1",
     "assert-diff": "^1.2.0",
     "autoprefixer": "^7.0.1",
-    "axios": "^0.16.1",
+    "axios": "^0.21.1",
     "babel-cli": "^7.0.0-alpha.9",
     "babel-core": "^6.24.1",
     "babel-eslint": "^8.2.1",
