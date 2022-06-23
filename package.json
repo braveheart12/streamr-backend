@@ -80,7 +80,7 @@
     "jest-junit": "^3.6.0",
     "jquery": "1.11.1",
     "jquery-ui": "*",
-    "jsdom": "8.1.0",
+    "jsdom": "16.5.0",
     "lodash": "^4.17.4",
     "mocha": "^3.4.2",
     "mocha-junit-reporter": "^1.17.0",
