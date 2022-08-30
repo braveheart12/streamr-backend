@@ -85,7 +85,7 @@
     "mocha": "^3.4.2",
     "mocha-junit-reporter": "^1.17.0",
     "moment": "^2.18.1",
-    "moment-timezone": "^0.5.13",
+    "moment-timezone": "^0.5.35",
     "moxios": "^0.4.0",
     "mustache": "*",
     "packery": "^2.1.1",
